@@ -1,0 +1,104 @@
+# bolt.common-quality.yaml — the checks that do not care what language you wrote.
+#
+# Overlay this UNDER a language definition. Later files win and tasks merge by
+# id, so the language file can adjust anything here without restating it:
+#
+#     bolt -c bolt.common-quality.yaml -c bolt.go-std-quality.yaml
+#
+# Everything in this file holds a document against the source, or measures a
+# property of the source that has nothing to do with its language. Nothing here
+# knows what a compiler is.
+#
+# WHY THIS FILE EXISTS. These three tasks were written inside the Go definition,
+# where they worked and where they were invisible to every other language. A
+# Python project adopting the Python definition would have had to reimplement
+# traceability, the suppression register and complexity limits from scratch, and
+# would have chosen slightly different thresholds while doing it. Pulling them
+# out means a new language gets them for free and every language agrees on what
+# they mean.
+#
+# THE PATH RULE, which is the thing most easily got wrong here. A path resolves
+# against {configdir} if it TRAVELS WITH THIS FILE -- a checker, an adapter, a
+# linter's config. A path stays relative to the run root if it BELONGS TO THE
+# PROJECT BEING CHECKED -- its source, its REQUIREMENTS.md, its SUPPRESSIONS.
+# Getting this backwards is invisible in a repository whose descriptor sits at
+# its own root, because {configdir} and the run root are then the same
+# directory, and it breaks for every adopter. Measured, not reasoned: pointing
+# --register at {configdir} made a project with one justified pragma report ten
+# disagreements against another project's register, with no state it could
+# reach that would pass.
+
+version: 1
+
+tasks:
+  # ---- documents held against the source ------------------------------------
+
+  # A requirements document nobody is held to becomes decoration: it drifts from
+  # the code, and the drift is invisible because nothing compares the two. This
+  # compares them, and fails when a test does not say what it discharges or
+  # cites a requirement that no longer exists.
+  #
+  # Requirements with no test are reported as context and do not fail: some are
+  # open questions that cannot have a test yet, and failing on those would make
+  # the honest state of the document unrepresentable.
+  #
+  # KNOWN GAP, carried over deliberately rather than silently: the exemption is
+  # sized for open questions and currently covers every untested requirement,
+  # whatever its status. Splitting it -- fail on an uncovered settled
+  # requirement, report an uncovered open one -- is the change that turns this
+  # from a report into a gate. It is not made here because it would change the
+  # verdict for existing adopters on the day they upgrade.
+  - id: traceability
+    description: every test cites the requirement it discharges and its kind
+    tags: [quick, ci]
+    requires: [python3]
+    command: "python3 {configdir}/bin/test-traceability.py --requirements REQUIREMENTS.md ."
+
+  # The same argument, applied to what has been silenced. A register nobody is
+  # held to drifts, and the drift is invisible because nothing compares the two
+  # -- which is not hypothetical: a register was once found naming two files
+  # that had moved, listing a rule id that does not exist, and missing three
+  # pragmas, all while carrying a line saying it had been verified by hand.
+  # Checking it by hand is what failed.
+  #
+  # Both directions fail. An unregistered pragma is a suppression nobody
+  # justified. A registered row with nothing behind it is a justification for
+  # something already gone, which reads as cover for whatever replaces it.
+  #
+  # A project with no pragmas and no register passes; a project with pragmas and
+  # no register does not.
+  - id: suppressions
+    description: every suppression is registered, and every entry is real
+    tags: [quick, ci]
+    requires: [python3]
+    command: "python3 {configdir}/bin/suppression-register.py --register SUPPRESSIONS ."
+
+  # ---- properties of the source, whatever the language ----------------------
+
+  # lizard carries its thresholds as flags, so this task is self-contained: no
+  # configuration file travels with it. It reads Go, Python, Rust, C, Java and
+  # more with one set of numbers, which is the whole reason it belongs here
+  # rather than being decided separately by each language.
+  #
+  #   -C  cyclomatic complexity per function
+  #   -a  parameter count
+  #   -L  function length in lines
+  #
+  # Run WITHOUT -w. Warnings-only mode suppresses lizard's summary table,
+  # and that table is where the statistics come from -- total nloc, function
+  # count, average complexity. Those are emitted whether the task passes or
+  # fails, because a number is only useful as a series.
+  #
+  # Test files are measured too. A test is read at the worst possible moment --
+  # when it has just failed and nobody knows why -- so it has to be at least as
+  # readable as the code it supports.
+  #
+  # A language definition that genuinely needs different numbers overrides this
+  # task by id rather than declaring a second one; two complexity gates
+  # disagreeing is worse than either.
+  - id: complexity
+    description: no function over complexity 15, 5 parameters or 60 lines
+    tags: [ci]
+    requires: [lizard, python3]
+    command: "lizard -C 15 -a 5 -L 60 ."
+    result_command: "python3 {configdir}/adapters/common/lizard.py"

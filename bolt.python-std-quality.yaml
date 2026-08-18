@@ -1,0 +1,173 @@
+# bolt.python-std-quality.yaml — the standard quality gate for a Python project.
+#
+# OVERLAY THE COMMON JIG UNDER THIS ONE. Traceability, the suppression register
+# and cyclomatic complexity live there and are not restated here:
+#
+#     bolt -c bolt.common-quality.yaml -c bolt.python-std-quality.yaml
+#
+# Ordered cheapest first, so a failure surfaces before the slow checks run.
+#
+# WHY SO MANY TOOLS, when ruff replaces most of a traditional stack. ruff is
+# fast and covers pyflakes, pycodestyle, pydocstyle, isort, mccabe and a large
+# slice of pylint — but "a large slice" is not all of it, and the remainder is
+# the part that needs whole-program knowledge rather than a single file. Each
+# tool below is here because it sees something the others cannot:
+#
+#   ruff         style, imports, and hundreds of single-file lint rules. Fast.
+#   pylint       cross-module inference -- unused arguments, inconsistent
+#                returns, attributes defined outside __init__. Slow, and the
+#                slowness buys the analysis.
+#   mypy         types. Nothing else here does this at all.
+#   bandit       security patterns, and the source of the #nosec pragmas the
+#                common jig's suppression register holds you to.
+#   vulture      dead code, by finding definitions nothing references.
+#   interrogate  docstring coverage, as a number rather than an opinion.
+#   complexipy   COGNITIVE complexity, which is not what lizard measures --
+#                see the note on that task below.
+#
+# THE PATH RULE: a path resolves against {configdir} if it travels with this
+# jig; it stays run-root-relative if it belongs to the project being checked.
+
+version: 1
+
+tasks:
+  # ---- shape ----------------------------------------------------------------
+
+  # --check reports without writing. A formatter that reformats during a check
+  # is a check with a side effect, and in CI it produces a green run against a
+  # tree nobody has seen.
+  - id: format
+    description: every file is ruff-format clean
+    tags: [quick, ci]
+    requires: [ruff]
+    command: "ruff format --check ."
+
+  # ruff's own exit code is the answer here -- non-zero when it finds anything
+  # -- so no adapter is needed. --output-format=concise keeps the artifact
+  # readable; the default emits several lines and a source excerpt per finding.
+  - id: lint
+    description: the ruff rule set, whatever the project has enabled
+    tags: [quick, ci]
+    requires: [ruff]
+    command: "ruff check --output-format=concise ."
+
+  # ---- correctness ----------------------------------------------------------
+
+  # Types. --strict is deliberately NOT set here: a shared jig that turns strict
+  # mode on for every adopter fails every adopter on day one, which teaches them
+  # to delete the task rather than fix the code. Strictness is a project's
+  # decision, made in its own pyproject.toml, and this task will honour it.
+  - id: types
+    description: mypy is satisfied
+    tags: [ci]
+    requires: [mypy]
+    command: "mypy ."
+    timeout: 300s
+
+  # The analysis ruff cannot do, because it needs to see more than one file at
+  # a time. Slow by nature -- it imports the code to reason about it -- which is
+  # why it carries `ci` and not `quick`.
+  - id: analyse
+    description: pylint's cross-module analysis
+    tags: [ci]
+    requires: [pylint]
+    command: "pylint --recursive=y ."
+    timeout: 600s
+
+  # ---- properties of the source ---------------------------------------------
+
+  # COGNITIVE complexity, and it is not a duplicate of the common jig's
+  # `complexity` task. lizard measures CYCLOMATIC complexity -- how many
+  # independent paths run through a function. complexipy measures how hard the
+  # function is for a person to hold in their head, which counts nesting depth
+  # far more heavily. A flat function with a ten-branch match statement scores
+  # badly on the first and fine on the second; three nested loops score the
+  # reverse. Both are worth knowing and neither substitutes for the other.
+  - id: cognitive
+    description: no function over cognitive complexity 15
+    tags: [ci]
+    requires: [complexipy]
+    command: "complexipy --max-complexity 15 ."
+
+  # Dead code, found by looking for definitions nothing references. Vulture
+  # guesses, and says so with a confidence score -- 100 means "this name appears
+  # exactly once, at its definition", 60 means "this looks unused but a
+  # framework or a getattr() could be reaching it".
+  #
+  # --min-confidence 80 is the useful line: below it the false positives from
+  # dynamic dispatch, plugin registration and test fixtures swamp the signal.
+  # A project with a whitelist file passes it in its own overlay.
+  - id: dead-code
+    description: no unreferenced definition above 80% confidence
+    tags: [ci]
+    requires: [vulture]
+    command: "vulture --min-confidence 80 ."
+
+  # Docstring coverage as a number. --fail-under 80 matches the coverage
+  # threshold the Go jig uses for statements, on the same reasoning: a
+  # percentage nobody is held to is a percentage that drifts down.
+  #
+  # -e excludes the directories where a missing docstring means nothing.
+  - id: docstrings
+    description: at least 80% of public objects are documented
+    tags: [ci]
+    requires: [interrogate]
+    command: >-
+      interrogate --fail-under 80 --quiet
+      -e .venv -e venv -e build -e dist .
+
+  # ---- security --------------------------------------------------------------
+
+  # -r recurses; -q suppresses the per-file progress that would otherwise
+  # dominate the artifact. Findings are suppressed in source with #nosec, and
+  # the common jig's `suppressions` task is what stops those accumulating
+  # unexamined.
+  - id: security
+    description: no bandit finding without a registered suppression
+    tags: [ci]
+    requires: [bandit]
+    command: "bandit -r -q ."
+    timeout: 300s
+
+  # ---- tests -----------------------------------------------------------------
+
+  # The coverage profile is a declared output. A test run reporting success
+  # without producing one measured nothing, and declaring the file turns that
+  # from a silent gap into a failure.
+  #
+  # -p no:randomly is NOT set: if the project has pytest-randomly installed,
+  # order randomisation is wanted. A suite that only passes in one order has a
+  # bug in the suite.
+  - id: tests
+    description: the suite passes, and writes a coverage profile
+    tags: [ci]
+    requires: [pytest]
+    command: "coverage run -m pytest -q && coverage xml -o coverage.xml"
+    timeout: 900s
+    output:
+      - path: coverage.xml
+        format: text
+
+# ---- NOT HERE, AND WHY -------------------------------------------------------
+#
+# COVERAGE THRESHOLD. The Go jig judges coverage per file at 80%, deliberately
+# refusing an aggregate because an aggregate lets a well-tested file carry an
+# untested one. The same task belongs here and is absent for one reason: it
+# needs an adapter that reads Cobertura XML and applies the threshold per file,
+# and that adapter has not been written. `tests` produces coverage.xml so the
+# data is there the moment it is. Until then coverage is measured and not
+# enforced, which is worth saying out loud rather than leaving as an apparent
+# oversight.
+#
+# radon. Overlaps lizard (cyclomatic) and complexipy (cognitive) without adding
+# a third thing either misses. Its maintainability index is a composite of
+# metrics already measured separately here, and a composite is harder to act on
+# than its parts.
+#
+# safety / pip-audit. Dependency vulnerability scanning is the Python
+# counterpart to the Go jig's `govulncheck`, and it belongs here — but the two
+# differ in a way that matters: govulncheck is REACHABILITY-based, reporting
+# only advisories whose affected functions the code actually calls, while the
+# Python tools report every advisory touching an installed distribution. That
+# is a much noisier signal, and choosing which tool and how to handle the noise
+# is a decision rather than a default.

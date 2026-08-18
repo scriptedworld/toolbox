@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/scriptedworld/toolbox/schema/jig.schema.json",
+  "title": "bolt jig",
+  "description": "A bolt configuration file: a set of independent tasks, each a command line and optionally something that reads its output and returns a verdict. Derived from internal/descriptor/descriptor.go rather than from example files, so it describes what the parser accepts rather than what the examples happen to use.",
+  "type": "object",
+  "required": ["version", "tasks"],
+  "additionalProperties": false,
+
+  "properties": {
+    "version": {
+      "description": "Configuration format version. Only 1 exists; a file naming any other version is rejected rather than assumed forward-compatible.",
+      "const": 1
+    },
+
+    "timeout": {
+      "$ref": "#/$defs/duration",
+      "description": "Bounds the whole run, distinct from any per-invocation timeout. Tasks the budget did not reach are recorded as failures rather than omitted."
+    },
+
+    "defaults": {
+      "description": "Applied to any task that does not state the field itself, because repeated configuration is configuration that drifts. `command` is deliberately absent: a task must never inherit its most important field silently.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runtime": { "$ref": "#/$defs/runtime" },
+        "timeout": { "$ref": "#/$defs/duration" },
+        "capture": { "$ref": "#/$defs/capture" },
+        "select": { "$ref": "#/$defs/select" },
+        "tags": {
+          "description": "Accumulate onto a task's own tags rather than replacing them, since both are true of the task.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "definitions": {
+      "description": "Somewhere legal to declare YAML anchors for reuse within this file. bolt provides no second fragment mechanism, and anchors do not cross files -- each configuration is its own YAML document.",
+      "type": "object"
+    },
+
+    "tasks": {
+      "description": "Tasks are independent and merge; there is no ordering and no dependency between them. A thing that produces no mergeable verdict is not a task.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+
+  "$defs": {
+    "duration": {
+      "description": "A Go duration string, e.g. 300s, 2m0s, 10m, 1h30m.",
+      "type": "string",
+      "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h)([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$"
+    },
+
+    "runtime": {
+      "description": "Named for what the process receives. `once` is the default because it is the only runtime needing no placeholder -- a task that wants files must say which shape it wants them in.",
+      "type": "string",
+      "enum": ["once", "allFiles", "eachFile"],
+      "default": "once"
+    },
+
+    "capture": {
+      "description": "`never` still keeps the exit code, which is never the bulky part. For a per-file task over a large tree this is the difference between a readable artifact set and hundreds of megabytes of stored scrollback.",
+      "type": "string",
+      "enum": ["always", "never"],
+      "default": "always"
+    },
+
+    "select": {
+      "description": "Filters the incoming file list to the files this task is about. Meaningless on a `once` task, and declaring one there is an error rather than a line that does nothing. Selecting nothing plans nothing: an empty substitution would turn `ruff check {files}` into `ruff check`, which checks the whole tree.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include": {
+          "description": "Globs in which ** matches zero or more path segments, zero included. An absent include admits everything.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exclude": {
+          "description": "Exclusion beats inclusion.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "evidence": {
+      "description": "A file the task promises to produce. A run that reports success without producing the file it promised did not measure anything; declaring it turns that from a silent gap into a failure.",
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "A glob, resolved against the invocation's scratch directory and then the run root.",
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "description": "The format the file must parse as. Inferred from the extension when unset. An empty file fails every format, including text: a tool that created its output and wrote nothing to it did not finish.",
+          "type": "string",
+          "enum": ["json", "yaml", "text"]
+        },
+        "required": {
+          "description": "Fails the task when nothing matches path. Set false for a file a tool writes only sometimes, and say why in a comment.",
+          "type": "boolean",
+          "default": true
+        },
+        "schema": {
+          "description": "Path to a JSON Schema the file must satisfy.",
+          "type": "string"
+        }
+      }
+    },
+
+    "task": {
+      "type": "object",
+      "required": ["id", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Becomes part of an artifact filename, so it may not contain a path separator or `..` -- a filename can never escape the artifact directory.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$",
+          "not": { "pattern": "\\.\\." }
+        },
+        "description": {
+          "description": "What the task asserts, in the present tense. Shown by `bolt tasks`.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "A tag is how a set of tasks gets a name, for --with and --without.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "command": {
+          "description": "A shell line. Asks for exactly the substitution its runtime performs: {file} under eachFile, {files} under allFiles, {configdir} and {root} in any. A placeholder the runtime cannot fill is rejected at parse time rather than left unfilled.",
+          "type": "string",
+          "minLength": 1
+        },
+        "requires": {
+          "description": "Executables this task cannot run without. Resolved before anything starts, failing the task once and naming the executable. Undeclared, a missing tool arrives as a shell-level exit 127, indistinguishable from a tool that genuinely exits 127.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "runtime": { "$ref": "#/$defs/runtime" },
+        "select": { "$ref": "#/$defs/select" },
+        "timeout": {
+          "$ref": "#/$defs/duration",
+          "description": "Bounds this invocation, defaulting to 120s. A wedged checker does not wedge the run."
+        },
+        "tty": {
+          "description": "Allocate a pseudo-terminal. A terminal is one channel, so stdout and stderr arrive merged and cannot be told apart afterwards -- recorded in the envelope rather than left to be inferred from an empty stderr.",
+          "type": "boolean"
+        },
+        "capture": { "$ref": "#/$defs/capture" },
+        "result_command": {
+          "description": "Turns this task's execution record into a verdict. A command-line contract, so it may be written in any language: the record arrives on stdin as YAML, {record} is replaced by a path to the same record, and an envelope is returned on stdout. Absent, exiting 0 is the task's whole contract.",
+          "type": "string"
+        },
+        "output": {
+          "description": "Files this task promises to write.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence" }
+        }
+      },
+
+      "allOf": [
+        {
+          "description": "A filter is meaningless on a task that receives no files, and declaring one is an error rather than a line that does nothing.",
+          "if": {
+            "properties": { "runtime": { "const": "once" } },
+            "required": ["runtime"]
+          },
+          "then": { "not": { "required": ["select"] } }
+        },
+        {
+          "description": "Runtime `once` is the default, so a task with no runtime and a select is the same error.",
+          "if": { "not": { "required": ["runtime"] } },
+          "then": { "not": { "required": ["select"] } }
+        }
+      ]
+    }
+  }
+}

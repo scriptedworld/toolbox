@@ -1,0 +1,201 @@
+# golangci-lint configuration, shipped inside the dev image at
+# /opt/gates/golangci.yml and passed explicitly via --config.
+#
+# It is NOT discovered from the project tree. That is deliberate: a project
+# dropping its own .golangci.yml would silently relax the gates, which is the
+# drift this image exists to prevent. Consequence to be aware of — a project
+# with a legitimate need for an exception has no per-repo escape hatch, only a
+# `nolint` directive that `nolintlint` will demand it justify.
+#
+# Schema is golangci-lint v2 (pinned to v2.12.2 in Dockerfile.dev). Run
+# `just verify-config` after editing; v2 renamed and moved a number of keys and
+# the parser is strict about it.
+
+version: "2"
+
+linters:
+  # `standard` keeps errcheck, govet, ineffassign, staticcheck and unused.
+  # Everything below is additive on top of those.
+  default: standard
+
+  enable:
+    # -- complexity and size --
+    - gocognit           # cognitive complexity
+    - gocyclo            # cyclomatic, per function
+    - cyclop             # cyclomatic, per function and package average
+    - funlen             # function length
+    - nestif             # nesting depth
+    - maintidx           # maintainability index
+    - dupl               # duplicate code
+    - lll                # line length
+
+    # -- correctness and style --
+    - revive             # replaces golint; carries argument and result limits
+    - mnd                # magic numbers
+    - gosec              # security
+    - godoclint          # doc comment practice
+    - goconst            # repeated string literals that want to be constants
+    - unparam            # parameters that are always the same or never used
+    - unconvert          # conversions that do nothing
+    - predeclared        # shadowing builtins (len, cap, new, ...)
+    - wastedassign       # assignments never read
+    - gochecknoinits     # no init(); pairs with the ban on global state
+
+    # -- concurrency and resource discipline. An orchestrator dispatching work
+    #    and watching files gets these wrong in ways tests rarely catch. --
+    - noctx              # requests issued without a context
+    - contextcheck       # a function passed the wrong context
+    - bodyclose          # response bodies never closed
+    - durationcheck      # multiplying two durations, which is nearly always a bug
+    - nilerr             # returning nil after checking err != nil
+
+    # -- error handling. Go's compiler cannot enforce any of this. --
+    - errorlint          # correct use of errors.Is/As over == and type asserts
+    - wrapcheck          # errors crossing a package boundary must be wrapped
+    - err113             # no dynamic errors; sentinel errors or wrapped ones
+    - errname            # sentinel errors named ErrFoo, types named FooError
+
+    # -- output discipline. In a Bubble Tea program a stray fmt.Println writes
+    #    straight to the terminal the renderer owns and corrupts the display.
+    #    This is a correctness gate here, not a style preference. --
+    - forbidigo
+
+    # -- things Python had no equivalent for --
+    - exhaustive         # switch statements cover every enum value
+    - gochecknoglobals   # no package-level mutable state
+    - paralleltest       # tests that can be parallel are marked parallel
+    - tparallel          # t.Parallel used correctly relative to subtests
+    - thelper            # helpers call t.Helper so failures point at the caller
+    - testpackage        # tests live in foo_test, exercising the public API
+    - testableexamples   # Example functions actually assert output
+
+    # -- suppression policing. Without this the rest is advisory. --
+    - nolintlint
+    # -- import bans. Enforces the no-mocks policy mechanically. --
+    - depguard
+
+  settings:
+    gocognit:
+      min-complexity: 20
+
+    gocyclo:
+      min-complexity: 15
+
+    cyclop:
+      max-complexity: 15
+      package-average: 8.0
+
+    funlen:
+      lines: 60
+      statements: 40
+
+    nestif:
+      min-complexity: 4
+
+    maintidx:
+      under: 20
+
+    dupl:
+      threshold: 120
+
+    lll:
+      line-length: 100
+
+    mnd:
+      ignored-functions:
+        - make
+        - strconv.ParseInt
+        - strconv.ParseFloat
+
+    revive:
+      rules:
+        - name: argument-limit
+          arguments: [5]
+        # A function returning five things is a struct that has not been named
+        # yet. Error counts as one, so this permits (a, b, c, d, err).
+        - name: function-result-limit
+          arguments: [5]
+        # os.Exit outside main() makes a function untestable and skips defers.
+        - name: deep-exit
+        # Deliberately NOT enabling revive's cognitive-complexity rule: gocognit
+        # already reports it, and two linters flagging one problem trains people
+        # to ignore both.
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+      ignore-tests: true
+
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print.*$
+          msg: >-
+            Writes directly to the terminal the TUI renderer owns. Use the
+            program's logger, or tea.Println if it must reach the screen.
+        - pattern: ^print(ln)?$
+          msg: Builtin print writes to stderr unbuffered; use the logger.
+
+    exhaustive:
+      default-signifies-exhaustive: true
+
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+        - errors.Join(
+        - .Wrap(
+        - .Wrapf(
+
+    nolintlint:
+      # A bare //nolint is a silent gate bypass. Both of these make suppression
+      # a visible, justified, reviewable act rather than a way to make the
+      # linter stop talking.
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+
+    depguard:
+      rules:
+        no-mocks:
+          deny:
+            - pkg: github.com/stretchr/testify/mock
+              desc: >-
+                Mocks assert against the test's model of a dependency rather
+                than the dependency. Use a real implementation, or a hand
+                written fake that the compiler checks against the interface.
+            - pkg: go.uber.org/mock
+              desc: See no-mocks; use a real implementation or a hand-written fake.
+            - pkg: github.com/golang/mock
+              desc: See no-mocks; use a real implementation or a hand-written fake.
+
+  exclusions:
+    generated: lax
+    rules:
+      # Test files are NOT exempt. A test has to be as readable as the code it
+      # supports — it is read most often at the worst moment, when it has just
+      # failed and nobody knows why. A table that has outgrown the length limit
+      # is telling you the same thing it would tell you about production code:
+      # it is doing too much, and should be several tables.
+      #
+      # The previous exemption covered funlen, dupl, mnd, err113,
+      # gochecknoglobals and maintidx, on the reasoning that table-driven tests
+      # are legitimately long and repetitive. Removed 2026-08-16: "legitimately
+      # long" is the argument every long function makes.
+
+      # Lip Gloss styles are conventionally package-level vars — that is how
+      # every Charm codebase is written, because a Style is built once and
+      # reused per render. gochecknoglobals flags every one of them.
+      #
+      # Scoped to style files rather than disabled outright: the ban on
+      # package-level mutable state is worth keeping everywhere else, and
+      # confining styles to their own file is good practice independently.
+      - path: (^|/)styles?\.go$
+        linters:
+          - gochecknoglobals
+
+formatters:
+  # v2 moved formatters out of `linters`. gofumpt is a strict superset of
+  # gofmt with no configuration surface, so there is nothing to argue about.
+  enable:
+    - gofumpt
