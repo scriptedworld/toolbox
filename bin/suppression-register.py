@@ -37,7 +37,9 @@ from collections import Counter
 from pathlib import Path
 
 # In the source. Both forms the register's own grep looks for.
-SOURCE_PRAGMA = re.compile(r"#nosec\s+(?P<rules>(?:G\d+[\s,]*)+)|//nolint:(?P<linters>[\w,]+)")
+SOURCE_PRAGMA = re.compile(
+    r"#nosec\s+(?P<rules>(?:G\d+[\s,]*)+)|//nolint:(?P<linters>[\w,]+)"
+)
 
 # In the register: an indented row naming a file, an optional count, and the
 # pragma it carries. Anything after the rule ids is prose and is ignored.
@@ -119,7 +121,9 @@ def report(failures: list[str], total: int, register: Path) -> int:
     if total == 0:
         print("no suppression pragmas anywhere, and none registered")
         return 0
-    print(f"every suppression is registered, and every entry is real ({total} pragma(s))")
+    print(
+        f"every suppression is registered, and every entry is real ({total} pragma(s))"
+    )
     return 0
 
 

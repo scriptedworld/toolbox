@@ -14,7 +14,9 @@ import sys
 
 import yaml
 
-DIAGNOSTIC = re.compile(r"^(?P<file>[^:\s]+\.go):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<msg>.+)$")
+DIAGNOSTIC = re.compile(
+    r"^(?P<file>[^:\s]+\.go):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<msg>.+)$"
+)
 
 CHECKER = "vet"
 
@@ -55,7 +57,9 @@ def main():
     code = captures.get("exitcode", 0)
 
     if reasons:
-        yaml.safe_dump({"success": False, "reasons": reasons}, sys.stdout, sort_keys=False)
+        yaml.safe_dump(
+            {"success": False, "reasons": reasons}, sys.stdout, sort_keys=False
+        )
         return
 
     if code not in (0, None):
