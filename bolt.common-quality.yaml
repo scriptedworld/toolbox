@@ -38,18 +38,32 @@ tasks:
   # compares them, and fails when a test does not say what it discharges or
   # cites a requirement that no longer exists.
   #
-  # Requirements with no test are reported as context and do not fail: some are
-  # open questions that cannot have a test yet, and failing on those would make
-  # the honest state of the document unrepresentable.
+  # BOTH DIRECTIONS FAIL. A test that does not say what it discharges is one
+  # failure; a requirement no test cites is the other. Only the second was ever
+  # a gate here -- until 2026-08-20 an uncovered requirement was printed as
+  # context and exited 0, which made the document a report rather than a check.
   #
-  # KNOWN GAP, carried over deliberately rather than silently: the exemption is
-  # sized for open questions and currently covers every untested requirement,
-  # whatever its status. Splitting it -- fail on an uncovered settled
-  # requirement, report an uncovered open one -- is the change that turns this
-  # from a report into a gate. It is not made here because it would change the
-  # verdict for existing adopters on the day they upgrade.
+  # THE ONE EXEMPTION is the status marker in the requirement's own row, which
+  # is the last bracketed cell: `[?]` marks an open decision that cannot have a
+  # test yet, and failing on those would make the honest state of the document
+  # unrepresentable. Everything else -- `[A]`, `[D]`, `[A/D]`, or no marker
+  # column at all -- is settled, and settled means testable. A document without
+  # markers therefore claims no exemptions, which is the right way round:
+  # exemption is claimed, never granted by omission.
+  #
+  # THIS TIGHTENS THE VERDICT FOR EXISTING ADOPTERS, deliberately and on the
+  # owner's decision rather than by drift. Measured the day it landed: bolt
+  # fails with 28 settled requirements untested and 3 open ones exempt; qwark
+  # passes, its 16 untested requirements all being marked `[?]`. An adopter
+  # facing a wall of these has two honest moves -- write the test, or mark the
+  # requirement `[?]` and say why it cannot have one yet.
+  #
+  # The checker reads Go and Python tests. A language with a jig here but no
+  # entry in its LANGUAGES table would find no tests at all, cite nothing, and
+  # fail every requirement at once -- so a new language jig adds its entry in
+  # the same change.
   - id: traceability
-    description: every test cites the requirement it discharges and its kind
+    description: every test cites what it discharges, and every settled requirement has one
     tags: [quick, ci]
     requires: [python3]
     command: "python3 {configdir}/bin/test-traceability.py --requirements REQUIREMENTS.md ."

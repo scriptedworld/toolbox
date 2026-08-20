@@ -32,10 +32,12 @@ bolt -c bolt.common-quality.yaml \
 
 ## What is here
 
-| Definition | Holds |
+| Jig | Holds |
 |---|---|
-| `bolt.common-quality.yaml` | Checks that do not care what language you wrote: requirement traceability, the suppression register, complexity limits, secret scanning |
+| `bolt.common-quality.yaml` | Checks that do not care what language you wrote: requirement traceability, the suppression register, complexity limits |
 | `bolt.go-std-quality.yaml` | Go: `gofmt`, `go mod tidy`, build, `vet`, `golangci-lint`, race-and-shuffle tests, per-file coverage, `govulncheck` |
+| `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `vulture`, `interrogate`, `bandit`, `pytest` |
+| `bolt.secrets.yaml` | Secret scanning: `gitleaks`, `detect-secrets` |
 
 ## Checkers and adapters
 
@@ -67,7 +69,7 @@ contract, and bolt handles that natively.
 
 ```
 bin/            checkers written here, because no tool does the job
-  test-traceability.py     tests cite the requirement they discharge
+  test-traceability.py     tests cite what they discharge, requirements have tests
   suppression-register.py  every pragma registered, every entry real
 adapters/       record -> envelope, per task that needs one
   common/lizard.py         complexity, any language lizard reads
@@ -76,7 +78,14 @@ config/         tool configuration that travels with a jig
   go-std-quality.golangci.yml   the 42-analyser config `lint` names explicitly
 schema/
   jig.schema.json          validates a jig against what the parser accepts
+tests/                    one file per script under test; see TESTING.md
+  conftest.py              loads scripts by path, one fixture per contract
+  fixtures/<tool>/*.txt    real captured tool output, dated and versioned
 ```
+
+The suite never runs the tools it is about — an adapter test feeds the adapter
+text the tool once produced — so it passes on a machine with none of them
+installed. `TESTING.md` says why that matters and what a test here must assert.
 
 ## The path rule
 
@@ -111,7 +120,7 @@ What your project supplies, if the relevant check is to do anything:
 
 | File | Used by | Absent means |
 |---|---|---|
-| `REQUIREMENTS.md` | `traceability` | the check has nothing to compare |
+| `REQUIREMENTS.md` | `traceability` | a failure — the check has nothing to hold the code to |
 | `SUPPRESSIONS` | `suppressions` | fine if you have no pragmas; a failure if you do |
 | `coverage.out` | `coverage` | produced by `tests`, not by you |
 
@@ -130,14 +139,38 @@ of `bolt.go-std-quality.yaml`.
 The general form: **a shared definition carries the rule and never the subject.**
 `entrypoint` looked like a rule and was a subject.
 
-## Known gap
+## Traceability is a gate, not a report
 
-`traceability` reports requirements with no test as context and exits 0. That
-exemption is sized for open questions that cannot have a test yet — and it
-currently covers *every* untested requirement, whatever its status. Splitting it
-so an uncovered settled requirement fails while an uncovered open one is
-reported is the change that turns this from a report into a gate.
+Closed 2026-08-20, and it changes the verdict for adopters upgrading past it.
 
-It is not made yet because it changes the verdict for existing adopters on the
-day they upgrade, which wants to be a deliberate release rather than a quiet
-tightening.
+`traceability` fails in both directions. A test that does not say what it
+discharges is one failure; **a requirement no test cites is the other**. Until
+this change the second was printed as context and exited 0, which made
+`REQUIREMENTS.md` a document nothing held the code to — the exact failure the
+task exists to prevent, in the task itself.
+
+The one exemption is the requirement's own status marker, the last bracketed
+cell in its row:
+
+| Row | Uncovered means |
+|---|---|
+| `\| FR-1.1 \| Any command-line tool can be run. \| [A] \|` | **failure** — settled, so testable |
+| `\| FR-5.9 \| Schema versioning is unresolved. \| [?] \|` | reported, not fatal |
+
+`[?]` marks an open decision that cannot have a test yet; failing on those would
+make the honest state of the document unrepresentable. Everything else — `[A]`,
+`[D]`, `[A/D]`, or **no marker column at all** — is settled. A document without
+markers claims no exemptions, which is the right way round: exemption is
+claimed, never granted by omission.
+
+FACT 2026-08-20, both real adopters measured: `bolt` fails with 28 settled
+requirements untested and 3 open ones exempt. `qwark` passes — its 16 untested
+requirements are all marked `[?]`.
+
+Facing a wall of these, an adopter has two honest moves: write the test, or mark
+the requirement `[?]` and say why it cannot have one yet.
+
+The checker reads Go (`*_test.go`) and Python (`test_*.py`, `*_test.py`) tests.
+A language with a jig here but no entry in the checker's `LANGUAGES` table would
+find no tests, cite nothing, and fail every requirement at once — so a new
+language jig adds its entry in the same change.
