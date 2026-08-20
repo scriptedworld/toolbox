@@ -1,0 +1,54 @@
+# What a project links in order to adopt a jig.
+#
+# A definition is only half of what a project needs. It names checkers,
+# adapters and tool configuration that live beside it here, and `{configdir}`
+# resolves those against the definition's own directory -- so a definition
+# reached through a symlink resolves them back through that same link. Adoption
+# is therefore a set of symlinks, and this file says which.
+#
+# DECLARED, NOT DERIVED. Reading the `{configdir}` references out of the
+# definitions would build today's list correctly and be wrong tomorrow. A jig
+# that runs `ruff check .`, `mypy .` or `pylint --recursive=y .` needs whatever
+# configuration those tools read by convention and names none of it on the
+# command line, so a derived list cannot see it. Two of the four sets below
+# reference nothing today; neither is expected to stay that way.
+#
+# Paths are relative to this repository and land at the SAME relative path in
+# the target. That is forced rather than chosen: a linked definition sits at the
+# target's root, which makes `{configdir}` the target's root, so `bin/x.py` has
+# to be at `bin/x.py` for the definition to find it.
+
+version: 1
+
+sets:
+  # Checks that do not care what language the project is written in. Every
+  # language set includes this one; `secrets` deliberately does not, because
+  # scanning a repository for credentials needs nothing else to be true of it.
+  common:
+    files:
+      - bolt.common-quality.yaml
+      - bin/test-traceability.py
+      - bin/suppression-register.py
+      - adapters/common/lizard.py
+
+  go:
+    includes: [common]
+    files:
+      - bolt.go-std-quality.yaml
+      - adapters/go/coverage.py
+      - adapters/go/gofmt.py
+      - adapters/go/govet.py
+      - config/go-std-quality.golangci.yml
+
+  # Every tool here is off the shelf and its exit code is the answer, so the
+  # definition is currently the whole set. A shared ruff or mypy configuration
+  # would be the first entry to join it, and would be invisible to anything
+  # that tried to infer this list from the definition's command lines.
+  python:
+    includes: [common]
+    files:
+      - bolt.python-std-quality.yaml
+
+  secrets:
+    files:
+      - bolt.secrets.yaml
