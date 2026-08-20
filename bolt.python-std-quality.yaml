@@ -87,7 +87,12 @@ tasks:
     description: no function over cognitive complexity 15
     tags: [ci]
     requires: [complexipy]
-    command: "complexipy --max-complexity 15 ."
+    # The flag is --max-complexity-allowed, not --max-complexity. FACT
+    # 2026-08-20: the short form was wrong from the first draft of this jig and
+    # complexipy exits with a usage error rather than a verdict, so the task
+    # failed for every adopter in a way that looked like their code. Measured
+    # against complexipy 7.0.1.
+    command: "complexipy --max-complexity-allowed 15 ."
 
   # Dead code, found by looking for definitions nothing references. Vulture
   # guesses, and says so with a confidence score -- 100 means "this name appears
@@ -159,10 +164,23 @@ tasks:
 # enforced, which is worth saying out loud rather than leaving as an apparent
 # oversight.
 #
-# radon. Overlaps lizard (cyclomatic) and complexipy (cognitive) without adding
-# a third thing either misses. Its maintainability index is a composite of
-# metrics already measured separately here, and a composite is harder to act on
-# than its parts.
+# radon. Absent for a narrower reason than "it overlaps", which is what this
+# comment used to say and is not true. Its `cc` does duplicate lizard, and its
+# maintainability index is a composite of metrics already measured separately
+# here -- a composite being harder to act on than its parts. But `hal` and
+# `raw` report things nothing else here measures at all.
+#
+# FACT 2026-08-20, radon 6.0.1 against bin/link-jigs.py: `hal` gives Halstead
+# volume 887, difficulty 6.45 and effort 5722; `raw` separates LLOC 227 from
+# SLOC 226 and gives comment density. lizard reports nloc and cyclomatic only,
+# complexipy cognitive only.
+#
+# So the honest statement is that radon measures more and none of it is gated,
+# because a gate needs a threshold that fails a build and none of these has one
+# worth defending: Halstead effort has no conventional limit, and the comment
+# density floor is a number nobody here has argued for. The case for adding it
+# is a named metric with a named threshold and a reason that threshold is the
+# right one. Until someone makes that case it stays out.
 #
 # safety / pip-audit. Dependency vulnerability scanning is the Python
 # counterpart to the Go jig's `govulncheck`, and it belongs here — but the two
