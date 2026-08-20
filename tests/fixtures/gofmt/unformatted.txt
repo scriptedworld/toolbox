@@ -1,0 +1,3 @@
+# gofmt (go1.26.6 linux/amd64), captured 2026-08-20 from `gofmt -l .`
+internal/cli/cli.go
+main.go
