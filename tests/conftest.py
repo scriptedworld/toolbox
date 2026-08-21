@@ -4,7 +4,8 @@ Nothing in `bin/` or `adapters/` is importable by name: neither directory is a
 package, and a hyphen is not valid in a Python identifier, so
 `bin/test-traceability.py` can only be reached by path.
 
-The two fixtures below are the two contracts in `TESTING.md`. A checker is
+The two fixtures below are the two contracts in
+`docs/PATTERNS/testing-checkers-and-adapters.md`. A checker is
 `argv` plus a directory, and its exit code is the verdict. An adapter is `argv`
 plus a record on stdin, and its envelope is the verdict.
 """

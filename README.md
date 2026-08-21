@@ -78,14 +78,16 @@ config/         tool configuration that travels with a jig
   go-std-quality.golangci.yml   the 42-analyser config `lint` names explicitly
 schema/
   jig.schema.json          validates a jig against what the parser accepts
-tests/                    one file per script under test; see TESTING.md
+tests/                    one file per script under test; see
+                          docs/PATTERNS/testing-checkers-and-adapters.md
   conftest.py              loads scripts by path, one fixture per contract
   fixtures/<tool>/*.txt    real captured tool output, dated and versioned
 ```
 
 The suite never runs the tools it is about — an adapter test feeds the adapter
 text the tool once produced — so it passes on a machine with none of them
-installed. `TESTING.md` says why that matters and what a test here must assert.
+installed. `docs/PATTERNS/testing-checkers-and-adapters.md` says why that
+matters and what a test here must assert.
 
 ## The path rule
 

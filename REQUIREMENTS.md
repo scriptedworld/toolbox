@@ -1,11 +1,12 @@
 # toolbox — Requirements
 
 First derived 2026-08-20, from this repository as it stands and from the
-decisions recorded in `README.md`, `GLOSSARY.md` and `NEXT_STEPS.md`. Where a
+decisions recorded in `README.md`, `silo/docs/GLOSSARY.md` and `NEXT_STEPS.md`.
+Where a
 requirement traces to a decision the owner took in a session, it says so.
 
 toolbox holds the **jigs** bolt runs, and the **checkers** and **adapters** they
-name. Read `GLOSSARY.md` first: *checker* and *adapter* mean specific and
+name. Read `silo/docs/GLOSSARY.md` first: *checker* and *adapter* mean specific and
 opposite things, and several requirements below are meaningless without that
 distinction.
 
@@ -29,7 +30,7 @@ is testable.
 
 ## FR-1 — What a jig is
 
-*Derives from:* `GLOSSARY.md`, **The file**; `README.md`, **Using them**.
+*Derives from:* `silo/docs/GLOSSARY.md`, **The file**; `README.md`, **Using them**.
 
 | ID | Requirement | |
 |---|---|---|
@@ -41,7 +42,8 @@ is testable.
 
 ## FR-2 — Checkers
 
-*Derives from:* `GLOSSARY.md`, **Inside a jig**; `TESTING.md`, **Two contracts**.
+*Derives from:* `silo/docs/GLOSSARY.md`, **Inside a jig**;
+`docs/PATTERNS/testing-checkers-and-adapters.md`, **Two contracts**.
 
 | ID | Requirement | |
 |---|---|---|
@@ -53,7 +55,8 @@ is testable.
 
 ## FR-3 — Adapters
 
-*Derives from:* `README.md`, **Checkers and adapters**; `GLOSSARY.md`, **What a run produces**.
+*Derives from:* `README.md`, **Checkers and adapters**;
+`silo/docs/GLOSSARY.md`, **What a run produces**.
 
 | ID | Requirement | |
 |---|---|---|
