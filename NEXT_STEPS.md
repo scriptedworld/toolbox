@@ -315,6 +315,51 @@ carries no suppression pragma of any kind, and `suppression-register.py` reports
 *"no suppression pragmas anywhere, and none registered"* and exits 0. An empty
 register would be a file asserting nothing.
 
+## 14. `--requirements` on a directory crashes, and it blocks the docs split
+
+DEFECT, introduced 2026-08-20 by the traceability change in this same session,
+and filed against this repository from `agent-support` with evidence at
+`~/.projects/clank/inbox/toolbox/traceability-crashes-on-directory/`.
+
+The guard checks `.exists()`; **a directory satisfies `.exists()`**, so the path
+gets past it and dies in `read_text()` with an unhandled
+`IsADirectoryError`. The careful message beside it — *"REQUIREMENTS.md does not
+exist; traceability has nothing to hold the code to"* — never runs.
+
+**This blocks a decided standard**, which is why it outranks the rest of this
+list. Requirements are to become one file per requirement under
+`docs/REQUIREMENTS/<category>/`, so that adding one creates a file instead of
+reopening a large document — surgical diffs, and no collision between the six
+sessions that have run at once on this machine. No repository gated on
+traceability can adopt that layout until the checker reads a directory, and the
+obvious workaround — concatenating the files before the check — silences a gate
+without anybody deciding to.
+
+`suppression-register.py --register` has the same single-path shape and the same
+pending split to `docs/SUPPRESSIONS/`, so both want fixing together.
+
+A direction rather than a prescription: reading a directory recursively and
+collecting the declared rows keeps one code path for both layouts, and lets a
+project migrate without the gate noticing. Whether `--requirements` takes either
+shape or gains a sibling is this repository's call.
+
+**This repository's own `REQUIREMENTS.md` is deliberately still one file of 48
+requirements.** Splitting it before the checker can read a directory would turn
+a passing gate into a crashing one.
+
+## The inbox is now where findings arrive
+
+FACT 2026-08-20: `~/.projects/clank/inbox/toolbox/` carries six findings filed
+by other sessions — `bolt-is-now-on-path`,
+`composing-jigs-for-a-multi-tool-repo`, `detect-secrets-crashes-without-baseline`,
+`detect-secrets-does-not-gate`, `suppression-register-scans-go-only` and
+`traceability-crashes-on-directory`. Each carries its own evidence.
+
+Two of them corroborate items already in this document by independent
+measurement rather than by being copied from it: `suppression-register-scans-go-only`
+is item 7, and the `detect-secrets` pair sharpen item 5. That is worth more than
+a restatement — it is the same fact reached twice from different trees.
+
 ## Open decisions
 
 **Where does the schema belong?** `schema/jig.schema.json` describes bolt's

@@ -1,3 +1,10 @@
+# Session entry point: ephemeral by design, rewritten each session.
+START_HERE.md
+
+# Session scratch. Working files live here rather than in /tmp, so they are
+# beside the work and go when the repository does.
+.ephemera/
+
 .bolt*/
 .coverage
 coverage.xml
