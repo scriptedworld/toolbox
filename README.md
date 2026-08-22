@@ -3,26 +3,26 @@
 Quality definitions for [bolt](https://github.com/scriptedworld/bolt), and the
 checkers they invoke.
 
-A **definition** is a `bolt.*.yaml` file: a set of tasks, each a command line
-and — optionally — something that reads its output and returns a verdict. bolt
-runs them; this repository holds them; `anvil` builds the images that contain
-the tools they require.
+A **definition** is a `bolt.*.yaml` file. It holds a set of tasks, and a task is
+a command line plus, where one is needed, something that reads the output and
+returns a verdict. bolt runs them, this repository holds them, and `anvil` builds
+the images carrying the tools they require.
 
-None of the three depends on the other two in a circle. bolt knows nothing about
-any checker. This repository knows nothing about how the tools get installed.
+The dependencies run in a line and never a circle. bolt knows nothing about any
+checker, and this repository knows nothing about how the tools get installed.
 anvil reads the `requires:` fields here and installs exactly those.
 
 ## Using them
 
-Overlay the common definition under a language one. Later files win and tasks
-merge by id, so a language file can adjust anything the common file sets without
-restating it:
+Overlay a language definition on top of the common one. Later files win and tasks
+merge by id, so the language file can adjust anything the common file set without
+restating the rest:
 
 ```sh
 bolt -c bolt.common-quality.yaml -c bolt.go-std-quality.yaml
 ```
 
-A project adjusts by overlaying a third file of its own:
+A project tunes the result with a third file of its own, overlaid last:
 
 ```sh
 bolt -c bolt.common-quality.yaml \
@@ -43,12 +43,12 @@ bolt -c bolt.common-quality.yaml \
 
 Two roles, and the distinction runs through the whole layout.
 
-A **checker** is what a task runs. Usually an off-the-shelf tool — `gofmt`,
-`golangci-lint`, `lizard` — and, where none exists, a script written here.
+A **checker** is what a task runs: usually an off-the-shelf tool such as `gofmt`,
+`golangci-lint` or `lizard`, and where no such tool exists, a script written here.
 
 An **adapter** is a task's `result_command`. It reads the execution record and
-returns the envelope that becomes the verdict. Only needed when the checker's
-exit code is not the answer.
+returns the envelope that becomes the verdict. A task needs one only when the
+checker's exit code is not the answer.
 
 ```
 1. bolt runs the CHECKER              gofmt -l .            -> exit 0
@@ -59,13 +59,14 @@ exit code is not the answer.
 ```
 
 Step 4 is why adapters exist. `gofmt -l` lists unformatted files and exits 0
-either way, so its exit status answers "did gofmt run", never "is this
-formatted". The same shape, measured: `coverage`'s checker is `test -f
-coverage.out` and exits 0, while its adapter returned `success: false` with a
-file at 0.0% — the adapter's verdict is the task's verdict.
+whichever it finds, so its exit status answers "did gofmt run" and never "is this
+formatted". `coverage` has the same shape, measured: its checker is
+`test -f coverage.out`, which exits 0 as long as the file is present, while its
+adapter returned `success: false` on a file sitting at 0.0%. The adapter's
+verdict is the task's verdict.
 
-A task with no `result_command` needs no adapter: exiting 0 is its whole
-contract, and bolt handles that natively.
+A task with no `result_command` has no adapter and needs none. Exiting 0 is its
+whole contract, and bolt handles that itself.
 
 ```
 bin/            checkers written here, because no tool does the job
@@ -84,95 +85,91 @@ tests/                    one file per script under test; see
   fixtures/<tool>/*.txt    real captured tool output, dated and versioned
 ```
 
-The suite never runs the tools it is about — an adapter test feeds the adapter
-text the tool once produced — so it passes on a machine with none of them
-installed. `docs/PATTERNS/testing-checkers-and-adapters.md` says why that
-matters and what a test here must assert.
+The suite never runs the tools it is about. An adapter test feeds the adapter
+text the tool once produced, so the suite passes on a machine with none of them
+installed. `docs/PATTERNS/testing-checkers-and-adapters.md` says why that matters
+and what a test here has to assert.
 
 ## The path rule
 
-The single thing most easily got wrong, and the thing that decides whether a
-definition is adoptable at all.
+The easiest thing here to get wrong, and it decides whether a definition is
+adoptable at all.
 
 > **A path resolves against `{configdir}` if it travels with the definition.**
-> A checker, an adapter, a linter's config — these are the rule.
+> A checker, an adapter, a linter's config: these are the rule.
 >
 > **A path stays relative to the run root if it belongs to the project being
-> checked.** Its source, its `REQUIREMENTS.md`, its `SUPPRESSIONS` — these are
+> checked.** Its source, its `REQUIREMENTS.md`, its `SUPPRESSIONS`: these are
 > the subject.
 
-A shared definition carries the rule and never the subject. One that bundles a
-document *about a codebase* has stopped being adoptable, because it now judges
-every adopter against its author's answers.
+A shared definition carries the rule and never the subject. Bundle a document
+*about a codebase* into one and it has stopped being adoptable, because every
+adopter is now judged against its author's answers.
 
-**Getting this backwards is invisible where it is written.** A definition living
-at its own repository root has a `{configdir}` equal to its run root, so both
-forms resolve to the same file and the mistake never shows. It breaks for
-everyone else. Measured rather than reasoned: pointing `--register` at
+Getting this backwards is invisible in the repository that gets it wrong. A
+definition living at its own repository root has a `{configdir}` equal to its run
+root, so both spellings resolve to the same file and nothing ever shows. It
+breaks for everyone else. Measured, not reasoned: pointing `--register` at
 `{configdir}` made a project with one justified pragma report ten disagreements
-against another project's register, with no state it could reach that would
-pass.
+against another project's register, and no state that project could reach would
+have passed.
 
 ## Adopting these in a project
 
-Everything a definition needs is either in this repository or in yours. Nothing
-reaches outside both.
+Everything a definition needs lives either here or in your project. Nothing
+reaches outside those two.
 
-What your project supplies, if the relevant check is to do anything:
+What your project supplies, for the matching check to do anything:
 
 | File | Used by | Absent means |
 |---|---|---|
-| `REQUIREMENTS.md` | `traceability` | a failure — the check has nothing to hold the code to |
+| `REQUIREMENTS.md` | `traceability` | a failure: the check has nothing to hold the code to |
 | `SUPPRESSIONS` | `suppressions` | fine if you have no pragmas; a failure if you do |
 | `coverage.out` | `coverage` | produced by `tests`, not by you |
 
 ## What is deliberately not here
 
-**`entrypoint`** — measuring the statement in `main()` that `go test` can never
+`entrypoint`, which measures the statement in `main()` that `go test` can never
 reach. It was in the Go definition and had to come out: it names a specific main
 package and a specific harmless invocation of the resulting binary, and bolt has
-no substitution that could stand in for either. Left in a shared file it fails
-for every adopter, in a way that looks like the adopter's fault.
+no substitution that stands in for either. Left in a shared file it fails for
+every adopter, and the failure looks like the adopter's own.
 
-It belongs in a project's own overlay, where hardcoding is correct because the
-file is about that one project. A worked example is in the comment at the foot
-of `bolt.go-std-quality.yaml`.
-
-The general form: **a shared definition carries the rule and never the subject.**
-`entrypoint` looked like a rule and was a subject.
+It belongs in a project's own overlay, where hardcoding is right because the file
+is about that one project. The comment at the foot of `bolt.go-std-quality.yaml`
+carries a worked example. `entrypoint` looked like a rule and was a subject.
 
 ## Traceability is a gate, not a report
 
 Closed 2026-08-20, and it changes the verdict for adopters upgrading past it.
 
 `traceability` fails in both directions. A test that does not say what it
-discharges is one failure; **a requirement no test cites is the other**. Until
-this change the second was printed as context and exited 0, which made
-`REQUIREMENTS.md` a document nothing held the code to — the exact failure the
-task exists to prevent, in the task itself.
+discharges is one failure, and a requirement no test cites is the other. Before
+this the second only printed as context and the task exited 0, which left
+`REQUIREMENTS.md` unenforced by the very task meant to enforce it.
 
-The one exemption is the requirement's own status marker, the last bracketed
-cell in its row:
+The one exemption is the requirement's own status marker, the last bracketed cell
+in its row:
 
 | Row | Uncovered means |
 |---|---|
-| `\| FR-1.1 \| Any command-line tool can be run. \| [A] \|` | **failure** — settled, so testable |
+| `\| FR-1.1 \| Any command-line tool can be run. \| [A] \|` | **failure**: settled, so testable |
 | `\| FR-5.9 \| Schema versioning is unresolved. \| [?] \|` | reported, not fatal |
 
-`[?]` marks an open decision that cannot have a test yet; failing on those would
-make the honest state of the document unrepresentable. Everything else — `[A]`,
-`[D]`, `[A/D]`, or **no marker column at all** — is settled. A document without
-markers claims no exemptions, which is the right way round: exemption is
-claimed, never granted by omission.
+`[?]` marks an open decision that cannot have a test yet, and failing on those
+would make the honest state of the document unrepresentable. Everything else is
+settled: `[A]`, `[D]`, `[A/D]`, and **no marker column at all**. A document
+without markers therefore claims no exemptions, which is the right way round,
+because exemption is claimed and never granted by omission.
 
-FACT 2026-08-20, both real adopters measured: `bolt` fails with 28 settled
-requirements untested and 3 open ones exempt. `qwark` passes — its 16 untested
-requirements are all marked `[?]`.
+Both real adopters, measured: `bolt` fails with 28 settled requirements untested
+and 3 open ones exempt. `qwark` passes, its 19 untested requirements all being
+marked `[?]`.
 
-Facing a wall of these, an adopter has two honest moves: write the test, or mark
+An adopter facing a wall of these has two honest moves: write the test, or mark
 the requirement `[?]` and say why it cannot have one yet.
 
-The checker reads Go (`*_test.go`) and Python (`test_*.py`, `*_test.py`) tests.
-A language with a jig here but no entry in the checker's `LANGUAGES` table would
-find no tests, cite nothing, and fail every requirement at once — so a new
-language jig adds its entry in the same change.
+The checker reads Go tests (`*_test.go`) and Python tests (`test_*.py`,
+`*_test.py`). A language with a jig here but no entry in the checker's
+`LANGUAGES` table finds no tests, cites nothing, and fails every requirement at
+once, so a new language jig adds its entry in the same change.

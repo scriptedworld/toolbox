@@ -1,6 +1,6 @@
 # A checker is only exercised by the repository it happens to be pointed at
 
-**Learned** 2026-08-20, from a crash that survived review and a full clean run.
+Learned from a crash that survived review and a full clean run.
 
 ## What it cost
 
@@ -16,8 +16,8 @@ raises:
 
 **`bolt` has no lettered requirement id, so bolt could never have found it.** It
 passed review, and it passed a full run against bolt. It surfaced on the first
-run against `qwark`, which has eleven — `FR-4.9a`, `FR-4.13a`, `FR-10.3b` and
-the rest.
+run against `qwark`, which has eleven: `FR-4.9a`, `FR-4.13a`, `FR-10.3b` and the
+rest.
 
 The fix keys every segment as `(number, suffix)`, so both shapes compare:
 
@@ -26,33 +26,31 @@ The fix keys every segment as `(number, suffix)`, so both shapes compare:
 
 ## Why it matters more here than elsewhere
 
-These checkers are **shared**. They are pointed at repositories their author has
+These checkers are **shared**. They get pointed at repositories their author has
 never seen, by sessions that will read a traceback as *their* repository being
-broken. A crash is at least loud; the worse case is the same class of bug
-producing a wrong answer quietly, which is what
-`suppression-register.py` scanning `rglob("*.go")` does for every non-Go
-adopter.
+broken. A crash is at least loud. The worse case is the same class of bug giving
+a wrong answer quietly, which is what `suppression-register.py` scanning
+`rglob("*.go")` does for every non-Go adopter.
 
-One repository is one sample. Two repositories with different conventions is a
-test.
+One repository is one sample. Two repositories with different conventions is the
+first thing that counts as a test.
 
 ## What to do with it
 
-**Tests, and this is the case for them in one sentence.** See
+Write tests, and this is the case for them in one sentence. See
 `docs/PATTERNS/testing-checkers-and-adapters.md`. The suite that now exists would
 have caught this: `test_a_lettered_requirement_id_sorts_without_raising` pins it
-as a regression, and takes no repository to run.
+as a regression, and it needs no repository to run.
 
-**Where a checker takes a convention as input — an id format, a marker, a
-pragma spelling — get a second real example before believing it works.** The
+**Where a checker takes a convention as input, whether an id format, a marker or
+a pragma spelling, get a second real example before believing it works.** The
 formats that exist on this machine are not the formats that exist.
 
 ## A second instance, same day
 
 Estimating how many `[?]` markers qwark carried was done with
 `grep -oE '\| *\[[^]]*\] *\|? *$'`. It matched 9 of a true 19, and the wrong
-blast-radius figure was reported to the owner before the checker itself
-corrected it.
+blast-radius figure reached Jeff before the checker itself corrected it.
 
-**Count with the checker, not with a regex over the same table.** A second
+**Count with the checker, never with a regex over the same table.** A second
 parser of one format is a second thing to be wrong.
