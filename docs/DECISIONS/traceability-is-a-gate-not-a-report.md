@@ -1,6 +1,6 @@
 # An uncovered settled requirement fails the gate
 
-Decided by Jeff, in session. Implemented in `05f3a52`.
+Decided in session. Implemented in `05f3a52`.
 
 ## What was decided
 

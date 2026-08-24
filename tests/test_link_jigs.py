@@ -125,7 +125,7 @@ def test_absolute_is_available_for_a_toolbox_that_does_not_travel(checker, tmp_p
 
 # COVERS: FR-7.5 | negative
 def test_a_real_file_is_never_overwritten(checker, tmp_path):
-    """A vendored copy predates adoption; deleting it is the owner's decision."""
+    """A vendored copy predates adoption; deleting it is mine to decide."""
     root, target = toolbox(tmp_path), project(tmp_path)
     vendored = target / "bolt.secrets.yaml"
     vendored.write_text("mine\n", encoding="utf-8")

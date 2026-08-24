@@ -2,7 +2,7 @@
 
 Derived from this repository as it stands, and from the decisions recorded in
 `README.md`, `silo/docs/GLOSSARY.md` and `NEXT_STEPS.md`. Where a requirement
-traces to a decision Jeff took in a session, its row says so.
+traces to a decision I took in a session, its row says so.
 
 toolbox holds the **jigs** bolt runs, and the **checkers** and **adapters** those
 jigs name. Read `silo/docs/GLOSSARY.md` before this document: *checker* and
@@ -19,7 +19,7 @@ test says `COVERS:` and names the requirement it discharges. The `traceability`
 task in this repository's own `bolt.common-quality.yaml` enforces that link
 mechanically, here as in any other repository.
 
-**Status markers.** `[A]` traces the requirement to something Jeff stated. `[D]`
+**Status markers.** `[A]` traces the requirement to something I stated. `[D]`
 is derived reasoning, to be accepted or rejected on its merits. `[?]` is an open
 decision, recorded so it is not lost, and it has to be resolved before the
 requirement it marks is testable.
@@ -68,7 +68,7 @@ requirement it marks is testable.
 
 ## FR-4, Traceability
 
-*Derives from:* Jeff's decision to make this a gate; `README.md`, **Traceability is a gate, not a report**.
+*Derives from:* my decision to make this a gate; `README.md`, **Traceability is a gate, not a report**.
 
 | ID | Requirement | |
 |---|---|---|

@@ -7,7 +7,7 @@ stale the moment a task changed state.
     ( setopt null_glob; print -l ~/.projects/clank/tasks/toolbox/*/*.ready )
     ( setopt null_glob; print -l ~/.projects/clank/tasks/toolbox/*/*.questions )
 
-The second query is *what is waiting on Jeff*. Every `.questions` task numbers
+The second query is *what is waiting on me*. Every `.questions` task numbers
 its questions inside `TASK.md`, so answering is a reply and not a rediscovery.
 
 This file holds only what has no task yet: the decisions still open, and the

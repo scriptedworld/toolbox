@@ -32,7 +32,7 @@ tells them apart.
 While the sort key for `test-traceability.py` was being written, a
 `# type: ignore[union-attr]` went in to satisfy mypy. It typechecked. It would
 also have been **the first pragma in this repository**, requiring a
-`SUPPRESSIONS` file, an answer from Jeff to the question *why is this needed*,
+`SUPPRESSIONS` file, an answer to the question *why is this needed*,
 and a registered entry, all for a regex match that cannot fail.
 
 Slicing the digit prefix by hand removed the need for a pragma at all:
@@ -45,6 +45,6 @@ and no question was needed.
 
 ## Revisit if
 
-A pragma is genuinely required. That is Jeff's answer to give, before anything is
+A pragma is genuinely required. That is my answer to give, before anything is
 written. At that point the register replaces this file, and this decision becomes
 the record of how long the repository went without one.

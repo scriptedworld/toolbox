@@ -50,7 +50,7 @@ formats that exist on this machine are not the formats that exist.
 
 Estimating how many `[?]` markers qwark carried was done with
 `grep -oE '\| *\[[^]]*\] *\|? *$'`. It matched 9 of a true 19, and the wrong
-blast-radius figure reached Jeff before the checker itself corrected it.
+blast-radius figure was known before the checker itself corrected it.
 
 **Count with the checker, never with a regex over the same table.** A second
 parser of one format is a second thing to be wrong.
