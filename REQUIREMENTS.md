@@ -1,9 +1,5 @@
 # toolbox, Requirements
 
-Derived from this repository as it stands, and from the decisions recorded in
-`README.md`, `silo/docs/GLOSSARY.md` and `NEXT_STEPS.md`. Where a requirement
-traces to a decision I took in a session, its row says so.
-
 toolbox holds the **jigs** bolt runs, and the **checkers** and **adapters** those
 jigs name. Read `silo/docs/GLOSSARY.md` before this document: *checker* and
 *adapter* mean specific and opposite things, and several requirements below are
@@ -11,13 +7,12 @@ meaningless if the two are read as synonyms.
 
 Each requirement is stated as an observable property, saying what is true of a
 run rather than how the code is arranged. Mechanism appears only where the
-mechanism is itself the requirement. The path rule is the clearest case of that,
-because getting it backwards is invisible in the repository that gets it wrong.
+mechanism is itself the requirement.
 
 The chain is followed in both directions. A requirement says what must be true; a
 test says `COVERS:` and names the requirement it discharges. The `traceability`
 task in this repository's own `bolt.common-quality.yaml` enforces that link
-mechanically, here as in any other repository.
+mechanically.
 
 **Status markers.** `[A]` traces the requirement to something I stated. `[D]`
 is derived reasoning, to be accepted or rejected on its merits. `[?]` is an open
@@ -76,11 +71,13 @@ requirement it marks is testable.
 | FR-4.2 | A test citing a requirement the document does not declare fails, so a renamed or deleted requirement is caught instead of left rotting in a comment. | [D] |
 | FR-4.3 | A `COVERS` line naming a kind outside the declared set fails. The kind states which path through the requirement that test walks. | [D] |
 | FR-4.4 | A `COVERS` line citing no requirement id at all fails. It parses as an annotation while discharging nothing. | [D] |
-| FR-4.5 | A requirement no test cites **fails**, unless its row marks it open. Before 2026-08-20 it was reported as context and the task exited 0, which left the document holding the code to nothing. | [A] |
+| FR-4.5 | A requirement no test cites **fails**, unless its row marks it open. Closed 2026-08-20; before that it was reported as context and the task exited 0, which left the document holding the code to nothing. | [A] |
 | FR-4.6 | Open is `[?]` in the row's last bracketed cell and nothing else. `[A]`, `[D]`, `[A/D]` and **no marker column at all** are settled, so a document without markers claims no exemptions: exemption is claimed, never granted by omission. | [A] |
 | FR-4.7 | Test discovery reads every language this repository ships a jig for. A language with a jig and no entry in the checker's language table finds no tests, cites nothing, and fails every requirement in one go. | [A] |
 | FR-4.8 | Discovery finds a test wherever the language puts one: indented inside a class, declared `async`, or separated from its annotation by a decorator. | [D] |
 | FR-4.9 | Requirement ids sort numerically and tolerate a letter suffix, so `FR-7.3` precedes `FR-7.10`, and `FR-4.13a` compares against `FR-4.13` instead of raising. | [D] |
+| FR-4.10 | A `## Retired` section records requirements that have gone and what replaced them. Rows there are not live: nothing holds them to coverage, and a test citing one fails saying where it went rather than saying it does not exist. | [D] |
+| FR-4.11 | A requirement id that is both live and retired fails outright, before anything else is reported. Reuse silently rewrites what every existing reference to that id meant, and nothing about the new row looks wrong, so it is the one thing that cannot be left to a reader to notice. | [D] |
 
 ## FR-5, The suppression register
 

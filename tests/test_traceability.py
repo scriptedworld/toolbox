@@ -306,3 +306,99 @@ def test_the_script_runs_as_a_script(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert "FR-1.1" in result.stdout
+
+
+# ---- retired requirements ---------------------------------------------------
+
+
+RETIRED = (
+    "\n## Retired\n\n| ID | Retired | Superseded by |\n|---|---|---|\n"
+    "| FR-9.9 | 2026-08-26 | FR-1.1, which says it better. |\n"
+)
+
+
+# COVERS: FR-4.10 | positive
+def test_a_retired_requirement_is_not_held_to_coverage(checker, tmp_path):
+    """It has gone. Holding it to coverage would make retiring one impossible."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")) + RETIRED,
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "FR-9.9" not in out
+
+
+# COVERS: FR-4.10 | negative
+def test_citing_a_retired_requirement_says_where_it_went(checker, tmp_path):
+    """A bare "does not define" leaves the reader to find the replacement."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")) + RETIRED,
+        {
+            "test_it.py": (
+                "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n"
+                "# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n"
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "test_two" in out
+    assert "retired" in out
+    assert "FR-1.1, which says it better" in out
+
+
+# COVERS: FR-4.11 | negative
+def test_an_id_that_is_both_live_and_retired_fails(checker, tmp_path):
+    """Reuse rewrites what every existing reference to that id meant."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]"), ("FR-9.9", "[A]")) + RETIRED,
+        {
+            "test_it.py": (
+                "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n"
+                "# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n"
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-9.9" in out
+
+
+# COVERS: FR-4.11 | edge
+def test_reuse_is_reported_before_anything_else(checker, tmp_path):
+    """Every other finding is downstream of an id meaning two things at once,
+    so reporting them alongside would bury the one that explains them."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]"), ("FR-9.9", "[A]")) + RETIRED,
+        {"test_it.py": "def test_silent():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "test_silent" not in out
+
+
+# COVERS: FR-4.10 | edge
+def test_a_heading_after_retired_returns_to_live_rows(checker, tmp_path):
+    """Only the rows under the heading are retired. A section following it
+    declares live requirements like any other."""
+    document = (
+        requirements(("FR-1.1", "[A]"))
+        + RETIRED
+        + "\n## Later\n\n| ID | Requirement | |\n|---|---|---|\n"
+        + "| FR-2.2 | Live again. | [A] |\n"
+    )
+    tree = project(
+        tmp_path,
+        document,
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "FR-2.2" in out

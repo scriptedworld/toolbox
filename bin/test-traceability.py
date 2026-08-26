@@ -18,16 +18,30 @@ kind says which path through the requirement the test walks; a requirement
 whose only tests are `positive` has had its happy path checked and nothing
 else, and that is worth being able to see.
 
+RETIRED REQUIREMENTS. A requirement can be retired or superseded, and its id
+is never reused. A `## Retired` section records each one and what replaced it:
+
+    ## Retired
+
+    | ID | Retired | Superseded by |
+    |---|---|---|
+    | FR-13.1 | 2026-08-26 | FR-6.2b, the adapter writes into the work directory |
+
+Rows there are not live: they are not held to coverage, and a test citing one
+fails saying where it went rather than saying it does not exist. An id that is
+both live and retired fails outright, because reuse silently rewrites what
+every existing reference to that id meant.
+
 THE OTHER DIRECTION. A requirement no test cites is a requirement nothing
-holds the code to, and it fails -- unless the document marks it open.
+holds the code to, and it fails: unless the document marks it open.
 
     | FR-1.1 | Any command-line tool can be run.       | [A] |   settled: must be covered
     | FR-5.9 | Schema versioning is unresolved.        | [?] |   open: reported, not fatal
 
 The marker is the row's last bracketed cell. `[?]` means an open decision that
 cannot have a test yet, and failing on those would make the honest state of the
-document unrepresentable. Everything else -- `[A]`, `[D]`, `[A/D]`, or no
-marker cell at all -- is settled, and settled means testable. A document with
+document unrepresentable. Everything else (`[A]`, `[D]`, `[A/D]`, or no
+marker cell at all) is settled, and settled means testable. A document with
 no marker column therefore has no exemptions, which is the correct reading:
 exemption is something you claim, never something you get by omission.
 
@@ -48,14 +62,18 @@ KINDS = ("positive", "negative", "edge", "property", "regression")
 
 REQ_ID = re.compile(r"\b((?:FR|NFR)-\d+(?:\.\d+)?[a-z]?)\b")
 # A requirement is declared by a table row: the id in the first cell, and the
-# status marker -- if the document uses one -- in the last.
+# status marker (if the document uses one) in the last.
 REQ_ROW = re.compile(r"^\|\s*((?:FR|NFR)-\d+(?:\.\d+)?[a-z]?)\s*\|(?P<rest>.*)$")
 CELL = re.compile(r"(?<!\\)\|")
 MARKER = re.compile(r"^\[[^\]]*\]$")
+# A `## Retired` heading switches which set the rows below it land in, and any
+# other second-level heading switches back.
+HEADING = re.compile(r"^##\s+(?P<title>.+?)\s*$")
+RETIRED_HEADING = re.compile(r"^retired\b", re.IGNORECASE)
 
 # Directories that hold someone else's tests. Walking into a virtualenv finds
 # hundreds of `test_*.py` citing nothing, which under a gate that fails on
-# uncovered requirements is not noise -- it is a guaranteed failure.
+# uncovered requirements is not noise: it is a guaranteed failure.
 SKIP_DIRS = frozenset(
     {
         ".git",
@@ -122,8 +140,8 @@ def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     """Sort FR-7.3 before FR-7.10, which a plain string sort does not.
 
     Every segment is keyed as (number, suffix) rather than as one or the other,
-    so an id carrying a letter -- `FR-4.13a`, which qwark uses and bolt does
-    not -- compares against a plain one instead of raising TypeError.
+    so an id carrying a letter (`FR-4.13a`, which qwark uses and bolt does
+    not) compares against a plain one instead of raising TypeError.
     """
     prefix, _, number = req.partition("-")
     segments = []
@@ -133,22 +151,39 @@ def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     return (prefix, tuple(segments))
 
 
-def declared_requirements(path: Path) -> dict[str, str]:
-    """Collect every requirement the document declares, and its status marker.
+def read_requirements(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Collect what the document declares live, and what it has retired.
 
-    The marker is the row's last bracketed cell, or the empty string where the
-    document carries no marker column.
+    A live requirement carries its status marker: the row's last bracketed
+    cell, or the empty string where the document has no marker column.
+
+    A row under a `## Retired` heading has gone. It is kept out of the live set
+    so nothing holds it to coverage, and remembered so a test still citing it
+    can be told where it went.
     """
     declared: dict[str, str] = {}
+    retired: dict[str, str] = {}
+    in_retired = False
+
     for line in path.read_text(encoding="utf-8").splitlines():
+        heading = HEADING.match(line)
+        if heading:
+            in_retired = bool(RETIRED_HEADING.match(heading.group("title")))
+            continue
+
         row = REQ_ROW.match(line)
         if not row:
             continue
         cells = [cell.strip() for cell in CELL.split(row.group("rest"))]
         trailing = [cell for cell in cells if cell]
-        marker = trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
-        declared[row.group(1)] = marker
-    return declared
+
+        if in_retired:
+            retired[row.group(1)] = " ".join(trailing)
+            continue
+        declared[row.group(1)] = (
+            trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
+        )
+    return declared, retired
 
 
 def is_open(marker: str) -> bool:
@@ -175,14 +210,18 @@ def annotation_of(block: list[str], language: Language) -> re.Match[str] | None:
     return None
 
 
-def check_annotation(found: re.Match[str], declared: dict[str, str]) -> list[str]:
+def check_annotation(
+    found: re.Match[str], declared: dict[str, str], retired: dict[str, str]
+) -> list[str]:
     """Validate one COVERS annotation against the requirements document."""
     problems = []
     ids = REQ_ID.findall(found.group("ids"))
     if not ids:
         problems.append(f"cites no requirement id in {found.group('ids')!r}")
     for req in ids:
-        if req not in declared:
+        if req in retired:
+            problems.append(f"cites {req}, retired: {retired[req]}")
+        elif req not in declared:
             problems.append(f"cites {req}, which REQUIREMENTS.md does not define")
     kind = found.group("kind")
     if kind not in KINDS:
@@ -191,7 +230,7 @@ def check_annotation(found: re.Match[str], declared: dict[str, str]) -> list[str
 
 
 def scan_file(
-    path: Path, language: Language, declared: dict[str, str]
+    path: Path, language: Language, declared: dict[str, str], retired: dict[str, str]
 ) -> tuple[list[str], set[str]]:
     """Check every test in one file. Returns its failures and the ids it cites."""
     failures = []
@@ -210,7 +249,8 @@ def scan_file(
             continue
         cited.update(REQ_ID.findall(found.group("ids")))
         failures.extend(
-            f"{where} {problem}" for problem in check_annotation(found, declared)
+            f"{where} {problem}"
+            for problem in check_annotation(found, declared, retired)
         )
     return failures, cited
 
@@ -284,17 +324,27 @@ def main() -> int:
         )
         return 1
 
-    declared = declared_requirements(args.requirements)
+    declared, retired = read_requirements(args.requirements)
     if not declared:
         print(
             f"{args.requirements} declares no requirements; refusing to pass vacuously"
         )
         return 1
 
+    # A retired id is never reused. Declaring one again silently rewrites what
+    # every existing reference to it meant, and nothing about the new row looks
+    # wrong, so this is checked before anything else is reported.
+    reused = sorted(set(declared) & set(retired), key=requirement_key)
+    if reused:
+        print(f"{len(reused)} requirement id(s) are both live and retired:")
+        for req in reused:
+            print(f"  {req} is declared again after being retired: {retired[req]}")
+        return 1
+
     failures: list[str] = []
     cited: set[str] = set()
     for path, language in test_files(args.root):
-        file_failures, file_cited = scan_file(path, language, declared)
+        file_failures, file_cited = scan_file(path, language, declared, retired)
         failures.extend(file_failures)
         cited.update(file_cited)
     return report(failures, declared, cited)
