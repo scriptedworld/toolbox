@@ -15,7 +15,17 @@ import referencing
 import yaml
 from conftest import ROOT
 
-JIGS = sorted(ROOT.glob("bolt.*.yaml"))
+# `bolt.<name>.definitions.yaml` matches the same glob and is not a jig. It
+# supplies values for a jig's placeholders and validates against a different
+# schema, so a glob that swallows it fails every run here. The same shape of
+# mistake is why qwark names its adoption entries one at a time.
+JIGS = sorted(
+    path
+    for path in ROOT.glob("bolt.*.yaml")
+    if not path.name.endswith(".definitions.yaml")
+)
+
+DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 
 SCHEMA_DIR = ROOT / "schema"
 SCHEMA = SCHEMA_DIR / "jig.schema.json"
@@ -127,3 +137,66 @@ def test_no_jig_names_a_project_specific_entry_point():
             assert "github.com/" not in command, (
                 f"{path.name}:{task} names a specific module: {command!r}"
             )
+
+
+# ---- what is excluded, and in six spellings ---------------------------------
+
+
+SLOTS = ("excluded_one", "excluded_two", "excluded_three")
+
+
+def excluding_tasks(jig: dict) -> list[tuple[str, str]]:
+    """Every task whose command names an exclusion slot."""
+    return [
+        (task, command)
+        for task, command in commands(jig)
+        if any(f"{{{slot}}}" in command for slot in SLOTS)
+    ]
+
+
+# COVERS: FR-1.6 | property
+def test_a_task_that_excludes_anything_names_every_slot():
+    """Six tools spell exclusion six ways, and three of the obvious forms are
+    accepted while excluding nothing.
+
+    A placeholder cannot hold more than one argument, because bolt quotes each
+    substitution as a single shell word, so each command composes the slots
+    itself. Naming two of three is how a directory quietly stops being
+    excluded in one tool and not the others.
+    """
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for task, command in excluding_tasks(jig):
+            missing = [slot for slot in SLOTS if f"{{{slot}}}" not in command]
+            assert not missing, (
+                f"{path.name}:{task} excludes but does not name {missing}: {command!r}"
+            )
+
+
+# COVERS: FR-1.6 | property
+def test_every_slot_a_jig_uses_has_a_default_and_an_override():
+    """A slot with no default fails only in the adopter that first runs it.
+
+    The override matters as much: this repository holds the real checkers
+    where every other adopter holds links to them, so a missing entry there
+    would silently stop it gating its own code.
+    """
+    overrides = {
+        path.name: yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for path in DEFINITIONS
+    }
+    assert overrides, "no definitions file found; the override is untested"
+
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        used = {
+            slot
+            for _, command in commands(jig)
+            for slot in (*SLOTS, "excluded_regex")
+            if f"{{{slot}}}" in command
+        }
+        declared = jig.get("definitions") or {}
+        for slot in sorted(used):
+            assert slot in declared, f"{path.name} uses {slot} and defines no default"
+            for name, override in overrides.items():
+                assert slot in override, f"{name} does not override {slot}"

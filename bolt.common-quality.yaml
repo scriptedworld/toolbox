@@ -33,6 +33,22 @@ requires:
 definitions:
   requirements: REQUIREMENTS.md
   suppressions: SUPPRESSIONS
+  # The directories adoption fills with this repository's own files, plus the
+  # gitignored scratch every repository here keeps. Measured in agent-support:
+  # `complexity` passed having read 23 functions across `bin/` and `adapters/`,
+  # every one of them toolbox's code and none of the adopter's.
+  #
+  # One directory per placeholder, because lizard takes one glob per flag and a
+  # placeholder cannot hold more than one argument: bolt quotes each
+  # substitution as a single shell word.
+  #
+  # toolbox holds the real files rather than links and overrides these with
+  # `--definitions toolbox`, which names `.ephemera` three times over.
+  # `**/x/*` rather than `./x/*`, quoted whole. Left unquoted the shell expands
+  # it into a file list before lizard sees it, and lizard then exits 2.
+  excluded_one_glob: '**/.ephemera/*'
+  excluded_two_glob: '**/bin/*'
+  excluded_three_glob: '**/adapters/*'
 
 tasks:
   # ---- documents held against the source ------------------------------------
@@ -84,4 +100,6 @@ tasks:
   # supports.
   - name: complexity
     description: no function over complexity 15, 5 parameters or 60 lines
-    command: lizard -C 15 -a 5 -L 60 .
+    command: >-
+      lizard -C 15 -a 5 -L 60
+      -x {excluded_one_glob} -x {excluded_two_glob} -x {excluded_three_glob} .

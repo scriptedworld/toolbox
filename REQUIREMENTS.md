@@ -32,6 +32,7 @@ requirement it marks is testable.
 | FR-1.3 | A jig carries **the rule and never the subject**. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
 | FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
 | FR-1.5 | A shared jig states no project-specific name. `entrypoint` came out of the Go jig for hardcoding `./cmd/bolt`: it looked like a rule and was a subject. | [A] |
+| FR-1.6 | A jig does not grade the files it installed. Adoption links this repository's checkers into the adopter's `bin/` and its adapters into `adapters/`, so a tool reading the tree reads them as the adopter's own source. Every task that excludes them names all three exclusion slots, and every slot carries a default and an override, because a placeholder holds one argument and the six tools spell exclusion six ways. | [D] |
 
 ## FR-2, Checkers
 

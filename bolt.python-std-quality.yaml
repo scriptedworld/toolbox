@@ -43,6 +43,46 @@ requires:
   - coverage
   - pytest
 
+# WHAT IS NOT THE PROJECT'S CODE.
+#
+# Adoption links this repository's checkers into the adopter's `bin/` and its
+# adapters into `adapters/`, because the jig resolves them against
+# {config_dir}, which is the adopter's directory. The tools below then read
+# those links as the adopter's own source, so the adopter's gate fails on
+# toolbox's code. Measured in skid, whose own source is one empty file: `types`
+# and `analyse` both failed, every finding in `bin/suppression-register.py`.
+#
+# `.ephemera` is gitignored working space by standing rule and holds scratch,
+# so no jig should read it. bandit found six issues in this repository's own.
+#
+# ONE DIRECTORY PER PLACEHOLDER, composed per tool below, because these six
+# tools spell exclusion six ways and a placeholder cannot hold more than one
+# argument: bolt quotes each substitution as a single shell word, so a
+# placeholder holding `-e a -e b` arrives as one path named `-e a -e b`.
+#
+# EVERY SPELLING WAS MEASURED AGAINST A PLANTED VIOLATION, because three of the
+# obvious forms are accepted and silently exclude nothing: vulture ignores a
+# `./`-prefixed list, interrogate ignores a comma-separated one, and complexipy
+# wants globs rather than names. `tests/test_jigs.py` holds every task here to
+# naming all three.
+#
+# TOOLBOX OVERRIDES THESE. Its `bin/` and `adapters/` are real files rather
+# than links, so excluding them would stop it gating its own checkers, which is
+# silencing a gate rather than scoping one. It runs with
+# `--definitions toolbox`, which names `.ephemera` three times over.
+definitions:
+  excluded_one: .ephemera
+  excluded_two: bin
+  excluded_three: adapters
+  # complexipy matches globs and not names. `**/x/*` is the one form both it
+  # and the common jig's lizard honour, and quoting it whole is what stops the
+  # shell expanding it into a file list before the tool sees it.
+  excluded_one_glob: '**/.ephemera/*'
+  excluded_two_glob: '**/bin/*'
+  excluded_three_glob: '**/adapters/*'
+  # mypy takes a regex, which the others cannot be composed into.
+  excluded_regex: (^|/)(\.ephemera|bin|adapters)/
+
 tasks:
   # ---- shape ----------------------------------------------------------------
 
@@ -51,13 +91,13 @@ tasks:
   # tree nobody has seen.
   - name: format
     description: every file is ruff-format clean
-    command: ruff format --check .
+    command: ruff format --check --exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # --output-format=concise keeps the artifact readable; the default emits
   # several lines and a source excerpt per finding.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
-    command: ruff check --output-format=concise .
+    command: ruff check --output-format=concise --exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # ---- correctness ----------------------------------------------------------
 
@@ -67,13 +107,13 @@ tasks:
   # made in its own pyproject.toml, and this task honours it.
   - name: types
     description: mypy is satisfied
-    command: mypy .
+    command: mypy --exclude {excluded_regex} .
 
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
   - name: analyse
     description: pylint's cross-module analysis
-    command: pylint --recursive=y .
+    command: pylint --recursive=y --ignore {excluded_one},{excluded_two},{excluded_three} .
 
   # ---- properties of the source ---------------------------------------------
 
@@ -90,7 +130,7 @@ tasks:
   # code.
   - name: cognitive
     description: no function over cognitive complexity 15
-    command: complexipy --max-complexity-allowed 15 .
+    command: complexipy --max-complexity-allowed 15 --exclude {excluded_one_glob},{excluded_two_glob},{excluded_three_glob} .
 
   # Dead code, found by looking for definitions nothing references. Vulture
   # guesses and says so with a confidence score: 100 means the name appears
@@ -101,7 +141,7 @@ tasks:
   # dynamic dispatch, plugin registration and test fixtures swamp the signal.
   - name: dead-code
     description: no unreferenced definition above 80% confidence
-    command: vulture --min-confidence 80 .
+    command: vulture --min-confidence 80 --exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # --fail-under 80 matches the statement threshold the Go jig uses, on the same
   # reasoning: a percentage nobody is held to drifts down. -e excludes the
@@ -110,7 +150,7 @@ tasks:
     description: at least 80% of public objects are documented
     command: >-
       interrogate --fail-under 80 --quiet
-      -e .venv -e venv -e build -e dist .
+      -e .venv -e venv -e build -e dist -e {excluded_one} -e {excluded_two} -e {excluded_three} .
 
   # ---- security -------------------------------------------------------------
 
@@ -120,7 +160,7 @@ tasks:
   # unexamined.
   - name: security
     description: no bandit finding without a registered suppression
-    command: bandit -r -q .
+    command: bandit -r -q -x ./{excluded_one},./{excluded_two},./{excluded_three} .
 
   # ---- tests ----------------------------------------------------------------
 

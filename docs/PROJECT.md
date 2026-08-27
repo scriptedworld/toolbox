@@ -65,9 +65,17 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
 This repository is **its own adopter**, and uniquely so: it holds the real files
 instead of symlinks, so `{config_dir}` is the repository root natively.
 
-    bolt common-quality .
-    bolt python-std-quality .
+    bolt --definitions toolbox common-quality .
+    bolt --definitions toolbox python-std-quality .
     bolt secrets .
+
+**`--definitions toolbox` is not optional here, and no other adopter passes
+it.** The shared jigs exclude `bin/` and `adapters/`, because in every other
+adopter those hold symlinks to this repository's checkers and the adopter's
+tools would grade toolbox's code as their own. This repository holds the real
+files, so taking the default would stop it gating its own checkers, which is
+silencing a gate rather than scoping one. `bolt.toolbox.definitions.yaml`
+carries the override and says so.
 
 One jig and one directory per run. Flags come before the positionals, and the
 jig is named bare, read as `bolt.<name>.yaml` from `--config-dir`. Running three
