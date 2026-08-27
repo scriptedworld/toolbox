@@ -29,5 +29,5 @@ exclude_also = ["if __name__ == .__main__.:"]
 # scripts by path against whatever interpreter anvil built. Revisit when anvil
 # carries the stub packages: see NEXT_STEPS.
 [[tool.mypy.overrides]]
-module = ["yaml", "pytest", "jsonschema"]
+module = ["yaml", "pytest", "jsonschema", "referencing"]
 ignore_missing_imports = true

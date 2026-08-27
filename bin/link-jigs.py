@@ -3,14 +3,14 @@
 
 A definition is only half of what a project needs. It names checkers, adapters
 and tool configuration that live beside it in this repository, and
-`{configdir}` resolves those against the definition's own directory, so a
+`{config_dir}` resolves those against the definition's own directory, so a
 definition reached through a symlink resolves them back through that same link,
 and every path the project runs stays inside the project. Adoption is therefore
 a set of symlinks, and this makes them.
 
 Entries land at the same relative path in the target that they have here. That
 is forced rather than chosen: a linked definition sits at the target's root,
-which makes `{configdir}` the target's root, so `bin/x.py` has to be at
+which makes `{config_dir}` the target's root, so `bin/x.py` has to be at
 `bin/x.py` for the definition to find it. There is no destination to configure
 and so no mapping to keep in step.
 

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scriptedworld.github.io/wrench/definitions.schema.json",
+  "title": "definitions",
+  "description": "Values a runner substitutes for a jig's placeholders. One level of names and scalar values, the same shape whether it is a jig's own block or a file supplying them, so there is one thing to validate and one thing to read.",
+
+  "type": "object",
+
+  "propertyNames": {
+    "pattern": "^[a-z][a-z0-9_]*$",
+    "description": "A placeholder's name, matching what {name} spells in a command. Underscored, because template variables are underscored where command-line flags are hyphenated."
+  },
+
+  "additionalProperties": {
+    "type": ["string", "number", "boolean"],
+    "description": "A literal. It carries no substitutions of its own, so reading the file settles it and nothing resolves in terms of anything else. Scalar because a list has no defined spelling on a command line. An empty string is a value; the absence of the key is not."
+  }
+}

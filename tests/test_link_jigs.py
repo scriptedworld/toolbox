@@ -76,7 +76,7 @@ def argv(root: Path, target: Path, *rest: str) -> list[str]:
 
 # COVERS: FR-7.1 | property
 def test_entries_land_at_the_same_relative_path(checker, tmp_path):
-    """A file at bin/checker.py here is at bin/checker.py there, or configdir breaks."""
+    """A file at bin/checker.py here is at bin/checker.py there, or config_dir breaks."""
     root, target = toolbox(tmp_path), project(tmp_path)
     code, _ = checker(link_jigs, argv(root, target, "go", "--yes"), tmp_path)
     assert code == 0

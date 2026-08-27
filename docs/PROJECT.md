@@ -18,7 +18,7 @@ keeping a second copy beside them.
 
 ## The one rule that decides whether a jig is adoptable
 
-> **A path resolves against `{configdir}` if it travels with the jig.** A
+> **A path resolves against `{config_dir}` if it travels with the jig.** A
 > checker, an adapter, a linter's config: these are **the rule**.
 >
 > **A path stays relative to the run root if it belongs to the project being
@@ -30,12 +30,12 @@ codebase* into one and it has stopped being adoptable, since every adopter is
 then judged against its author's answers.
 
 Getting this backwards is invisible in the repository that gets it wrong: a jig
-at its own root has `{configdir}` equal to the run root, so both spellings
+at its own root has `{config_dir}` equal to the run root, so both spellings
 resolve to the same file. `tests/test_jigs.py` exists to catch it, and fails any
 jig that reaches `bin/`, `adapters/`, `config/` or `schema/` without
-`{configdir}`.
+`{config_dir}`.
 
-Measured in `agent-support`: `{configdir}` resolves against **the symlink's own
+Measured in `agent-support`: `{config_dir}` resolves against **the symlink's own
 directory and not its target**, which is why an adopter needs its own `bin/` and
 `adapters/` links and cannot simply name a jig.
 
@@ -63,12 +63,19 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
 ## The gate
 
 This repository is **its own adopter**, and uniquely so: it holds the real files
-instead of symlinks, so `{configdir}` is the repository root natively.
+instead of symlinks, so `{config_dir}` is the repository root natively.
 
-    bolt -c bolt.common-quality.yaml -c bolt.python-std-quality.yaml -c bolt.secrets.yaml
+    bolt common-quality .
+    bolt python-std-quality .
+    bolt secrets .
 
-**Read `run_result.yaml`, never bolt's exit status.** That run exited **0** while
-`run_result.yaml` said `success: false`.
+One jig and one directory per run. Flags come before the positionals, and the
+jig is named bare, read as `bolt.<name>.yaml` from `--config-dir`. Running three
+in one invocation was the overlay model, which the current CLI does not have.
+
+**Read `result.yaml`, never bolt's exit status.** Bolt exits 0 when the run
+completed, whatever the tools concluded, and the verdict is in the artifact. It
+also exits 0 when it refuses the jig outright.
 
 From that artifact, **10 pass and 4 fail**. All four are open defects with a task
 each.

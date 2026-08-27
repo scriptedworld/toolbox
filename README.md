@@ -14,21 +14,32 @@ anvil reads the `requires:` fields here and installs exactly those.
 
 ## Using them
 
-Overlay a language definition on top of the common one. Later files win and tasks
-merge by id, so the language file can adjust anything the common file set without
-restating the rest:
+One jig over one directory. The jig is named bare and read as `bolt.<name>.yaml`
+from the config directory, and flags come before the positionals:
 
 ```sh
-bolt -c bolt.common-quality.yaml -c bolt.go-std-quality.yaml
+bolt common-quality .
+bolt go-std-quality .
 ```
 
-A project tunes the result with a third file of its own, overlaid last:
+The common checks and a language's checks are two jigs, so a project that wants
+both runs both. **How they should compose is unsettled.** It used to be an
+overlay, `bolt -c common -c go`, where later files won and tasks merged by id,
+which let a language jig adjust a common task without restating it. The current
+CLI has no overlay. Nesting replaces it, and a nested jig has no id to override:
 
-```sh
-bolt -c bolt.common-quality.yaml \
-     -c bolt.go-std-quality.yaml \
-     -c bolt.this-project.yaml
+```yaml
+tasks:
+  - name: common
+    jig: common-quality
+  - name: go
+    jig: go-std-quality
 ```
+
+What that loses is the adjustment. A language either accepts the common
+thresholds or declares a second task that disagrees with them.
+`clank/tasks/toolbox/port-the-jigs/10` holds the three candidate answers and
+none is chosen.
 
 ## What is here
 
@@ -95,7 +106,7 @@ and what a test here has to assert.
 The easiest thing here to get wrong, and it decides whether a definition is
 adoptable at all.
 
-> **A path resolves against `{configdir}` if it travels with the definition.**
+> **A path resolves against `{config_dir}` if it travels with the definition.**
 > A checker, an adapter, a linter's config: these are the rule.
 >
 > **A path stays relative to the run root if it belongs to the project being
@@ -107,9 +118,9 @@ A shared definition carries the rule and never the subject. Bundle a document
 adopter is now judged against its author's answers.
 
 Getting this backwards is invisible in the repository that gets it wrong. A
-definition living at its own repository root has a `{configdir}` equal to its run
+definition living at its own repository root has a `{config_dir}` equal to its run
 root, so both spellings resolve to the same file and nothing ever shows. It
-breaks for everyone else. Measured: pointing `--register` at `{configdir}` made a
+breaks for everyone else. Measured: pointing `--register` at `{config_dir}` made a
 project with one justified pragma report ten disagreements against another
 project's register, and no state that project could reach would have passed.
 

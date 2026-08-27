@@ -30,7 +30,7 @@ requirement it marks is testable.
 | FR-1.1 | A jig is a `bolt.*.yaml` file holding a set of tasks. Jigs compose by overlay: later files win and tasks merge by id, so one jig can adjust an inherited task without restating the whole of it. | [A] |
 | FR-1.2 | Every jig here validates against `schema/jig.schema.json`. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
 | FR-1.3 | A jig carries **the rule and never the subject**. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
-| FR-1.4 | `{configdir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
+| FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
 | FR-1.5 | A shared jig states no project-specific name. `entrypoint` came out of the Go jig for hardcoding `./cmd/bolt`: it looked like a rule and was a subject. | [A] |
 
 ## FR-2, Checkers
@@ -104,15 +104,15 @@ recorded in `bin/suppression-register.py`.
 
 *Derives from:* `bin/link-jigs.py` and `jigs.yaml`, and the reasoning in their
 own headers. A jig names checkers, adapters and tool configuration that live
-beside it here, and `{configdir}` resolves those against the jig's own directory,
+beside it here, and `{config_dir}` resolves those against the jig's own directory,
 so a jig reached through a symlink resolves them back through that same link.
 Adoption is therefore a set of symlinks.
 
 | ID | Requirement | |
 |---|---|---|
-| FR-7.1 | An entry lands at the same relative path in the target that it has here. This is forced and not chosen: a linked jig sits at the target's root, which makes `{configdir}` the target's root, so `bin/x.py` has to be at `bin/x.py` for the jig to find it. There is no destination to configure and so no mapping to keep in step. | [A] |
+| FR-7.1 | An entry lands at the same relative path in the target that it has here. This is forced and not chosen: a linked jig sits at the target's root, which makes `{config_dir}` the target's root, so `bin/x.py` has to be at `bin/x.py` for the jig to find it. There is no destination to configure and so no mapping to keep in step. | [A] |
 | FR-7.2 | A set may include another, and adopting it brings the included set along, because the including jig overlays the included one. A set declaring no includes pulls nothing. | [A] |
-| FR-7.3 | The manifest is **declared, not derived**. Reading `{configdir}` references out of the jigs would build today's list correctly and be wrong tomorrow: a jig running `ruff check .` or `pylint --recursive=y .` needs whatever configuration those tools read by convention, and names none of it on the command line. | [A] |
+| FR-7.3 | The manifest is **declared, not derived**. Reading `{config_dir}` references out of the jigs would build today's list correctly and be wrong tomorrow: a jig running `ruff check .` or `pylint --recursive=y .` needs whatever configuration those tools read by convention, and names none of it on the command line. | [A] |
 | FR-7.4 | Links are relative by default, so the pair can move together; an absolute link encodes one machine's layout. Absolute stays available for a toolbox that sits at a fixed path and never travels. | [D] |
 | FR-7.5 | **Nothing is ever overwritten.** A real file sitting where a link belongs is reported and left alone: it is usually a vendored copy predating adoption, and deleting someone's file is their decision to make. | [A] |
 | FR-7.6 | A manifest naming a file that is not here links nothing. Manifest rot surfaces in this repository instead of as a dangling link in someone else's. | [D] |

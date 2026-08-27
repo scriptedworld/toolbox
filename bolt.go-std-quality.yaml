@@ -1,65 +1,61 @@
 # bolt.go-std-quality.yaml, the standard quality gate for a Go project.
 #
-# OVERLAY THE COMMON DEFINITION UNDER THIS ONE. The checks that do not care what
-# language you wrote live there, and this file assumes they are present:
+#     bolt go-std-quality .
 #
-#     bolt -c bolt.common-quality.yaml -c bolt.go-std-quality.yaml
-#
-# A project adjusts by overlaying a third file. Later files win and tasks merge
-# by id, so an overlay setting only `timeout` keeps the command it inherited:
-#
-#     bolt -c bolt.common-quality.yaml \
-#          -c bolt.go-std-quality.yaml \
-#          -c bolt.this-project.yaml
-#
-# Nothing here says what success means. A task either names a result_command,
-# whose returned envelope is the verdict entire, or it names nothing and exiting
-# 0 is its contract.
+# THE COMMON CHECKS ARE NOT HERE. traceability, suppressions and complexity live
+# in bolt.common-quality.yaml, and a project runs both. How the two compose is
+# unsettled: it used to be an overlay, `bolt -c common -c go`, which the current
+# CLI cannot express. See that file's header and
+# `clank/tasks/toolbox/port-the-jigs/10`.
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
-# THE PATH RULE: a path resolves against {configdir} if it travels with this
-# file, being an adapter or a linter config. A path stays relative to the run
-# root if it belongs to the project being checked. See bolt.common-quality.yaml.
+# THE PATH RULE: a path resolves against {config_dir} if it travels with this
+# file, being an adapter or a linter config. It stays relative to the base if it
+# belongs to the project being checked. See bolt.common-quality.yaml.
+#
+# EVERY TASK HERE GATES ON ITS EXIT CODE, and two of them only do so because
+# their commands were written to. `gofmt -l` and `test -f` both exit 0 whatever
+# they find, so a task running them bare passes forever. Where a command's exit
+# status does not answer the question the task asks, either the command is
+# rewritten until it does or the task does not belong here.
 
-version: 1
+version: "1.0.0"
+
+requires:
+  - go
+  - gofmt
+  - golangci-lint
+  - govulncheck
 
 tasks:
   # ---- shape ----------------------------------------------------------------
 
   # gofmt lists unformatted files on stdout and exits 0 either way, so its exit
-  # status answers "did gofmt run", never "is this formatted". That is exactly
-  # what a result_command is for.
-  - id: format
+  # status answers "did gofmt run", never "is this formatted". `test -z` on its
+  # output is what makes this a gate. The file list is lost from the verdict and
+  # returns with the adapter in `port-the-jigs/10`; it is still in captured
+  # stdout meanwhile.
+  - name: format
     description: every file is gofmt-clean
-    tags: [quick, ci]
-    requires: [gofmt, python3]
-    command: "gofmt -l ."
-    result_command: "python3 {configdir}/adapters/go/gofmt.py"
+    command: test -z "$(gofmt -l .)"
 
   # -diff exits non-zero when go.mod or go.sum would change, without changing
   # them. A tidy that mutates the tree during a check is a check with a side
   # effect.
-  - id: tidy
+  - name: tidy
     description: go.mod and go.sum are already tidy
-    tags: [quick, ci]
-    requires: [go]
-    command: "go mod tidy -diff"
+    command: go mod tidy -diff
 
   # ---- correctness ----------------------------------------------------------
 
-  - id: build
+  - name: build
     description: every package compiles
-    tags: [quick, ci]
-    requires: [go]
-    command: "go build ./..."
+    command: go build ./...
 
-  - id: vet
+  - name: vet
     description: the compiler-adjacent checks that need no configuration
-    tags: [quick, ci]
-    requires: [go, python3]
-    command: "go vet ./..."
-    result_command: "python3 {configdir}/adapters/go/govet.py"
+    command: go vet ./...
 
   # ---- the aggregator -------------------------------------------------------
 
@@ -73,12 +69,9 @@ tasks:
   #
   # The config travels with this file: the pair is the definition, and neither
   # half means anything without the other.
-  - id: lint
+  - name: lint
     description: the golangci-lint aggregator, 42 analysers
-    tags: [ci]
-    requires: [golangci-lint]
-    command: "golangci-lint run --config {configdir}/config/go-std-quality.golangci.yml"
-    timeout: 300s
+    command: golangci-lint run --config {config_dir}/config/go-std-quality.golangci.yml
 
   # ---- tests ----------------------------------------------------------------
 
@@ -86,75 +79,57 @@ tasks:
   # the counters non-atomically, so the race detector reports on the
   # instrumentation itself and the counts are quietly wrong.
   #
-  # The coverage profile is a declared output. A test run that reports success
-  # without producing one did not measure anything, and declaring the file is
-  # what turns that from a silent gap into a failure.
-  - id: tests
+  # The profile is declared evidence. A test run that reports success without
+  # producing one did not measure anything, and declaring the file is what turns
+  # that from a silent gap into a failure.
+  - name: tests
     description: race, shuffle and a coverage profile
-    tags: [ci]
-    requires: [go]
-    command: "CGO_ENABLED=1 go test -race -shuffle=on -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./..."
-    timeout: 600s
-    output:
-      - path: coverage.out
-        format: text
-
-  # Coverage is judged PER FILE. There is deliberately no aggregate threshold:
-  # an aggregate is exactly what lets a well-tested file carry an untested one.
-  # The total is reported in statistics as context and nothing branches on it.
-  #
-  # This reads the profile `tests` produced, so it has to run after it, which
-  # declaration order gives, tasks being run in the order written.
-  #
-  # Generated code is excluded because nobody writes tests for it and its size
-  # would otherwise dominate.
-  - id: coverage
-    description: every file at or above 80% of statements
-    tags: [ci]
-    requires: [python3]
-    command: "test -f coverage.out"
-    result_command: >-
-      python3 {configdir}/adapters/go/coverage.py --min 80
-      --exclude '\.pb\.go$' --exclude '\.gen\.go$' --exclude '_generated\.go$'
+    command: >-
+      CGO_ENABLED=1 go test -race -shuffle=on -covermode=atomic
+      -coverpkg=./... -coverprofile={work_dir}/coverage.out ./...
+    evidence:
+      - coverage.out
 
   # ---- supply chain ---------------------------------------------------------
 
   # Reachability-based: only reports vulnerabilities actually called, rather
   # than every advisory touching a module in go.sum.
-  - id: vuln
+  - name: vuln
     description: vulnerabilities in code that is actually reached
-    tags: [ci]
-    requires: [govulncheck]
-    command: "govulncheck ./..."
-    timeout: 300s
+    command: govulncheck ./...
 
-# ---- DELIBERATELY NOT HERE ---------------------------------------------------
+# ---- COVERAGE IS MISSING FROM THIS FILE, DELIBERATELY -------------------------
 #
-# `entrypoint`, measuring the one statement in main() that `go test` can never
-# reach, by building the binary with `go build -cover`, running it once, and
-# appending the profile.
+# It was `test -f coverage.out` with an adapter reading the profile, and the
+# adapter is what judged it. `adapters/go/coverage.py` still speaks the retired
+# contract, so the task would run its command alone, and `test -f` exits 0
+# whenever the file exists. Every adopter would see a coverage gate that passes
+# without reading a single percentage.
 #
-# It was in this file and it does not belong in a SHARED definition, because it
-# names the project's own main package and its own smallest safe invocation:
+# A task that always passes is worse than an absent one: it reports a guarantee
+# it never established. So it is out until the adapter is ported, which is
+# `clank/tasks/toolbox/port-the-jigs/10`, and it comes back with its rules
+# unchanged: judged PER FILE at 80% of statements, no aggregate threshold,
+# because an aggregate is what lets a well-tested file carry an untested one.
+# Generated code is excluded.
 #
-#     go build -cover ... -o "$BOLT_SCRATCH/bolt" ./cmd/bolt && ... "$BOLT_SCRATCH/bolt" help
+# ---- ENTRYPOINT IS NOT HERE EITHER, FOR A DIFFERENT REASON -------------------
 #
-# Every Go project has a different path there and a different harmless command,
-# and bolt has no substitution that could stand in for either. Left here, it
-# fails for every adopter on the first run, and it fails in a way that looks
-# like the adopter's fault.
+# It measures the one statement in main() that `go test` can never reach, by
+# building with `go build -cover`, running the binary once and appending the
+# profile. It names the project's own main package and its own smallest safe
+# invocation, so every Go project needs a different one and bolt has no
+# substitution that could stand in. Left in a shared file it fails for every
+# adopter, in a way that looks like the adopter's fault.
 #
-# It belongs in the project's own overlay, where the hardcoding is correct
-# because the file is about that one project:
+# It belongs in the project's own jig, where hardcoding is correct because the
+# file is about that one project:
 #
-#     # bolt.this-project.yaml
 #     tasks:
-#       - id: entrypoint
+#       - name: entrypoint
 #         description: the built binary runs, so its one statement is measured
-#         tags: [ci]
-#         requires: [go]
 #         command: >-
-#           go build -cover -covermode=atomic -coverpkg=./... -o "$BOLT_SCRATCH/app" ./cmd/app && ...
+#           go build -cover -covermode=atomic -coverpkg=./...
+#           -o {work_dir}/app ./cmd/app && {work_dir}/app help
 #
-# A shared definition carries the rule and never the subject. `entrypoint`
-# looked like a rule and was a subject.
+# A shared definition carries the rule and never the subject.

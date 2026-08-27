@@ -1,188 +1,145 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/scriptedworld/toolbox/schema/jig.schema.json",
-  "title": "bolt jig",
-  "description": "A bolt configuration file: a set of independent tasks, each a command line and optionally something that reads its output and returns a verdict. Derived from internal/descriptor/descriptor.go rather than from example files, so it describes what the parser accepts rather than what the examples happen to use.",
+  "$id": "https://scriptedworld.github.io/wrench/jig.schema.json",
+  "title": "jig",
+  "description": "A jig: the unit of configuration and composition. What a runner executes for a project is read from that project's jig. Unrecognised keys are not refused here, because whether an unknown key fails or warns is still open, and a schema that leaves something open leaves it open.",
+
   "type": "object",
-  "required": ["version", "tasks"],
-  "additionalProperties": false,
+  "required": ["tasks"],
 
   "properties": {
     "version": {
-      "description": "Configuration format version. Only 1 exists; a file naming any other version is rejected rather than assumed forward-compatible.",
-      "const": 1
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "The version of this format the document claims to conform to, as semver. Optional, and absent means the document claims nothing, which is every document written before this field existed. Present, it lets a consumer refuse a major it does not understand rather than failing later on a field it cannot find."
     },
 
-    "timeout": {
-      "$ref": "#/$defs/duration",
-      "description": "Bounds the whole run, distinct from any per-invocation timeout. Tasks the budget did not reach are recorded as failures rather than omitted."
-    },
-
-    "defaults": {
-      "description": "Applied to any task that does not state the field itself, because repeated configuration is configuration that drifts. `command` is deliberately absent: a task must never inherit its most important field silently.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "runtime": { "$ref": "#/$defs/runtime" },
-        "timeout": { "$ref": "#/$defs/duration" },
-        "capture": { "$ref": "#/$defs/capture" },
-        "select": { "$ref": "#/$defs/select" },
-        "tags": {
-          "description": "Accumulate onto a task's own tags rather than replacing them, since both are true of the task.",
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      }
+    "requires": {
+      "type": "array",
+      "description": "Every executable this jig invokes: the tools its commands run, the adapters its tasks name, any checker it calls. The whole dependency inventory, not a note about unusual tools.",
+      "items": { "type": "string", "minLength": 1 }
     },
 
     "definitions": {
-      "description": "Somewhere legal to declare YAML anchors for reuse within this file. bolt provides no second fragment mechanism, and anchors do not cross files -- each configuration is its own YAML document.",
-      "type": "object"
+      "$ref": "https://scriptedworld.github.io/wrench/definitions.schema.json",
+      "description": "Default values for the placeholders this jig's commands name. Optional, and so is any entry in it: a jig leaving a value to its adopter names the placeholder and defines nothing. A definitions file named on the invocation merges over this."
+    },
+
+    "needs-repository-root": {
+      "type": "boolean",
+      "default": false,
+      "description": "This jig's commands stand at the repository root rather than at their base. It reaches the working directory and nothing else: the walk, the containment, the filter patterns and {base_dir} all stay what the caller granted. A property of the tool the jig runs rather than of any one caller placing it, so it sits on the jig and not on the jig task."
     },
 
     "tasks": {
-      "description": "Tasks are independent and merge; there is no ordering and no dependency between them. A thing that produces no mergeable verdict is not a task.",
       "type": "array",
+      "description": "Executed in declaration order. A task names either a command or a jig, never both.",
       "minItems": 1,
       "items": { "$ref": "#/$defs/task" }
     }
   },
 
   "$defs": {
-    "duration": {
-      "description": "A Go duration string, e.g. 300s, 2m0s, 10m, 1h30m.",
-      "type": "string",
-      "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h)([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))*$"
-    },
-
-    "runtime": {
-      "description": "Named for what the process receives. `once` is the default because it is the only runtime needing no placeholder -- a task that wants files must say which shape it wants them in.",
-      "type": "string",
-      "enum": ["once", "allFiles", "eachFile"],
-      "default": "once"
-    },
-
-    "capture": {
-      "description": "`never` still keeps the exit code, which is never the bulky part. For a per-file task over a large tree this is the difference between a readable artifact set and hundreds of megabytes of stored scrollback.",
-      "type": "string",
-      "enum": ["always", "never"],
-      "default": "always"
-    },
-
-    "select": {
-      "description": "Filters the incoming file list to the files this task is about. Meaningless on a `once` task, and declaring one there is an error rather than a line that does nothing. Selecting nothing plans nothing: an empty substitution would turn `ruff check {files}` into `ruff check`, which checks the whole tree.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "include": {
-          "description": "Globs in which ** matches zero or more path segments, zero included. An absent include admits everything.",
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "exclude": {
-          "description": "Exclusion beats inclusion.",
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      }
-    },
-
-    "evidence": {
-      "description": "A file the task promises to produce. A run that reports success without producing the file it promised did not measure anything; declaring it turns that from a silent gap into a failure.",
-      "type": "object",
-      "required": ["path"],
-      "additionalProperties": false,
-      "properties": {
-        "path": {
-          "description": "A glob, resolved against the invocation's scratch directory and then the run root.",
-          "type": "string",
-          "minLength": 1
-        },
-        "format": {
-          "description": "The format the file must parse as. Inferred from the extension when unset. An empty file fails every format, including text: a tool that created its output and wrote nothing to it did not finish.",
-          "type": "string",
-          "enum": ["json", "yaml", "text"]
-        },
-        "required": {
-          "description": "Fails the task when nothing matches path. Set false for a file a tool writes only sometimes, and say why in a comment.",
-          "type": "boolean",
-          "default": true
-        },
-        "schema": {
-          "description": "Path to a JSON Schema the file must satisfy.",
-          "type": "string"
-        }
-      }
-    },
-
     "task": {
       "type": "object",
-      "required": ["id", "command"],
-      "additionalProperties": false,
+      "required": ["name"],
+
       "properties": {
-        "id": {
-          "description": "Becomes part of an artifact filename, so it may not contain a path separator or `..` -- a filename can never escape the artifact directory.",
+        "name": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^/\\\\]+$",
-          "not": { "pattern": "\\.\\." }
+          "description": "Prefixes this task's work directories, so its evidence is identifiable on disk without opening anything. Unique within the jig."
         },
-        "description": {
-          "description": "What the task asserts, in the present tense. Shown by `bolt tasks`.",
-          "type": "string"
+        "description": { "type": "string" },
+        "short-circuit-failure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Stop the run when this task fails. Stopping is what a jig asks for rather than what it gets."
         },
-        "tags": {
-          "description": "A tag is how a set of tasks gets a name, for --with and --without.",
-          "type": "array",
-          "items": { "type": "string" }
-        },
+
         "command": {
-          "description": "A shell line. Asks for exactly the substitution its runtime performs: {file} under eachFile, {files} under allFiles, {configdir} and {root} in any. A placeholder the runtime cannot fill is rejected at parse time rather than left unfilled.",
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "A shell line. How it runs is read off it: {each_path} means one execution per matched path, {all_paths} one execution with the whole selection. Naming both is an error."
         },
-        "requires": {
-          "description": "Executables this task cannot run without. Resolved before anything starts, failing the task once and naming the executable. Undeclared, a missing tool arrives as a shell-level exit 127, indistinguishable from a tool that genuinely exits 127.",
+        "matching": { "$ref": "#/$defs/pathList" },
+        "excluding": { "$ref": "#/$defs/pathList" },
+        "adapter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Resolved by name from the config directory. Left out, the generic exit-code adapter runs."
+        },
+        "adapter-command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "An explicit adapter invocation, written in place of the default one. The same substitutions are available as in a command, and the envelope is still expected at output.yaml in the work directory, because no flag says where it goes."
+        },
+        "evidence": {
           "type": "array",
-          "items": { "type": "string" }
+          "description": "The files this task produces that its adapter should read. Declared, never discovered.",
+          "items": { "type": "string", "minLength": 1 }
         },
-        "runtime": { "$ref": "#/$defs/runtime" },
-        "select": { "$ref": "#/$defs/select" },
-        "timeout": {
-          "$ref": "#/$defs/duration",
-          "description": "Bounds this invocation, defaulting to 120s. A wedged checker does not wedge the run."
+
+        "jig": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Run this jig instead of a command. The child follows its own process: its own requires, its own tasks, its own filtering."
         },
-        "tty": {
-          "description": "Allocate a pseudo-terminal. A terminal is one channel, so stdout and stderr arrive merged and cannot be told apart afterwards -- recorded in the envelope rather than left to be inferred from an empty stderr.",
-          "type": "boolean"
+        "in": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A subdirectory of the current base to run the named jig in. A written path, not a pattern, because a pattern can say which files look like Go and never that a directory is a Go module. The only thing that sets a child's base."
         },
-        "capture": { "$ref": "#/$defs/capture" },
-        "result_command": {
-          "description": "Turns this task's execution record into a verdict. A command-line contract, so it may be written in any language: the record arrives on stdin as YAML, {record} is replaced by a path to the same record, and an envelope is returned on stdout. Absent, exiting 0 is the task's whole contract.",
-          "type": "string"
+        "config-dir": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the child looks for jigs. Left out, it inherits."
         },
-        "output": {
-          "description": "Files this task promises to write.",
-          "type": "array",
-          "items": { "$ref": "#/$defs/evidence" }
+        "output-dir": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Names the child's output directory rather than placing it. Whatever it is set to, the result is a subdirectory of this task's work directory."
+        },
+        "definitions": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Names the child's definitions file, as --definitions does for an invocation from the command line. Left out, it inherits, so subprojects sharing one set of adjustments name nothing and carry no copies."
         }
       },
 
-      "allOf": [
+      "oneOf": [
         {
-          "description": "A filter is meaningless on a task that receives no files, and declaring one is an error rather than a line that does nothing.",
-          "if": {
-            "properties": { "runtime": { "const": "once" } },
-            "required": ["runtime"]
-          },
-          "then": { "not": { "required": ["select"] } }
+          "title": "a command task",
+          "required": ["command"],
+          "properties": {
+            "jig": false,
+            "in": false,
+            "config-dir": false,
+            "output-dir": false,
+            "definitions": false,
+            "needs-repository-root": false
+          }
         },
         {
-          "description": "Runtime `once` is the default, so a task with no runtime and a select is the same error.",
-          "if": { "not": { "required": ["runtime"] } },
-          "then": { "not": { "required": ["select"] } }
+          "title": "a jig task",
+          "required": ["jig"],
+          "properties": {
+            "command": false,
+            "adapter": false,
+            "adapter-command": false,
+            "evidence": false,
+            "matching": false,
+            "excluding": false,
+            "needs-repository-root": false
+          }
         }
       ]
+    },
+
+    "pathList": {
+      "type": "array",
+      "description": "Patterns or literal paths, relative to the base of the run they are declared in, where ** matches zero or more directory levels.",
+      "items": { "type": "string", "minLength": 1 }
     }
   }
 }

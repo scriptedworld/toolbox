@@ -60,7 +60,7 @@ would make two things waiting on bolt.
 
 `bolt` does not use this repository. `just checks` there runs
 `./bin/bolt -c bolt.go-std-quality.yaml`, whose `traceability` task names
-`{configdir}/tools/test-traceability.py`, which is bolt's own pre-split fork.
+`{config_dir}/tools/test-traceability.py`, which is bolt's own pre-split fork.
 Against the same tree in the same minute, bolt's copy exits **0** where this one
 exits **1**.
 
