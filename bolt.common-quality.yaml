@@ -45,10 +45,10 @@ tasks:
   #
   # README.md has the status markers, the worked rows and the adopter numbers.
   #
-  # The checker reads Go and Python tests. A language with a jig here but no
-  # entry in its LANGUAGES table finds no tests at all, cites nothing, and fails
-  # every requirement at once, so a new language jig adds its entry in the same
-  # change.
+  # The checker reads Go, Python and Rust tests. A language with a jig here but
+  # no entry in its LANGUAGES table finds no tests at all, cites nothing, and
+  # fails every requirement at once, so a new language jig adds its entry in
+  # the same change.
   - name: traceability
     description: every test cites what it discharges, and every settled requirement has one
     command: python3 {config_dir}/bin/test-traceability.py --requirements {requirements} .

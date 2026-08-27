@@ -247,6 +247,100 @@ def test_indented_and_async_tests_are_found(checker, tmp_path):
     assert code == 0, out
 
 
+# ---- rust, which marks a test with an attribute -----------------------------
+
+
+RUST_TEST = (
+    "// COVERS: FR-1.1 | property\n"
+    "/// The walk returns sorted paths, so two runs over one tree agree.\n"
+    "#[test]\n"
+    "fn the_walk_is_sorted() {\n    assert!(true);\n}\n"
+)
+
+
+# COVERS: FR-4.7, FR-4.8 | positive
+def test_a_rust_test_is_found_through_its_attribute_and_doc_comment(checker, tmp_path):
+    """`#[test]` and `///` both sit between the COVERS line and the `fn`.
+
+    Stepping over only one of them leaves the annotation unreachable, which
+    fails louder than skipping the file and is just as wrong.
+    """
+    tree = project(
+        tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST}
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS: FR-4.16 | negative
+def test_a_rust_helper_without_the_attribute_is_not_a_test(checker, tmp_path):
+    """A test file's helpers outnumbered its tests 5 to 20 in bolt.
+
+    Reading every `fn` as a test would fail a file for the functions holding
+    it up, so the attribute is what separates the two.
+    """
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {
+            "tests/skeleton.rs": (
+                "fn write_jig(body: &str) -> PathBuf {\n    todo!()\n}\n\n" + RUST_TEST
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "write_jig" not in out
+
+
+# COVERS: FR-4.16 | edge
+def test_a_rust_test_still_has_to_cite_something(checker, tmp_path):
+    """The attribute selects what is a test; it does not exempt one."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {"tests/skeleton.rs": "#[test]\nfn silent() {\n    assert!(true);\n}\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "silent" in out
+    assert "// COVERS:" in out
+
+
+# COVERS: FR-4.7 | edge
+def test_a_rust_unit_test_inside_src_is_found(checker, tmp_path):
+    """A Rust unit test lives in the file it covers, not under tests/."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {
+            "src/walk.rs": (
+                "pub fn walk() {}\n\n"
+                "#[cfg(test)]\nmod tests {\n"
+                "    // COVERS: FR-1.1 | property\n"
+                "    #[test]\n"
+                "    fn it_walks() {\n        assert!(true);\n    }\n}\n"
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS: FR-2.5 | regression
+def test_cargo_build_output_is_not_scanned(checker, tmp_path):
+    """`target/` carries vendored `.rs` sources, and bolt's held twelve."""
+    tree = project(
+        tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST}
+    )
+    vendored = tree / "target" / "debug" / "build" / "vendored.rs"
+    vendored.parent.mkdir(parents=True)
+    vendored.write_text("#[test]\nfn theirs() {}\n", encoding="utf-8")
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "theirs" not in out
+
+
 # COVERS: FR-2.5 | edge
 def test_someone_elses_tests_are_not_scanned(checker, tmp_path):
     """A virtualenv full of unannotated tests must not fail this project."""

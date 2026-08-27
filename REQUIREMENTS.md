@@ -74,7 +74,7 @@ requirement it marks is testable.
 | FR-4.5 | A requirement no test cites **fails**, unless its row marks it open. Closed 2026-08-20; before that it was reported as context and the task exited 0, which left the document holding the code to nothing. | [A] |
 | FR-4.6 | Open is `[?]` in the row's last bracketed cell and nothing else. `[A]`, `[D]`, `[A/D]` and **no marker column at all** are settled, so a document without markers claims no exemptions: exemption is claimed, never granted by omission. | [A] |
 | FR-4.7 | Test discovery reads every language this repository ships a jig for. A language with a jig and no entry in the checker's language table finds no tests, cites nothing, and fails every requirement in one go. | [A] |
-| FR-4.8 | Discovery finds a test wherever the language puts one: indented inside a class, declared `async`, or separated from its annotation by a decorator. | [D] |
+| FR-4.8 | Discovery finds a test wherever the language puts one: indented inside a class, declared `async`, or separated from its annotation by a decorator, an attribute, or a doc comment. | [D] |
 | FR-4.9 | Requirement ids sort numerically and tolerate a letter suffix, so `FR-7.3` precedes `FR-7.10`, and `FR-4.13a` compares against `FR-4.13` instead of raising. | [D] |
 | FR-4.10 | A `## Retired` section records requirements that have gone and what replaced them. Rows there are not live: nothing holds them to coverage, and a test citing one fails saying where it went rather than saying it does not exist. | [D] |
 | FR-4.11 | A requirement id that is both live and retired fails outright, before anything else is reported. Reuse silently rewrites what every existing reference to that id meant, and nothing about the new row looks wrong, so it is the one thing that cannot be left to a reader to notice. | [D] |
@@ -82,6 +82,7 @@ requirement it marks is testable.
 | FR-4.13 | A requirement id declared in more than one file fails. One file per requirement makes that possible in a way a single document never did: two files each declaring the id merge into one entry with the later silently winning, and both read correctly opened alone. | [D] |
 | FR-4.14 | A `## Retired` heading's reach ends at the end of its own file. Concatenating a tree would let a document ending inside a retired section silently retire the rows of every file after it. | [D] |
 | FR-4.15 | A requirements path that exists and cannot be read reports which path and why, and exits 1. A traceback reads as a broken checker rather than as a permission the adopter can fix. | [D] |
+| FR-4.16 | Where a language marks a test with an attribute rather than in its name, a declaration without that attribute is not a test. Rust names a test function freely and says `#[test]` above it, so without this every helper in a test file reads as a test that cites nothing, and a language gains dozens of failures by being supported. | [D] |
 
 ## FR-5, The suppression register
 

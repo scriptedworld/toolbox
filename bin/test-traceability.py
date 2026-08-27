@@ -89,6 +89,9 @@ SKIP_DIRS = frozenset(
         "__pycache__",
         "testdata",
         "site-packages",
+        # Cargo's build output, which carries vendored `.rs` sources. Reading
+        # every `.rs` file reaches it, and bolt's held 12 of them.
+        "target",
     }
 )
 
@@ -101,10 +104,24 @@ class Language:
     globs: tuple[str, ...]
     declaration: re.Pattern[str]
     comment: str
+    # Lines a language allows between the comment block and the declaration.
+    # A block stopping at the first non-comment line would miss every test
+    # written with one.
+    interposed: tuple[str, ...] = ()
+    # What marks a declaration as a test, where the name does not. Go and
+    # Python say so in the name; Rust says so in an attribute, so without this
+    # every helper function in a test file reads as an unannotated test.
+    attribute: re.Pattern[str] | None = None
 
     @property
     def covers(self) -> re.Pattern[str]:
-        """The COVERS line, written in this language's comment syntax."""
+        """The COVERS line, written in this language's comment syntax.
+
+        A Rust doc comment does not match this and is not meant to. `///` puts
+        a third slash where the pattern wants whitespace or `COVERS:`, so a
+        doc comment is stepped over as continuation rather than read as an
+        annotation carrying nothing.
+        """
         marker = re.escape(self.comment)
         return re.compile(
             rf"^\s*{marker}\s*COVERS:\s*(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$"
@@ -112,14 +129,9 @@ class Language:
 
     @property
     def continuation(self) -> re.Pattern[str]:
-        """Lines to step over when walking up to the comment block.
-
-        A Python decorator sits between the annotation and the `def`, so a
-        block that stopped at the first non-comment line would miss every
-        annotated test that is also parametrised.
-        """
-        marker = re.escape(self.comment)
-        return re.compile(rf"^\s*(?:{marker}|@)")
+        """Lines to step over when walking up to the comment block."""
+        alternatives = "|".join((re.escape(self.comment), *self.interposed))
+        return re.compile(rf"^\s*(?:{alternatives})")
 
 
 LANGUAGES = (
@@ -134,6 +146,23 @@ LANGUAGES = (
         globs=("test_*.py", "*_test.py"),
         declaration=re.compile(r"^\s*(?:async\s+)?def (test_\w+)\s*\("),
         comment="#",
+        # A decorator sits between the annotation and the `def`.
+        interposed=(r"@",),
+    ),
+    Language(
+        name="rust",
+        # Every `.rs` file, not just `tests/`, because a unit test lives in a
+        # `#[cfg(test)] mod tests` inside the source file it covers. The
+        # attribute below is what keeps that from reading every function as a
+        # test.
+        globs=("*.rs",),
+        declaration=re.compile(r"^\s*(?:pub\s+)?(?:async\s+)?fn (\w+)\s*\("),
+        comment="//",
+        # `#[test]` sits directly above the `fn`, and a `///` doc comment may
+        # sit between that and the COVERS line. The doc comment already matches
+        # the `//` marker, so only the attribute needs naming here.
+        interposed=(r"#\[",),
+        attribute=re.compile(r"^\s*#\[(?:\w+::)*test\b"),
     ),
 )
 
@@ -293,8 +322,18 @@ def scan_file(
         test = language.declaration.match(line)
         if not test:
             continue
+        block = comment_block_above(lines, number, language)
+
+        # Where a language marks its tests with an attribute rather than in the
+        # name, a declaration without it is a helper and not a test. Reporting
+        # it would fail every test file for the functions supporting its tests.
+        if language.attribute and not any(
+            language.attribute.match(above) for above in block
+        ):
+            continue
+
         where = f"{path}:{number + 1}: {test.group(1)}"
-        found = annotation_of(comment_block_above(lines, number, language), language)
+        found = annotation_of(block, language)
         if not found:
             failures.append(
                 f"{where} has no `{language.comment} COVERS: <ids> | <kind>` line"
