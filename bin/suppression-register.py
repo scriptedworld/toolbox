@@ -67,16 +67,33 @@ def scan_source(root: Path) -> Counter[tuple[str, frozenset[str]]]:
     return found
 
 
+def register_documents(path: Path) -> list[Path]:
+    """The documents a `--register` path names: one file, or a tree of them.
+
+    The same split `--requirements` takes, for the same reason: one file per
+    suppression means adding one creates a file instead of reopening a shared
+    document, and two sessions do not collide in it.
+    """
+    if path.is_dir():
+        return sorted(p for p in path.rglob("*.md") if p.is_file())
+    return [path]
+
+
 def scan_register(path: Path) -> Counter[tuple[str, frozenset[str]]]:
-    """Read the register's index into the same shape as the source scan."""
+    """Read the register's index into the same shape as the source scan.
+
+    Counts add across documents, so one file per suppression totals the same as
+    one document listing them all, and a file carrying `×2` still says two.
+    """
     listed: Counter[tuple[str, frozenset[str]]] = Counter()
     if not path.exists():
         return listed
-    for line in path.read_text(encoding="utf-8").splitlines():
-        row = INDEX_ROW.match(line)
-        if row:
-            count = int(row.group("count") or 1)
-            listed[(row.group("path"), rules_of(row))] += count
+    for document in register_documents(path):
+        for line in document.read_text(encoding="utf-8").splitlines():
+            row = INDEX_ROW.match(line)
+            if row:
+                count = int(row.group("count") or 1)
+                listed[(row.group("path"), rules_of(row))] += count
     return listed
 
 
@@ -134,7 +151,16 @@ def main() -> int:
     args = parser.parse_args()
 
     source = scan_source(args.root)
-    register = scan_register(args.register)
+
+    # Unreadable is not absent. A register that exists and cannot be opened
+    # would otherwise raise, and a traceback from a gate task reads as a broken
+    # checker rather than as a permission the adopter can fix.
+    try:
+        register = scan_register(args.register)
+    except OSError as unreadable:
+        print(f"{args.register} cannot be read: {unreadable.strerror}")
+        return 1
+
     if not args.register.exists() and source:
         print(f"{sum(source.values())} pragma(s) in the source and no {args.register}")
         return 1

@@ -71,12 +71,17 @@ MARKER = re.compile(r"^\[[^\]]*\]$")
 HEADING = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 RETIRED_HEADING = re.compile(r"^retired\b", re.IGNORECASE)
 
-# Directories that hold someone else's tests. Walking into a virtualenv finds
-# hundreds of `test_*.py` citing nothing, which under a gate that fails on
-# uncovered requirements is not noise: it is a guaranteed failure.
+# Directories that hold tests this project is not answerable for. Walking into a
+# virtualenv finds hundreds of `test_*.py` citing nothing, which under a gate
+# that fails on uncovered requirements is not noise: it is a guaranteed failure.
+#
+# `.ephemera` is the same problem from the other end. Every repository here has
+# one, it is gitignored working space, and a scratch `main_test.go` left in it
+# failed this gate while being no part of the project.
 SKIP_DIRS = frozenset(
     {
         ".git",
+        ".ephemera",
         ".venv",
         "venv",
         "node_modules",
@@ -151,8 +156,26 @@ def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     return (prefix, tuple(segments))
 
 
-def read_requirements(path: Path) -> tuple[dict[str, str], dict[str, str]]:
-    """Collect what the document declares live, and what it has retired.
+def requirement_documents(path: Path) -> list[Path]:
+    """The documents a `--requirements` path names: one file, or a tree of them.
+
+    A directory holds one file per requirement, `<category>/<ID>-<slug>.md`,
+    and a category may carry a `README.md` for its preamble. Every `.md`
+    beneath is read, README included: a requirement written somewhere
+    unexpected should fail loudly for having no test rather than be skipped for
+    sitting in the wrong file. The cost is that a preamble must not contain a
+    parseable requirement row.
+
+    Sorted, so a duplicate id names the same two files whatever order the
+    filesystem hands them back in.
+    """
+    if path.is_dir():
+        return sorted(p for p in path.rglob("*.md") if p.is_file())
+    return [path]
+
+
+def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Collect what one document declares live, and what it has retired.
 
     A live requirement carries its status marker: the row's last bracketed
     cell, or the empty string where the document has no marker column.
@@ -160,6 +183,10 @@ def read_requirements(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     A row under a `## Retired` heading has gone. It is kept out of the live set
     so nothing holds it to coverage, and remembered so a test still citing it
     can be told where it went.
+
+    The heading's reach stops at the end of the file. Concatenating a tree
+    would let a document ending inside `## Retired` carry that state into the
+    next one and silently retire its rows.
     """
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
@@ -184,6 +211,32 @@ def read_requirements(path: Path) -> tuple[dict[str, str], dict[str, str]]:
             trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
         )
     return declared, retired
+
+
+def read_requirements(
+    path: Path,
+) -> tuple[dict[str, str], dict[str, str], dict[str, list[Path]]]:
+    """Read every document the path names, and report ids declared twice.
+
+    One file per requirement makes a duplicate id possible in a way a single
+    document never made it: two files each declaring `FR-4.1` merge into one
+    entry, the later silently winning, and both look correct opened alone.
+    That is the same corruption reusing a retired id causes, so it is reported
+    the same way rather than resolved.
+    """
+    declared: dict[str, str] = {}
+    retired: dict[str, str] = {}
+    sources: dict[str, list[Path]] = {}
+
+    for document in requirement_documents(path):
+        document_declared, document_retired = read_document(document)
+        for req in document_declared:
+            sources.setdefault(req, []).append(document)
+        declared.update(document_declared)
+        retired.update(document_retired)
+
+    duplicated = {req: paths for req, paths in sources.items() if len(paths) > 1}
+    return declared, retired, duplicated
 
 
 def is_open(marker: str) -> bool:
@@ -324,11 +377,27 @@ def main() -> int:
         )
         return 1
 
-    declared, retired = read_requirements(args.requirements)
+    # Unreadable is its own case. A traceback here reads as a broken checker
+    # rather than as a permission the adopter can fix, and the gate that ran it
+    # reports a crash instead of a verdict.
+    try:
+        declared, retired, duplicated = read_requirements(args.requirements)
+    except OSError as unreadable:
+        print(f"{args.requirements} cannot be read: {unreadable.strerror}")
+        return 1
     if not declared:
         print(
             f"{args.requirements} declares no requirements; refusing to pass vacuously"
         )
+        return 1
+
+    # Two files declaring one id is the split's own failure mode, and it is
+    # reported before coverage because the merged entry hides one of them.
+    if duplicated:
+        print(f"{len(duplicated)} requirement id(s) are declared more than once:")
+        for req in sorted(duplicated, key=requirement_key):
+            where = ", ".join(str(p) for p in duplicated[req])
+            print(f"  {req} is declared in {where}")
         return 1
 
     # A retired id is never reused. Declaring one again silently rewrites what

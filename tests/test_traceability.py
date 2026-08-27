@@ -263,6 +263,26 @@ def test_someone_elses_tests_are_not_scanned(checker, tmp_path):
     assert "test_not_ours" not in out
 
 
+# COVERS: FR-2.5 | regression
+def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
+    """`.ephemera` is gitignored working space every repository here has.
+
+    A scratch `main_test.go` left in one failed this gate while being no part
+    of the project, which is how this entry got added.
+    """
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_ours():\n    pass\n"},
+    )
+    scratch = tree / ".ephemera" / "probe" / "scratch_test.go"
+    scratch.parent.mkdir(parents=True)
+    scratch.write_text("func TestScratch(t *testing.T) {}\n", encoding="utf-8")
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "TestScratch" not in out
+
+
 # ---- the regression ---------------------------------------------------------
 
 
@@ -402,3 +422,136 @@ def test_a_heading_after_retired_returns_to_live_rows(checker, tmp_path):
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
     assert "FR-2.2" in out
+
+
+# ---- a directory of requirements --------------------------------------------
+
+
+DIR_ARGV = ["--requirements", "docs/REQUIREMENTS", "."]
+
+
+def split(tmp_path: Path, files: dict[str, str], sources: dict[str, str]) -> Path:
+    """Write one requirement file per entry, under docs/REQUIREMENTS."""
+    for name, document in files.items():
+        path = tmp_path / "docs" / "REQUIREMENTS" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(document, encoding="utf-8")
+    for name, text in sources.items():
+        source = tmp_path / name
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+# COVERS: FR-4.12 | positive
+def test_a_directory_reaches_the_same_verdict_as_one_document(checker, tmp_path):
+    """The split is a path change, so the verdict may not move with it.
+
+    The same two requirements and the same test, written one way and then the
+    other, and the reported figures have to agree.
+    """
+    covering = {
+        "test_it.py": "# COVERS: FR-1.1, FR-1.2 | positive\ndef test_t():\n    pass\n"
+    }
+    (tmp_path / "whole").mkdir()
+    (tmp_path / "parts").mkdir()
+    whole = project(
+        tmp_path / "whole",
+        requirements(("FR-1.1", "[A]"), ("FR-1.2", "[D]")),
+        covering,
+    )
+    parts = split(
+        tmp_path / "parts",
+        {
+            "core/FR-1.1-first.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-1.2-second.md": requirements(("FR-1.2", "[D]")),
+        },
+        covering,
+    )
+    whole_code, whole_out = checker(traceability, ARGV, whole)
+    parts_code, parts_out = checker(traceability, DIR_ARGV, parts)
+
+    assert whole_code == parts_code == 0
+    assert "2 of 2" in whole_out
+    assert "2 of 2" in parts_out
+
+
+# COVERS: FR-4.12 | edge
+def test_a_readme_preamble_is_read_like_any_other_file(checker, tmp_path):
+    """A category README carries the preamble, and a row in one still counts.
+
+    Skipping it by name would let a requirement written in the wrong file pass
+    unheld, which is the silent direction. Counting it fails loudly instead.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-first.md": requirements(("FR-1.1", "[A]")),
+            "core/README.md": requirements(("FR-5.5", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "FR-5.5" in out
+
+
+# COVERS: FR-4.13 | negative
+def test_one_id_declared_in_two_files_fails(checker, tmp_path):
+    """Both files read correctly alone; merged, the later silently wins."""
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-first.md": requirements(("FR-1.1", "[A]")),
+            "other/FR-1.1-again.md": requirements(("FR-1.1", "[D]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "declared more than once" in out
+    assert "FR-1.1-first.md" in out
+    assert "FR-1.1-again.md" in out
+
+
+# COVERS: FR-4.14 | regression
+def test_a_retired_heading_does_not_reach_the_next_file(checker, tmp_path):
+    """Concatenating the tree would retire every row after the section.
+
+    `a/` sorts before `b/`, so a reader that joined the files and kept its
+    state would swallow FR-1.1 and report a document declaring nothing.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "a/retired.md": "# Gone\n" + RETIRED,
+            "b/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "FR-1.1" in out
+    assert "declares no requirements" not in out
+
+
+# COVERS: FR-2.4 | edge
+def test_a_directory_holding_no_rows_refuses_to_pass(checker, tmp_path):
+    """An empty tree is zero requirements agreeing with zero citations."""
+    tree = split(tmp_path, {"core/notes.md": "# Prose, and no table.\n"}, {})
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "declares no requirements" in out
+
+
+# COVERS: FR-4.15 | negative
+def test_an_unreadable_document_reports_why_and_does_not_raise(checker, tmp_path):
+    """Absent and unreadable are different, and neither is a traceback."""
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")))
+    (tree / "REQUIREMENTS.md").chmod(0o000)
+    try:
+        code, out = checker(traceability, ARGV, tree)
+    finally:
+        (tree / "REQUIREMENTS.md").chmod(0o644)
+    assert code == 1
+    assert "cannot be read" in out

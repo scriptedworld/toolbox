@@ -44,7 +44,7 @@ requirement it marks is testable.
 | FR-2.2 | A checker written here reports every finding on stdout, naming the file, line or identifier it is about. A finding nobody can locate is a finding nobody acts on. | [D] |
 | FR-2.3 | A checker given a document that is absent fails instead of raising. A traceback is not a verdict, and the adopter who has not yet written the document is the reader most in need of an instruction. | [D] |
 | FR-2.4 | A checker refuses to pass vacuously. Zero requirements agreeing with zero citations describes a gate with nothing in it, and it must never read as a pass. | [A] |
-| FR-2.5 | A checker does not walk trees belonging to someone else: `.venv`, `node_modules`, `vendor`, `testdata`. A vendored suite full of unannotated tests must not fail the project that vendored it. | [D] |
+| FR-2.5 | A checker does not walk trees it is not answerable for: `.venv`, `node_modules`, `vendor`, `testdata`, and `.ephemera`. A vendored suite full of unannotated tests must not fail the project that vendored it, and neither must a scratch file in the session's own working directory. | [D] |
 
 ## FR-3, Adapters
 
@@ -78,6 +78,10 @@ requirement it marks is testable.
 | FR-4.9 | Requirement ids sort numerically and tolerate a letter suffix, so `FR-7.3` precedes `FR-7.10`, and `FR-4.13a` compares against `FR-4.13` instead of raising. | [D] |
 | FR-4.10 | A `## Retired` section records requirements that have gone and what replaced them. Rows there are not live: nothing holds them to coverage, and a test citing one fails saying where it went rather than saying it does not exist. | [D] |
 | FR-4.11 | A requirement id that is both live and retired fails outright, before anything else is reported. Reuse silently rewrites what every existing reference to that id meant, and nothing about the new row looks wrong, so it is the one thing that cannot be left to a reader to notice. | [D] |
+| FR-4.12 | `--requirements` accepts a directory as well as a file, reading every `.md` beneath it, `README.md` included. A requirement written in an unexpected file fails loudly for having no test rather than being skipped for its filename, and the cost is that a preamble carries no parseable row. | [D] |
+| FR-4.13 | A requirement id declared in more than one file fails. One file per requirement makes that possible in a way a single document never did: two files each declaring the id merge into one entry with the later silently winning, and both read correctly opened alone. | [D] |
+| FR-4.14 | A `## Retired` heading's reach ends at the end of its own file. Concatenating a tree would let a document ending inside a retired section silently retire the rows of every file after it. | [D] |
+| FR-4.15 | A requirements path that exists and cannot be read reports which path and why, and exits 1. A traceback reads as a broken checker rather than as a permission the adopter can fix. | [D] |
 
 ## FR-5, The suppression register
 
@@ -90,6 +94,7 @@ recorded in `bin/suppression-register.py`.
 | FR-5.2 | The count is part of the comparison, so a second pragma added to an already-registered file is caught instead of hiding behind the first. | [A] |
 | FR-5.3 | A project with no pragmas and no register passes. A project that has pragmas and no register does not. | [A] |
 | FR-5.4 | `[?]` **The register covers every language this repository ships a jig for.** It walks `*.go` only and requires gosec or `//nolint` rule ids, so a Python `# nosec` is silenced and unseen instead of silenced and justified: a false green in a gate. Open because fixing it newly fails every adopter carrying an unregistered pragma. See `NEXT_STEPS.md` item 7. | [?] |
+| FR-5.5 | `--register` accepts a directory as well as a file, reading every `.md` beneath it. Counts add across documents, so one file per suppression totals what one document listing them all totals. | [D] |
 
 ## FR-6, Adoption
 

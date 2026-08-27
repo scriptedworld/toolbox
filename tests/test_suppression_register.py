@@ -163,3 +163,65 @@ def test_the_script_runs_as_a_script(tmp_path):
     )
     assert result.returncode == 1, result.stderr
     assert "main.go" in result.stdout
+
+
+# ---- a directory of suppressions --------------------------------------------
+
+
+DIR_ARGV = ["--register", "SUPPRESSIONS", "."]
+
+
+# COVERS: FR-5.5 | positive
+def test_a_directory_register_totals_what_one_document_totals(checker, tmp_path):
+    """One file per suppression is the same register, written differently."""
+    entries = tmp_path / "SUPPRESSIONS"
+    (entries / "a").mkdir(parents=True)
+    (entries / "b").mkdir(parents=True)
+    (entries / "a" / "one.md").write_text(
+        "# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8"
+    )
+    (entries / "b" / "two.md").write_text(
+        "# Two\n\n    two.go   //nolint:errcheck\n", encoding="utf-8"
+    )
+    for name in ("one.go", "two.go"):
+        (tmp_path / name).write_text(
+            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
+        )
+    code, out = checker(register_checker, DIR_ARGV, tmp_path)
+    assert code == 0, out
+    assert "2 pragma(s)" in out
+
+
+# COVERS: FR-5.5 | negative
+def test_a_directory_register_still_fails_an_unregistered_pragma(checker, tmp_path):
+    """Splitting the register may not soften either direction of the check."""
+    entries = tmp_path / "SUPPRESSIONS" / "a"
+    entries.mkdir(parents=True)
+    (entries / "one.md").write_text(
+        "# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8"
+    )
+    for name in ("one.go", "two.go"):
+        (tmp_path / name).write_text(
+            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
+        )
+    code, out = checker(register_checker, DIR_ARGV, tmp_path)
+    assert code == 1
+    assert "two.go" in out
+
+
+# COVERS: FR-2.3 | negative
+def test_an_unreadable_register_reports_why_and_does_not_raise(checker, tmp_path):
+    """Absent and unreadable are different, and neither is a traceback."""
+    (tmp_path / "SUPPRESSIONS").write_text(
+        "# Register\n\n    main.go   //nolint:errcheck\n", encoding="utf-8"
+    )
+    (tmp_path / "main.go").write_text(
+        "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
+    )
+    (tmp_path / "SUPPRESSIONS").chmod(0o000)
+    try:
+        code, out = checker(register_checker, ARGV, tmp_path)
+    finally:
+        (tmp_path / "SUPPRESSIONS").chmod(0o644)
+    assert code == 1
+    assert "cannot be read" in out
