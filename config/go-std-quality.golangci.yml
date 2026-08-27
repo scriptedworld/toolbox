@@ -3,9 +3,9 @@
 #
 # It is NOT discovered from the project tree. That is deliberate: a project
 # dropping its own .golangci.yml would silently relax the gates, which is the
-# drift this image exists to prevent. Consequence to be aware of — a project
-# with a legitimate need for an exception has no per-repo escape hatch, only a
-# `nolint` directive that `nolintlint` will demand it justify.
+# drift this image exists to prevent. The consequence: a project with a
+# legitimate need for an exception has no per-repo escape hatch, only a `nolint`
+# directive that `nolintlint` will demand it justify.
 #
 # Schema is golangci-lint v2 (pinned to v2.12.2 in Dockerfile.dev). Run
 # `just verify-config` after editing; v2 renamed and moved a number of keys and
@@ -172,18 +172,14 @@ linters:
   exclusions:
     generated: lax
     rules:
-      # Test files are NOT exempt. A test has to be as readable as the code it
-      # supports — it is read most often at the worst moment, when it has just
-      # failed and nobody knows why. A table that has outgrown the length limit
-      # is telling you the same thing it would tell you about production code:
-      # it is doing too much, and should be several tables.
-      #
-      # The previous exemption covered funlen, dupl, mnd, err113,
-      # gochecknoglobals and maintidx, on the reasoning that table-driven tests
-      # are legitimately long and repetitive. Removed 2026-08-16: "legitimately
-      # long" is the argument every long function makes.
+      # Test files are NOT exempt from funlen, dupl, mnd, err113,
+      # gochecknoglobals or maintidx. A test is read most often at the worst
+      # moment, when it has just failed and nobody knows why, so it has to be
+      # as readable as the code it supports. A table that has outgrown the
+      # length limit is doing too much and should be several tables;
+      # "legitimately long" is the argument every long function makes.
 
-      # Lip Gloss styles are conventionally package-level vars — that is how
+      # Lip Gloss styles are conventionally package-level vars, which is how
       # every Charm codebase is written, because a Style is built once and
       # reused per render. gochecknoglobals flags every one of them.
       #

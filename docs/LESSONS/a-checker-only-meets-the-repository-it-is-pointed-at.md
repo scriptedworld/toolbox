@@ -37,14 +37,13 @@ first thing that counts as a test.
 
 ## What to do with it
 
-Write tests, and this is the case for them in one sentence. See
-`docs/PATTERNS/testing-checkers-and-adapters.md`. The suite that now exists would
-have caught this: `test_a_lettered_requirement_id_sorts_without_raising` pins it
-as a regression, and it needs no repository to run.
+Write tests. See `docs/PATTERNS/testing-checkers-and-adapters.md`. The suite that
+now exists would have caught this:
+`test_a_lettered_requirement_id_sorts_without_raising` pins it as a regression,
+and it needs no repository to run.
 
 **Where a checker takes a convention as input, whether an id format, a marker or
-a pragma spelling, get a second real example before believing it works.** The
-formats that exist on this machine are not the formats that exist.
+a pragma spelling, get a second real example before believing it works.**
 
 ## A second instance, same day
 

@@ -24,10 +24,9 @@ on any finding at any severity. This repository produced 72 findings the moment
 it grew a test suite: **all Low, zero Medium, zero High**, and 66 of them
 `B101 assert_used`, which is what a test is made of.
 
-Those two figures are what the suite measured then, and they only go one way.
-The same command now reports 117 and 108, because every assertion written since
-is another finding. A gate whose failure count is a function of how well tested
-the code is was never measuring what it claimed to.
+The count only goes one way: the same command now reports 117 and 108, because
+every assertion written since is another finding. A gate whose failure count is a
+function of how well tested the code is was never measuring what it claimed to.
 
 ## Why it went unnoticed
 

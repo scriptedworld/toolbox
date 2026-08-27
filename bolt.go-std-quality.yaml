@@ -1,6 +1,4 @@
-# bolt.go-std-quality.yaml — the standard quality gate for a Go project.
-#
-# What a Go project is checked for, written in terms of the tools that check it.
+# bolt.go-std-quality.yaml, the standard quality gate for a Go project.
 #
 # OVERLAY THE COMMON DEFINITION UNDER THIS ONE. The checks that do not care what
 # language you wrote live there, and this file assumes they are present:
@@ -16,15 +14,13 @@
 #
 # Nothing here says what success means. A task either names a result_command,
 # whose returned envelope is the verdict entire, or it names nothing and exiting
-# 0 is its contract. The thing that knows whether a tool's output is good is the
-# thing that read the output.
+# 0 is its contract.
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
 # THE PATH RULE: a path resolves against {configdir} if it travels with this
-# file -- an adapter, a linter config. A path stays relative to the run root if
-# it belongs to the project being checked. See bolt.common-quality.yaml for the
-# measurement behind that.
+# file, being an adapter or a linter config. A path stays relative to the run
+# root if it belongs to the project being checked. See bolt.common-quality.yaml.
 
 version: 1
 
@@ -70,11 +66,10 @@ tasks:
   # golangci-lint bundles 42 analysers behind one AST parse, which is why it is
   # one task rather than forty-two.
   #
-  # The config is named explicitly, and that is not fussiness. `golangci-lint
-  # run` with no --config searches for one and, finding none, silently runs its
-  # five default linters -- a far weaker gate wearing the same name and
-  # reporting the same "0 issues". This descriptor did exactly that until it was
-  # measured. Naming the file makes its absence an error.
+  # The config is named explicitly. `golangci-lint run` with no --config
+  # searches for one and, finding none, silently runs its five default linters:
+  # a far weaker gate wearing the same name and reporting the same "0 issues".
+  # Naming the file makes its absence an error.
   #
   # The config travels with this file: the pair is the definition, and neither
   # half means anything without the other.
@@ -108,7 +103,7 @@ tasks:
   # an aggregate is exactly what lets a well-tested file carry an untested one.
   # The total is reported in statistics as context and nothing branches on it.
   #
-  # This reads the profile `tests` produced, so it has to run after it -- which
+  # This reads the profile `tests` produced, so it has to run after it, which
   # declaration order gives, tasks being run in the order written.
   #
   # Generated code is excluded because nobody writes tests for it and its size
@@ -135,7 +130,7 @@ tasks:
 
 # ---- DELIBERATELY NOT HERE ---------------------------------------------------
 #
-# `entrypoint` -- measuring the one statement in main() that `go test` can never
+# `entrypoint`, measuring the one statement in main() that `go test` can never
 # reach, by building the binary with `go build -cover`, running it once, and
 # appending the profile.
 #
@@ -146,8 +141,8 @@ tasks:
 #
 # Every Go project has a different path there and a different harmless command,
 # and bolt has no substitution that could stand in for either. Left here, it
-# fails for every adopter on the first run -- which is worse than being absent,
-# because it fails in a way that looks like the adopter's fault.
+# fails for every adopter on the first run, and it fails in a way that looks
+# like the adopter's fault.
 #
 # It belongs in the project's own overlay, where the hardcoding is correct
 # because the file is about that one project:
@@ -161,5 +156,5 @@ tasks:
 #         command: >-
 #           go build -cover -covermode=atomic -coverpkg=./... -o "$BOLT_SCRATCH/app" ./cmd/app && ...
 #
-# The underlying rule is worth stating once: a shared definition carries the
-# rule and never the subject. `entrypoint` looked like a rule and was a subject.
+# A shared definition carries the rule and never the subject. `entrypoint`
+# looked like a rule and was a subject.

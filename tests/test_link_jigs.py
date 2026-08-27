@@ -232,7 +232,7 @@ def test_a_link_left_behind_by_a_dropped_set_is_found(checker, tmp_path):
 
 # COVERS: FR-7.13 | positive
 def test_plan_says_what_would_happen_and_stops(checker, tmp_path):
-    """Enumerate, then act -- the shape `bolt plan` already has."""
+    """Enumerate, then act: the shape `bolt plan` already has."""
     root, target = toolbox(tmp_path), project(tmp_path)
     code, out = checker(link_jigs, argv(root, target, "go", "--plan"), tmp_path)
     assert code == 0

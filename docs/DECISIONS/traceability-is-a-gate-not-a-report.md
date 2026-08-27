@@ -1,6 +1,6 @@
 # An uncovered settled requirement fails the gate
 
-Decided in session. Implemented in `05f3a52`.
+Implemented in `05f3a52`.
 
 ## What was decided
 
@@ -23,7 +23,7 @@ The old exemption had been sized for open questions that cannot have a test yet,
 and it covered *every* untested requirement whatever its status. Splitting it is
 what turns a report into a gate.
 
-## What it cost, measured on the day
+## What it cost
 
 Both real adopters, same tooling:
 
@@ -32,8 +32,8 @@ Both real adopters, same tooling:
 | `bolt` | exit 1: 28 settled requirements untested, 3 open and exempt |
 | `qwark` | exit 0: 19 untested, **all** marked `[?]` |
 
-The difference is not luck. qwark had been marking its open decisions honestly
-all along, so the gate found nothing to complain about.
+qwark had been marking its open decisions honestly all along, so the gate found
+nothing to complain about.
 
 ## What was rejected, and why
 

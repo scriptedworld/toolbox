@@ -19,10 +19,7 @@ most of the tasks are meaningless without it.
 
 ---
 
-## The shape of the queue, 2026-08-21
-
-The groups were written at commissioning, from this document and from the eleven
-findings in `clank/inbox/toolbox/`.
+## The shape of the queue
 
 | Group | About |
 |---|---|
@@ -33,17 +30,16 @@ findings in `clank/inbox/toolbox/`.
 | `adoption` | What `link-jigs` still does not record, ignore, or compose |
 
 **Start with `shared-checkers`.** Those three are producing wrong answers in
-other people's repositories right now, and two of them are false greens instead
-of failures: a gate reporting safety it never established.
+other people's repositories, and two of them are false greens: a gate reporting
+safety it never established.
 
 ## Open decisions with no task
 
 Where does the schema belong? `schema/jig.schema.json` describes bolt's
 configuration format, which is bolt's to define, and it lives here only because
 this is where jigs live. If bolt ever ships its own, this one is deleted rather
-than left to drift into a second, disagreeing description of one format. There is
-nothing to do until bolt does something, and it is recorded here so it is not
-rediscovered.
+than left to drift into a second, disagreeing description of one format. Nothing
+to do until bolt does something.
 
 Should jigs be discoverable by short name? `bolt --use go-std-quality` would
 resolve against a `BOLT_TOOLBOX` environment variable instead of repeated `-c`
@@ -51,9 +47,9 @@ with full paths. Ordering has to stay explicit, because a directory glob has no
 order and order is semantics here. It needs a change to bolt, so it is not a
 toolbox task.
 
-`jigs.yaml` and `link-jigs.py` have since answered the *adjacent* question: a
-project now declares which sets it adopts, and the files arrive as symlinks. What
-is still unanswered is invoking them by name instead of by path.
+`jigs.yaml` and `link-jigs.py` answer the *adjacent* question: a project declares
+which sets it adopts, and the files arrive as symlinks. What is unanswered is
+invoking them by name instead of by path.
 
 `entrypoint` ordering may also need a change to bolt. See
 `clank/tasks/toolbox/jig-content/10-entrypoint-ordering-and-home.questions/`:
@@ -76,14 +72,8 @@ regenerating script at
 `clank/inbox/bolt/gate-runs-a-stale-fork-of-the-checkers/`, and only bolt's own
 session resolves it.
 
-## The two documents that moved, 2026-08-21
+## Stale pointers owed to two siblings
 
-`TESTING.md` is now `docs/PATTERNS/testing-checkers-and-adapters.md`. It carries a
-*"when you are working on X"* precondition, so it belongs in `docs/` proper
-instead of the always-read tier.
-
-`GLOSSARY.md` is now `silo/docs/GLOSSARY.md`. It governs `bolt`, `toolbox` and
-`anvil` alike, and a vocabulary living inside one of the three gets read by
-sessions in the other two only if they think to look. `bolt/CLAUDE.md` and
-`anvil/README.md` still point at the old location, and a finding is filed against
-each.
+The glossary lives at `silo/docs/GLOSSARY.md`, governing `bolt`, `toolbox` and
+`anvil` alike. `bolt/CLAUDE.md` and `anvil/README.md` still point at this
+repository's old copy, and a finding is filed against each.

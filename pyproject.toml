@@ -6,7 +6,7 @@
 testpaths = ["tests"]
 # bin/test-traceability.py is a checker, not a test file. It does not match
 # test_*.py because of the hyphen, and testpaths keeps collection out of bin/
-# regardless -- but saying so here means a later rename cannot quietly turn a
+# regardless, but saying so here means a later rename cannot quietly turn a
 # checker into a collected test module.
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers"
@@ -20,14 +20,14 @@ source = ["bin", "adapters"]
 show_missing = true
 exclude_also = ["if __name__ == .__main__.:"]
 
-# mypy strictness is this project's decision, not the shared jig's -- the jig
+# mypy strictness is this project's decision, not the shared jig's: the jig
 # runs a bare `mypy .` and says so in its own comment. What it needs from here
 # is only that third-party imports resolve.
 #
 # `types-PyYAML` is the better answer than ignoring yaml and is not used because
 # nothing in this repository declares runtime dependencies: bolt invokes these
 # scripts by path against whatever interpreter anvil built. Revisit when anvil
-# carries the stub packages -- see NEXT_STEPS.
+# carries the stub packages: see NEXT_STEPS.
 [[tool.mypy.overrides]]
 module = ["yaml", "pytest", "jsonschema"]
 ignore_missing_imports = true

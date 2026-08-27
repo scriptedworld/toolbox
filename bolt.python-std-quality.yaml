@@ -1,4 +1,4 @@
-# bolt.python-std-quality.yaml — the standard quality gate for a Python project.
+# bolt.python-std-quality.yaml, the standard quality gate for a Python project.
 #
 # OVERLAY THE COMMON JIG UNDER THIS ONE. Traceability, the suppression register
 # and cyclomatic complexity live there and are not restated here:
@@ -7,14 +7,13 @@
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
-# WHY SO MANY TOOLS, when ruff replaces most of a traditional stack. ruff is
-# fast and covers pyflakes, pycodestyle, pydocstyle, isort, mccabe and a large
-# slice of pylint — but "a large slice" is not all of it, and the remainder is
-# the part that needs whole-program knowledge rather than a single file. Each
-# tool below is here because it sees something the others cannot:
+# WHY SO MANY TOOLS, when ruff replaces most of a traditional stack. ruff covers
+# pyflakes, pycodestyle, pydocstyle, isort, mccabe and a large slice of pylint;
+# the remainder is the part that needs whole-program knowledge rather than a
+# single file. Each tool below sees something the others cannot:
 #
 #   ruff         style, imports, and hundreds of single-file lint rules. Fast.
-#   pylint       cross-module inference -- unused arguments, inconsistent
+#   pylint       cross-module inference: unused arguments, inconsistent
 #                returns, attributes defined outside __init__. Slow, and the
 #                slowness buys the analysis.
 #   mypy         types. Nothing else here does this at all.
@@ -22,8 +21,8 @@
 #                common jig's suppression register holds you to.
 #   vulture      dead code, by finding definitions nothing references.
 #   interrogate  docstring coverage, as a number rather than an opinion.
-#   complexipy   COGNITIVE complexity, which is not what lizard measures --
-#                see the note on that task below.
+#   complexipy   COGNITIVE complexity, which is not what lizard measures. See
+#                the note on that task below.
 #
 # THE PATH RULE: a path resolves against {configdir} if it travels with this
 # jig; it stays run-root-relative if it belongs to the project being checked.
@@ -42,9 +41,9 @@ tasks:
     requires: [ruff]
     command: "ruff format --check ."
 
-  # ruff's own exit code is the answer here -- non-zero when it finds anything
-  # -- so no adapter is needed. --output-format=concise keeps the artifact
-  # readable; the default emits several lines and a source excerpt per finding.
+  # ruff's own exit code is the answer here, non-zero when it finds anything, so
+  # no adapter is needed. --output-format=concise keeps the artifact readable;
+  # the default emits several lines and a source excerpt per finding.
   - id: lint
     description: the ruff rule set, whatever the project has enabled
     tags: [quick, ci]
@@ -65,8 +64,8 @@ tasks:
     timeout: 300s
 
   # The analysis ruff cannot do, because it needs to see more than one file at
-  # a time. Slow by nature -- it imports the code to reason about it -- which is
-  # why it carries `ci` and not `quick`.
+  # a time. Slow by nature, importing the code to reason about it, which is why
+  # it carries `ci` and not `quick`.
   - id: analyse
     description: pylint's cross-module analysis
     tags: [ci]
@@ -77,25 +76,24 @@ tasks:
   # ---- properties of the source ---------------------------------------------
 
   # COGNITIVE complexity, and it is not a duplicate of the common jig's
-  # `complexity` task. lizard measures CYCLOMATIC complexity -- how many
+  # `complexity` task. lizard measures CYCLOMATIC complexity, how many
   # independent paths run through a function. complexipy measures how hard the
   # function is for a person to hold in their head, which counts nesting depth
   # far more heavily. A flat function with a ten-branch match statement scores
   # badly on the first and fine on the second; three nested loops score the
-  # reverse. Both are worth knowing and neither substitutes for the other.
+  # reverse. Neither substitutes for the other.
   - id: cognitive
     description: no function over cognitive complexity 15
     tags: [ci]
     requires: [complexipy]
-    # The flag is --max-complexity-allowed, not --max-complexity. FACT
-    # 2026-08-20: the short form was wrong from the first draft of this jig and
-    # complexipy exits with a usage error rather than a verdict, so the task
-    # failed for every adopter in a way that looked like their code. Measured
-    # against complexipy 7.0.1.
+    # The flag is --max-complexity-allowed, not --max-complexity. Measured
+    # against complexipy 7.0.1: the short form makes it exit with a usage error
+    # rather than a verdict, so the task fails for every adopter in a way that
+    # looks like their code.
     command: "complexipy --max-complexity-allowed 15 ."
 
   # Dead code, found by looking for definitions nothing references. Vulture
-  # guesses, and says so with a confidence score -- 100 means "this name appears
+  # guesses, and says so with a confidence score: 100 means "this name appears
   # exactly once, at its definition", 60 means "this looks unused but a
   # framework or a getattr() could be reaching it".
   #
@@ -161,31 +159,26 @@ tasks:
 # needs an adapter that reads Cobertura XML and applies the threshold per file,
 # and that adapter has not been written. `tests` produces coverage.xml so the
 # data is there the moment it is. Until then coverage is measured and not
-# enforced, which is worth saying out loud rather than leaving as an apparent
-# oversight.
+# enforced.
 #
-# radon. Absent for a narrower reason than "it overlaps", which is what this
-# comment used to say and is not true. Its `cc` does duplicate lizard, and its
-# maintainability index is a composite of metrics already measured separately
-# here -- a composite being harder to act on than its parts. But `hal` and
-# `raw` report things nothing else here measures at all.
+# radon. Its `cc` duplicates lizard and its maintainability index is a composite
+# of metrics already measured separately here, a composite being harder to act
+# on than its parts. But `hal` and `raw` report things nothing else here
+# measures: radon 6.0.1 against bin/link-jigs.py gives Halstead volume 887,
+# difficulty 6.45 and effort 5722, and separates LLOC 227 from SLOC 226 with
+# comment density. lizard reports nloc and cyclomatic only, complexipy cognitive
+# only.
 #
-# FACT 2026-08-20, radon 6.0.1 against bin/link-jigs.py: `hal` gives Halstead
-# volume 887, difficulty 6.45 and effort 5722; `raw` separates LLOC 227 from
-# SLOC 226 and gives comment density. lizard reports nloc and cyclomatic only,
-# complexipy cognitive only.
-#
-# So the honest statement is that radon measures more and none of it is gated,
-# because a gate needs a threshold that fails a build and none of these has one
-# worth defending: Halstead effort has no conventional limit, and the comment
-# density floor is a number nobody here has argued for. The case for adding it
-# is a named metric with a named threshold and a reason that threshold is the
-# right one. Until someone makes that case it stays out.
+# So radon measures more and none of it is gated, because a gate needs a
+# threshold that fails a build and none of these has one worth defending:
+# Halstead effort has no conventional limit, and the comment density floor is a
+# number nobody here has argued for. The case for adding it is a named metric
+# with a named threshold and a reason that threshold is the right one.
 #
 # safety / pip-audit. Dependency vulnerability scanning is the Python
-# counterpart to the Go jig's `govulncheck`, and it belongs here — but the two
-# differ in a way that matters: govulncheck is REACHABILITY-based, reporting
-# only advisories whose affected functions the code actually calls, while the
-# Python tools report every advisory touching an installed distribution. That
-# is a much noisier signal, and choosing which tool and how to handle the noise
-# is a decision rather than a default.
+# counterpart to the Go jig's `govulncheck`, and the two differ in a way that
+# matters: govulncheck is REACHABILITY-based, reporting only advisories whose
+# affected functions the code actually calls, while the Python tools report
+# every advisory touching an installed distribution. That is a much noisier
+# signal, and choosing which tool and how to handle the noise is a decision
+# rather than a default.

@@ -63,7 +63,7 @@ def main():
         return
 
     if code not in (0, None):
-        # vet failed for a reason this adapter cannot attribute -- a package
+        # vet failed for a reason this adapter cannot attribute: a package
         # that would not build, most often. Reporting a pass would hide it.
         yaml.safe_dump(
             {

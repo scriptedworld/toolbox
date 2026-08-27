@@ -3,10 +3,10 @@
 
 A register nobody is held to becomes decoration in exactly the way a
 requirements document does, and the drift is invisible because nothing compares
-the two. On 2026-08-16 this project's register named two files that had been
-moved months of commits earlier, listed a gosec rule that does not exist, and
-missed three pragmas entirely -- while carrying a line saying it had been
-verified by hand. That is the failure this exists to make impossible.
+the two. This project's register was once found naming two files that had moved
+months of commits earlier, listing a gosec rule that does not exist, and missing
+three pragmas entirely, while carrying a line saying it had been verified by
+hand. Checking it by hand is what failed.
 
 Every `#nosec` or `//nolint` in the source must appear in the register's index,
 and every row of that index must correspond to a pragma that is really there.
@@ -97,7 +97,7 @@ def compare(
         if there == 0:
             failures.append(
                 f"{describe(key)} ×{here} is in the source and in no register entry; "
-                "ask before it stays, then register it -- or remove it"
+                "ask before it stays, then register it, or remove it"
             )
         elif here == 0:
             failures.append(

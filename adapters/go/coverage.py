@@ -37,7 +37,7 @@ def parse_profile(text):
 
     Blocks are keyed by file and span, not merely accumulated. With
     `-coverpkg=./...` every test binary instruments every package, so the same
-    block appears once per binary — nine times over, in a nine-package module.
+    block appears once per binary, nine times over in a nine-package module.
     Summing those would count each statement nine times in the denominator
     while the numerator only counted the binaries that reached it, reporting
     a well-tested file at a fraction of its real coverage.

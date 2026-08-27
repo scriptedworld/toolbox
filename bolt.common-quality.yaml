@@ -1,32 +1,22 @@
-# bolt.common-quality.yaml — the checks that do not care what language you wrote.
+# bolt.common-quality.yaml, the checks that do not care what language you wrote.
 #
 # Overlay this UNDER a language definition. Later files win and tasks merge by
 # id, so the language file can adjust anything here without restating it:
 #
 #     bolt -c bolt.common-quality.yaml -c bolt.go-std-quality.yaml
 #
-# Everything in this file holds a document against the source, or measures a
-# property of the source that has nothing to do with its language. Nothing here
-# knows what a compiler is.
-#
-# WHY THIS FILE EXISTS. These three tasks were written inside the Go definition,
-# where they worked and where they were invisible to every other language. A
-# Python project adopting the Python definition would have had to reimplement
-# traceability, the suppression register and complexity limits from scratch, and
-# would have chosen slightly different thresholds while doing it. Pulling them
-# out means a new language gets them for free and every language agrees on what
-# they mean.
+# Everything here holds a document against the source, or measures a property of
+# the source that has nothing to do with its language. Nothing here knows what a
+# compiler is. A new language gets these three for free, and every language
+# agrees on what they mean.
 #
 # THE PATH RULE, which is the thing most easily got wrong here. A path resolves
-# against {configdir} if it TRAVELS WITH THIS FILE -- a checker, an adapter, a
+# against {configdir} if it TRAVELS WITH THIS FILE: a checker, an adapter, a
 # linter's config. A path stays relative to the run root if it BELONGS TO THE
-# PROJECT BEING CHECKED -- its source, its REQUIREMENTS.md, its SUPPRESSIONS.
+# PROJECT BEING CHECKED: its source, its REQUIREMENTS.md, its SUPPRESSIONS.
 # Getting this backwards is invisible in a repository whose descriptor sits at
 # its own root, because {configdir} and the run root are then the same
-# directory, and it breaks for every adopter. Measured, not reasoned: pointing
-# --register at {configdir} made a project with one justified pragma report ten
-# disagreements against another project's register, with no state it could
-# reach that would pass.
+# directory, and it breaks for every adopter. README.md carries the measurement.
 
 version: 1
 
@@ -34,46 +24,32 @@ tasks:
   # ---- documents held against the source ------------------------------------
 
   # A requirements document nobody is held to becomes decoration: it drifts from
-  # the code, and the drift is invisible because nothing compares the two. This
-  # compares them, and fails when a test does not say what it discharges or
-  # cites a requirement that no longer exists.
+  # the code, and the drift is invisible because nothing compares the two.
   #
   # BOTH DIRECTIONS FAIL. A test that does not say what it discharges is one
-  # failure; a requirement no test cites is the other. Only the second was ever
-  # a gate here -- until 2026-08-20 an uncovered requirement was printed as
-  # context and exited 0, which made the document a report rather than a check.
+  # failure; a requirement no test cites is the other. Closed 2026-08-20, and it
+  # tightens the verdict for adopters upgrading past it.
   #
-  # THE ONE EXEMPTION is the status marker in the requirement's own row, which
-  # is the last bracketed cell: `[?]` marks an open decision that cannot have a
-  # test yet, and failing on those would make the honest state of the document
-  # unrepresentable. Everything else -- `[A]`, `[D]`, `[A/D]`, or no marker
-  # column at all -- is settled, and settled means testable. A document without
-  # markers therefore claims no exemptions, which is the right way round:
-  # exemption is claimed, never granted by omission.
-  #
-  # THIS TIGHTENS THE VERDICT FOR EXISTING ADOPTERS, deliberately and on the
-  # owner's decision rather than by drift. Measured the day it landed: bolt
-  # fails with 28 settled requirements untested and 3 open ones exempt; qwark
-  # passes, its 16 untested requirements all being marked `[?]`. An adopter
-  # facing a wall of these has two honest moves -- write the test, or mark the
-  # requirement `[?]` and say why it cannot have one yet.
+  # THE ONE EXEMPTION is the status marker in the requirement's own row, the
+  # last bracketed cell. `[?]` marks an open decision that cannot have a test
+  # yet; `[A]`, `[D]`, `[A/D]` and no marker column at all are settled, and
+  # settled means testable. README.md has the worked rows and the adopter
+  # numbers.
   #
   # The checker reads Go and Python tests. A language with a jig here but no
   # entry in its LANGUAGES table would find no tests at all, cite nothing, and
-  # fail every requirement at once -- so a new language jig adds its entry in
-  # the same change.
+  # fail every requirement at once, so a new language jig adds its entry in the
+  # same change.
   - id: traceability
     description: every test cites what it discharges, and every settled requirement has one
     tags: [quick, ci]
     requires: [python3]
     command: "python3 {configdir}/bin/test-traceability.py --requirements REQUIREMENTS.md ."
 
-  # The same argument, applied to what has been silenced. A register nobody is
-  # held to drifts, and the drift is invisible because nothing compares the two
-  # -- which is not hypothetical: a register was once found naming two files
-  # that had moved, listing a rule id that does not exist, and missing three
-  # pragmas, all while carrying a line saying it had been verified by hand.
-  # Checking it by hand is what failed.
+  # The same argument, applied to what has been silenced. A register was once
+  # found naming two files that had moved, listing a rule id that does not
+  # exist, and missing three pragmas, all while carrying a line saying it had
+  # been verified by hand. Checking it by hand is what failed.
   #
   # Both directions fail. An unregistered pragma is a suppression nobody
   # justified. A registered row with nothing behind it is a justification for
@@ -91,20 +67,20 @@ tasks:
 
   # lizard carries its thresholds as flags, so this task is self-contained: no
   # configuration file travels with it. It reads Go, Python, Rust, C, Java and
-  # more with one set of numbers, which is the whole reason it belongs here
-  # rather than being decided separately by each language.
+  # more with one set of numbers, so the threshold is agreed once here instead
+  # of separately by each language.
   #
   #   -C  cyclomatic complexity per function
   #   -a  parameter count
   #   -L  function length in lines
   #
-  # Run WITHOUT -w. Warnings-only mode suppresses lizard's summary table,
-  # and that table is where the statistics come from -- total nloc, function
-  # count, average complexity. Those are emitted whether the task passes or
-  # fails, because a number is only useful as a series.
+  # Run WITHOUT -w. Warnings-only mode suppresses lizard's summary table, and
+  # that table is where the statistics come from: total nloc, function count,
+  # average complexity. Those are emitted whether the task passes or fails,
+  # because a number is only useful as a series.
   #
-  # Test files are measured too. A test is read at the worst possible moment --
-  # when it has just failed and nobody knows why -- so it has to be at least as
+  # Test files are measured too. A test is read at the worst possible moment,
+  # when it has just failed and nobody knows why, so it has to be at least as
   # readable as the code it supports.
   #
   # A language definition that genuinely needs different numbers overrides this

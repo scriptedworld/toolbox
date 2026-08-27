@@ -1,9 +1,5 @@
 # toolbox, the project
 
-Derived from `README.md`, `silo/docs/GLOSSARY.md`,
-`docs/PATTERNS/testing-checkers-and-adapters.md`, and from measuring this
-repository and its six adopters.
-
 Read `silo/docs/GLOSSARY.md` before editing anything here. *Checker* and
 *adapter* mean specific and opposite things, and most of what follows is
 meaningless if the two are read as synonyms.
@@ -60,7 +56,7 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
       common/lizard.py         complexity, any language lizard reads
       go/{gofmt,govet,coverage}.py
     config/         tool configuration that travels with a jig
-    schema/         jig.schema.json — validates a jig against what the parser accepts
+    schema/         jig.schema.json, validating a jig against what the parser accepts
     tests/          one file per script under test; see
                     docs/PATTERNS/testing-checkers-and-adapters.md
 
@@ -75,7 +71,7 @@ instead of symlinks, so `{configdir}` is the repository root natively.
 `run_result.yaml` said `success: false`.
 
 From that artifact, **10 pass and 4 fail**. All four are open defects with a task
-each, and none is accepted as permanent state.
+each.
 
 | Task | | Why | Tracked as |
 |---|---|---|---|
@@ -108,16 +104,15 @@ Measured with `link-jigs.py --check`:
 
 `bolt` is the one that has not taken. It still carries its own pre-split copies
 at `tools/` and `adapters/`, so `link-jigs` refused four paths rather than
-overwrite them. Against the same tree, bolt's fork exits 0 where this
-repository's checker exits 1. It is filed at
-`clank/inbox/bolt/gate-runs-a-stale-fork-of-the-checkers/`, and only bolt's own
+overwrite them, and against the same tree bolt's fork exits 0 where this
+repository's checker exits 1. Filed at
+`clank/inbox/bolt/gate-runs-a-stale-fork-of-the-checkers/`; only bolt's own
 session resolves it.
 
 **Adoption records nothing about itself.** `--check` needs the set list as an
 argument, and which sets a project adopted is written nowhere, so a wrong guess
-reports drift that does not exist. That happened at commissioning, against
-`dotfiles`. It is `adoption/10`, and a precondition for `--check` ever becoming a
-gate task.
+reports drift that does not exist. It is `adoption/10`, and a precondition for
+`--check` ever becoming a gate task.
 
 ## Where the work lives
 
@@ -150,8 +145,8 @@ There is no `SUPPRESSIONS` file and no `docs/SUPPRESSIONS/`, because nothing her
 is silenced. See `docs/DECISIONS/no-suppressions-file-while-nothing-is-silenced.md`.
 The same holds for `docs/MOCKS/`.
 
-There is no project `CLAUDE.md`, and that is correct. Everything a session must
-obey here arrives from the global one.
+There is no project `CLAUDE.md`. Everything a session must obey here arrives from
+the global one.
 
 ## How it fits with the others
 

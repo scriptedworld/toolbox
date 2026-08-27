@@ -109,10 +109,9 @@ adopter is now judged against its author's answers.
 Getting this backwards is invisible in the repository that gets it wrong. A
 definition living at its own repository root has a `{configdir}` equal to its run
 root, so both spellings resolve to the same file and nothing ever shows. It
-breaks for everyone else. Measured, not reasoned: pointing `--register` at
-`{configdir}` made a project with one justified pragma report ten disagreements
-against another project's register, and no state that project could reach would
-have passed.
+breaks for everyone else. Measured: pointing `--register` at `{configdir}` made a
+project with one justified pragma report ten disagreements against another
+project's register, and no state that project could reach would have passed.
 
 ## Adopting these in a project
 
@@ -137,7 +136,7 @@ every adopter, and the failure looks like the adopter's own.
 
 It belongs in a project's own overlay, where hardcoding is right because the file
 is about that one project. The comment at the foot of `bolt.go-std-quality.yaml`
-carries a worked example. `entrypoint` looked like a rule and was a subject.
+carries a worked example.
 
 ## Traceability is a gate, not a report
 
@@ -159,8 +158,8 @@ in its row:
 `[?]` marks an open decision that cannot have a test yet, and failing on those
 would make the honest state of the document unrepresentable. Everything else is
 settled: `[A]`, `[D]`, `[A/D]`, and **no marker column at all**. A document
-without markers therefore claims no exemptions, which is the right way round,
-because exemption is claimed and never granted by omission.
+without markers claims no exemptions, since exemption is claimed and never
+granted by omission.
 
 Both real adopters, measured: `bolt` fails with 28 settled requirements untested
 and 3 open ones exempt. `qwark` passes, its 19 untested requirements all being

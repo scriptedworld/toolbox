@@ -30,8 +30,9 @@ def load(relative: str) -> ModuleType:
     """Import a checker or adapter from its path within this repository."""
     path = ROOT / relative
     # Namespaced, because `bin/test-traceability.py` would otherwise register
-    # itself as `test_traceability` and collide with the test file of that name
-    # -- which pytest reports as an import file mismatch, not as a collision.
+    # itself as `test_traceability` and collide with the test file of that
+    # name, which pytest reports as an import file mismatch rather than as a
+    # collision.
     name = "under_test." + path.stem.replace("-", "_")
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:

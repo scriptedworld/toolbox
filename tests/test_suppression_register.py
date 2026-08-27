@@ -121,16 +121,16 @@ def test_pragmas_with_no_register_at_all_fails(checker, tmp_path):
 
 # COVERS: FR-5.4 | regression
 def test_python_pragmas_are_invisible_to_this_checker(checker, tmp_path):
-    """DEFECT, pinned rather than asserted as correct. FACT 2026-08-20.
+    """DEFECT, pinned rather than asserted as correct.
 
     `suppressions` is in the language-agnostic common jig, and its register
-    format accepts `.py` paths -- but `scan_source` walks `*.go` only, and the
+    format accepts `.py` paths, but `scan_source` walks `*.go` only, and the
     rule ids must be gosec's `G\\d+` or a `//nolint:` list. A Python project's
     `# nosec`, `# noqa` and `# type: ignore` are therefore not silenced-and-
     justified; they are silenced and *unseen*, and the gate reports a pass.
 
     This test exists so the limitation is executable rather than folklore.
-    Change it when the checker learns Python -- and see NEXT_STEPS item 7,
+    Change it when the checker learns Python, and see NEXT_STEPS item 7,
     because doing so newly fails every adopter carrying an unregistered pragma.
     """
     tree = tmp_path

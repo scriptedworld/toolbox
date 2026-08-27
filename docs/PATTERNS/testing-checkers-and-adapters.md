@@ -3,8 +3,8 @@
 How this repository tests the code it ships, and why the two kinds of code get
 two different shapes of test.
 
-Read `GLOSSARY.md` if *checker*, *adapter*, *record* or *envelope* is unfamiliar.
-The split below is the glossary's split, applied to tests.
+Read `silo/docs/GLOSSARY.md` if *checker*, *adapter*, *record* or *envelope* is
+unfamiliar. The split below is the glossary's split, applied to tests.
 
 ---
 
@@ -15,9 +15,9 @@ and raised `TypeError` on any requirement id with a letter suffix. It survived
 review and a full run against `bolt`, which has no such id. It surfaced only
 because the checker happened to be pointed at `qwark`, which has eleven.
 
-That is the case for tests here in one sentence: **a checker is only exercised by
-the repository it happens to be pointed at**, and the shared ones are pointed at
-repositories their author has never seen. A gate that crashes is at least loud.
+**A checker is only exercised by the repository it happens to be pointed at**,
+and the shared ones are pointed at repositories their author has never seen. A
+gate that crashes is at least loud.
 The worse failure is a gate that passes when it should not, and nothing in this
 repository would currently notice either kind.
 
@@ -52,12 +52,11 @@ a package. Tests load them by path instead, which `tests/conftest.py` does once:
 traceability = load("bin/test-traceability.py")
 ```
 
-**Tests call `main()` in-process, never through a subprocess.** Two reasons, and
-the second is the one that matters. A subprocess is slower and its assertion
-failures are opaque. More importantly, `coverage run -m pytest` sees nothing a
-subprocess does, so a suite built on subprocesses would report the checkers at 0%
-covered while testing them thoroughly. In-process is what makes the `tests`
-task's coverage figure mean anything.
+**Tests call `main()` in-process, never through a subprocess.** A subprocess is
+slower and its assertion failures are opaque. More importantly, `coverage run -m
+pytest` sees nothing a subprocess does, so a suite built on subprocesses would
+report the checkers at 0% covered while testing them thoroughly. In-process is
+what makes the `tests` task's coverage figure mean anything.
 
 The cost is that `main()` has to be reached with `argv`, the working directory
 and stdin all set. `conftest.py` provides one fixture per contract so that no

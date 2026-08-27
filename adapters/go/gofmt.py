@@ -2,7 +2,7 @@
 """Adapter for `gofmt -l`: one reason per unformatted file.
 
 gofmt lists unformatted files on stdout and exits 0 whether or not it found
-any -- the exit status answers "did gofmt run", never "is this formatted".
+any: the exit status answers "did gofmt run", never "is this formatted".
 That is the whole reason an adapter exists.
 
 Reads an execution record on stdin, writes an envelope on stdout.

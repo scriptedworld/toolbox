@@ -1,13 +1,11 @@
 # This repository carries no SUPPRESSIONS file
 
-Decided in session, and reaffirmed at commissioning.
-
 ## What was decided
 
 There is no `SUPPRESSIONS` file and no `docs/SUPPRESSIONS/` directory here. That
 is the honest state and not a gap.
 
-Re-measured at commissioning:
+Measured:
 
     $ python3 bin/suppression-register.py --register SUPPRESSIONS .
     no suppression pragmas anywhere, and none registered
@@ -46,5 +44,4 @@ and no question was needed.
 ## Revisit if
 
 A pragma is genuinely required. That is my answer to give, before anything is
-written. At that point the register replaces this file, and this decision becomes
-the record of how long the repository went without one.
+written, and at that point the register replaces this file.

@@ -3,7 +3,7 @@
 
 A definition is only half of what a project needs. It names checkers, adapters
 and tool configuration that live beside it in this repository, and
-`{configdir}` resolves those against the definition's own directory -- so a
+`{configdir}` resolves those against the definition's own directory, so a
 definition reached through a symlink resolves them back through that same link,
 and every path the project runs stays inside the project. Adoption is therefore
 a set of symlinks, and this makes them.
@@ -18,7 +18,7 @@ NOTHING IS EVER OVERWRITTEN. A real file where a link belongs is reported and
 left alone. It is usually a vendored copy that predates adoption, and deleting
 someone's file is their decision rather than this script's.
 
-The default is to enumerate, ask, then act -- the shape `bolt plan` and `bolt`
+The default is to enumerate, ask, then act: the shape `bolt plan` and `bolt`
 already have. A run with no terminal to ask at refuses rather than assuming
 consent; `--yes` is how a script says it meant to.
 """
@@ -175,7 +175,7 @@ def orphans(
     """Links into this repository that no longer belong to the adopted sets.
 
     Only the directories the manifest itself uses are scanned, across every set
-    rather than only the chosen ones -- so dropping `go` still finds the
+    rather than only the chosen ones, so dropping `go` still finds the
     `config/` link it left behind, and a project's own tree is never walked.
     """
     every = {entry for one in sets.values() for entry in one.get("files") or []}
@@ -301,7 +301,7 @@ def act(args: argparse.Namespace, links: list[Link]) -> int | None:
 
 
 def main() -> int:
-    """Enumerate, then -- unless asked only to look -- link."""
+    """Enumerate, then (unless asked only to look) link."""
     args = parse_args()
     problem = validate(args)
     if problem:

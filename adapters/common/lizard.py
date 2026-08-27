@@ -10,13 +10,13 @@ Two jobs, and they are independent.
 
 REASONS. lizard exits 1 when anything is over threshold, which says only that
 something is wrong. The reasons below say which function, in which file, on
-which line, and by which measure -- which is what survives a merge across many
+which line, and by which measure, which is what survives a merge across many
 invocations and what a person needs in order to act.
 
 STATISTICS. lizard's summary table carries the numbers worth watching over time:
 how many functions there are, how complex the average one is, how much code
 there is at all. They are emitted WHETHER OR NOT the task passes, because a
-number is only useful as a series -- "average CCN 3.5" means nothing once and
+number is only useful as a series: "average CCN 3.5" means nothing once and
 means a great deal against last month's 2.9. A gate that reports nothing when it
 passes cannot show a trend.
 
@@ -116,7 +116,7 @@ def statistics_from(text):
 
 
 def emit(success, reasons=None, statistics=None):
-    """Write one envelope. Optional blocks are omitted rather than empty --
+    """Write one envelope. Optional blocks are omitted rather than empty:
     `reasons: []` on a pass reads as "checked and found nothing to say", which
     is not the same as having nothing to report."""
     envelope: dict[str, object] = {"success": success}
