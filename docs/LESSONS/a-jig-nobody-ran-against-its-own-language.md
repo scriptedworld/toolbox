@@ -41,7 +41,7 @@ is shaped, tests included. Tests are where `assert` lives and where `B101` bites
 ## What to do with it
 
 **A new language jig is not finished until it has been run against a real project
-in that language and its `run_result.yaml` read.** Not a fixture, and not this
+in that language and its `result.yaml` read.** Not a fixture, and not this
 repository's own checkers reached through symlinks: a project of that language
 with tests in it.
 
