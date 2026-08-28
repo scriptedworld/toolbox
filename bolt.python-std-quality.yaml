@@ -83,6 +83,12 @@ definitions:
   # mypy takes a regex, which the others cannot be composed into.
   excluded_regex: (^|/)(\.ephemera|bin|adapters)/
 
+  # Where the suite lives. Named separately because it is not excluded from
+  # everything, only from the rules that a test is entitled to break. A project
+  # whose tests are elsewhere overrides this; naming a directory that does not
+  # exist is safe, and bandit exits 0 on one.
+  test_dir: tests
+
 tasks:
   # ---- shape ----------------------------------------------------------------
 
@@ -154,13 +160,35 @@ tasks:
 
   # ---- security -------------------------------------------------------------
 
-  # -r recurses; -q suppresses the per-file progress that would otherwise
-  # dominate the artifact. Findings are suppressed in source with #nosec, and
-  # the common jig's `suppressions` task is what stops those accumulating
-  # unexamined.
+  # TWO TASKS BECAUSE A TEST IS ENTITLED TO ONE RULE AND NOT THE REST.
+  #
+  # `B101 assert_used` fires on every `assert`, and an assert in a test IS the
+  # test. Measured 2026-08-27: 175 of toolbox's 181 findings and 44 of wrench's
+  # 48 were that rule in the suite, so one task over the whole tree fails any
+  # project with tests, on its own design rather than on a defect.
+  #
+  # WHAT WAS REFUSED, so it is not proposed again. `--severity-level medium`
+  # reports nothing at all, because every bandit finding here is Low including
+  # the subprocess ones, and it leaves a task that cannot fail. `-x ./tests`
+  # stops reading the test tree entirely. `--skip B101` everywhere gives up the
+  # production case, which is the one that matters: an assert is stripped under
+  # `python -O` and takes any security logic inside it away.
+  #
+  # So the tree without its tests is held to everything, and the tests are held
+  # to everything except the rule they exist to break. The limit is on the
+  # command line rather than in a config file, so a reader of the jig sees it.
   - name: security
-    description: no bandit finding without a registered suppression
-    command: bandit -r -q -x ./{excluded_one},./{excluded_two},./{excluded_three} .
+    description: no bandit finding outside the test tree
+    command: >-
+      bandit -r -q
+      -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir} .
+
+  # B101 only. A test that shells out still answers for B404 and B603, because
+  # deliberate subprocess use is a design choice worth seeing rather than noise
+  # to silence.
+  - name: security-tests
+    description: the test tree, held to everything except assert_used
+    command: bandit -r -q --skip B101 {test_dir}
 
   # ---- tests ----------------------------------------------------------------
 
