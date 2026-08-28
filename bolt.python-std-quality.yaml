@@ -118,6 +118,15 @@ tasks:
 
   # --output-format=concise keeps the artifact readable; the default emits
   # several lines and a source excerpt per finding.
+  #
+  # DECLARE known-first-party IN YOUR pyproject.toml. Measured in skid with
+  # ruff 0.16.3, 2026-08-28: passing --extend-exclude on the command line at all
+  # flips ruff's first-party inference, even when it names exactly what
+  # pyproject already names, and three I001 import-order findings appear that a
+  # bare `ruff check .` does not report. The findings were CORRECT and the bare
+  # run was the wrong one, so this is not a defect to fix here; but a gate and a
+  # local run disagreeing about the same tree is worth one line of config to
+  # remove. Inference is what varies. A declaration does not.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
     command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
