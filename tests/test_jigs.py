@@ -30,9 +30,17 @@ DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 SCHEMA_DIR = ROOT / "schema"
 SCHEMA = SCHEMA_DIR / "jig.schema.json"
 
-# The schemas bolt actually enforces, through wrench. This repository keeps a
-# copy so its own tests need nothing outside the tree, and the copy is only
-# worth having while it agrees with the original.
+# Wrench's schemas, which are the source bolt is built from. This repository
+# keeps a copy so its own tests need nothing outside the tree, and the copy is
+# only worth having while it agrees with the original.
+#
+# THIS IS THE SOURCE AND NOT WHAT ANY BINARY ENFORCES. Bolt embeds these at
+# build time, so a binary enforces whatever wrench said when it was last built.
+# Measured: `allow-empty` is in the binary built at 20:11 and absent from the
+# one built at 13:11, seven hours after the field existed. Agreeing with this
+# source is therefore necessary and not sufficient, and a jig using a field
+# younger than an adopter's binary is accepted and silently ignored, because the
+# schema does not refuse unknown keys.
 ENFORCED_DIR = Path.home() / ".projects" / "wrench" / "schemas"
 
 # A jig schema refers to the definitions schema by its published URI, which
@@ -83,7 +91,7 @@ def test_every_jig_validates_against_the_schema():
 
 
 # COVERS: FR-1.2 | regression
-def test_the_local_schemas_still_match_the_ones_bolt_enforces():
+def test_the_local_schemas_still_match_wrenchs_source():
     """Drift here is silent and it hid a dead gate in eight repositories.
 
     The local copy required `id` and `command` long after wrench's required
