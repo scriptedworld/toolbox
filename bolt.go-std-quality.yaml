@@ -82,13 +82,29 @@ tasks:
   # The profile is declared evidence. A test run that reports success without
   # producing one did not measure anything, and declaring the file is what turns
   # that from a silent gap into a failure.
+  #
+  # COVERAGE IS JUDGED HERE RATHER THAN BY A TASK OF ITS OWN, because a task's
+  # work directory is its own and the profile is written into this one. A
+  # separate task would have no path to it that did not hardcode a sibling's
+  # directory. The adapter therefore answers for both: it reads the captured
+  # exit status, so a suite that failed while leaving a profile behind is a
+  # failure, and it judges the profile PER FILE at 80% of statements. No
+  # aggregate threshold, because an aggregate is what lets a well-tested file
+  # carry an untested one; the total is reported in statistics as context and
+  # nothing branches on it.
+  #
+  # -coverpkg=./... means a file's number counts statements reached by any
+  # package's tests, not only its own. That is what should be gated, since it
+  # measures what is actually exercised, but it is not unit-test coverage and
+  # should not be read as one.
   - name: tests
-    description: race, shuffle and a coverage profile
+    description: race, shuffle, and coverage judged per file
     command: >-
       CGO_ENABLED=1 go test -race -shuffle=on -covermode=atomic
       -coverpkg=./... -coverprofile={work_dir}/coverage.out ./...
     evidence:
       - coverage.out
+    adapter: adapters/go/coverage.py
 
   # ---- supply chain ---------------------------------------------------------
 
@@ -98,22 +114,19 @@ tasks:
     description: vulnerabilities in code that is actually reached
     command: govulncheck ./...
 
-# ---- COVERAGE IS MISSING FROM THIS FILE, DELIBERATELY -------------------------
+# ---- WHY THERE IS NO BRANCH COVERAGE HERE -------------------------------------
 #
-# It was `test -f coverage.out` with an adapter reading the profile, and the
-# adapter is what judged it. `adapters/go/coverage.py` still speaks the retired
-# contract, so the task would run its command alone, and `test -f` exits 0
-# whenever the file exists. Every adopter would see a coverage gate that passes
-# without reading a single percentage.
+# Go does not measure it. `-covermode` offers set, count and atomic, and all
+# three count statements. The unit is the basic block, so an `if` body is its
+# own block and this is stronger than line coverage, but the false path of an
+# `if` with no `else` is not something the toolchain can see.
 #
-# A task that always passes is worse than an absent one: it reports a guarantee
-# it never established. So it is out until the adapter is ported, which is
-# `clank/tasks/toolbox/port-the-jigs/10`, and it comes back with its rules
-# unchanged: judged PER FILE at 80% of statements, no aggregate threshold,
-# because an aggregate is what lets a well-tested file carry an untested one.
-# Generated code is excluded.
+# Tools that advertise branch coverage for Go fill the branch fields of a
+# Cobertura document from statement data. Gating on those numbers would report a
+# guarantee nothing established, which is the same failure as gating on
+# `test -f`. So the gate measures statements and says so.
 #
-# ---- ENTRYPOINT IS NOT HERE EITHER, FOR A DIFFERENT REASON -------------------
+# ---- ENTRYPOINT IS NOT HERE, FOR A DIFFERENT REASON --------------------------
 #
 # It measures the one statement in main() that `go test` can never reach, by
 # building with `go build -cover`, running the binary once and appending the

@@ -66,13 +66,28 @@ OURS = ("bin/", "adapters/", "config/", "schema/")
 
 
 def commands(jig: dict) -> list[tuple[str, str]]:
-    """Every command line a jig declares, paired with the task name."""
+    """Every SHELL LINE a jig declares, paired with the task name.
+
+    `adapter` is deliberately not one. It names an adapter rather than invoking
+    it, and bolt resolves that name against the config directory itself, so a
+    `{config_dir}/` prefix there would resolve twice and the adapter would not
+    be found. `adapter-command` is a shell line and is included.
+    """
     found = []
     for task in jig.get("tasks") or []:
-        for key in ("command", "adapter", "adapter-command"):
+        for key in ("command", "adapter-command"):
             if task.get(key):
                 found.append((task["name"], task[key]))
     return found
+
+
+def adapters(jig: dict) -> list[tuple[str, str]]:
+    """Every adapter a jig names, paired with the task name."""
+    return [
+        (task["name"], task["adapter"])
+        for task in jig.get("tasks") or []
+        if task.get("adapter")
+    ]
 
 
 # COVERS: FR-1.2 | edge
@@ -127,6 +142,29 @@ def test_every_path_into_this_repository_is_config_dir_rooted():
                     assert prefix.endswith("{config_dir}/"), (
                         f"{path.name}:{task} reaches {directory} without {{config_dir}}: {command!r}"
                     )
+
+
+# COVERS: FR-1.4 | regression
+def test_an_adapter_is_named_and_not_config_dir_prefixed():
+    """bolt resolves an adapter's name against the config directory itself.
+
+    `adapter: adapters/go/coverage.py` is the correct form. Writing
+    `{config_dir}/adapters/...` resolves twice and bolt reports the adapter as
+    not being in the config directory. The path rule still holds; it is
+    satisfied by the resolution rather than by the spelling, which is why this
+    is pinned rather than left to be rediscovered by whoever `test_every_path`
+    sends looking.
+    """
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for task, adapter in adapters(jig):
+            assert "{config_dir}" not in adapter, (
+                f"{path.name}:{task} prefixes its adapter with {{config_dir}}, "
+                f"which resolves twice: {adapter!r}"
+            )
+            assert not adapter.startswith("/"), (
+                f"{path.name}:{task} names an absolute adapter path: {adapter!r}"
+            )
 
 
 # COVERS: FR-1.5 | negative

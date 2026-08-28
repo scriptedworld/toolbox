@@ -10,16 +10,21 @@ at count 0, so this sees it as 0% rather than not seeing it. That matters: a
 per-file gate that read only the files it found would silently pass exactly
 the files nobody had written a test for.
 
-    coverage.py --min 80 [--exclude REGEX]...
+    coverage.py --min 80 [--exclude REGEX]... --evidence PROFILE --work-dir DIR
 
-Reads an execution record on stdin, writes an envelope on stdout. Runs in the
-same directory the task ran in, so the profile resolves the way it was written.
+Bolt names the profile with `--evidence`, once per file the task declared, so
+the adapter never guesses a path or discovers whatever a tool left behind. It
+writes its envelope to `output.yaml` in `--work-dir`; stdout is captured beside
+the command's as `adapter-output` and is for reading a broken adapter, not for
+returning a verdict. No stdin is supplied.
+
+Bolt checks declared evidence exists before invoking an adapter, so a missing
+profile arrives as its `evidence-missing` verdict and never reaches here.
 """
 
 import argparse
-import os
+import pathlib
 import re
-import sys
 
 import yaml
 
@@ -85,31 +90,82 @@ def shorten(files):
     return {"/".join(p[common:]): v for p, v in zip(parts, files.values())}
 
 
+def test_failure(path):
+    """Return a reason when the test run itself failed, else None.
+
+    Bolt captures the status to a file rather than passing it, so an absent or
+    unreadable one is treated as a failure: an adapter that assumed success
+    where it could not tell would report the guarantee it exists to check.
+    """
+    if not path:
+        return None
+    try:
+        status = int(pathlib.Path(path).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return {
+            "kind": "exit-status-unreadable",
+            "checker": CHECKER,
+            "message": f"no readable exit status at {path}",
+            "detail": "the test run's status could not be read, so whether the "
+            "suite passed is unknown and coverage alone cannot stand for it",
+        }
+    if status == 0:
+        return None
+    return {
+        "kind": "tests-failed",
+        "checker": CHECKER,
+        "message": f"the test run exited {status}",
+        "detail": "coverage is reported for context; a profile from a failed "
+        "run measures what ran, not what passed",
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--min", type=float, default=80.0)
-    ap.add_argument("--profile", default="coverage.out")
     ap.add_argument("--exclude", action="append", default=[])
+    ap.add_argument("--evidence", action="append", default=[])
+    ap.add_argument("--work-dir", dest="work_dir", required=True)
+    # Bolt passes these to every adapter. Declared so an unexpected one is an
+    # error here rather than a silently ignored argument.
+    ap.add_argument("--stdout")
+    ap.add_argument("--stderr")
+    ap.add_argument("--exitcode")
+    ap.add_argument("--project-root", dest="project_root")
+    ap.add_argument("--base-dir", dest="base_dir")
     args = ap.parse_args()
 
-    yaml.safe_load(sys.stdin.read())  # the record; drained so nothing blocks
+    work_dir = pathlib.Path(args.work_dir)
 
-    if not os.path.exists(args.profile):
+    # This adapter is attached to the task that RUNS the tests, because that is
+    # the task whose work directory holds the profile. So it answers for the
+    # test run as well: a suite that failed while leaving a profile behind would
+    # otherwise be reported as a pass with a coverage number beside it.
+    failed = test_failure(args.exitcode)
+
+    if not args.evidence:
         emit(
+            work_dir,
             False,
             [
                 {
+                    "kind": "evidence-missing",
                     "checker": CHECKER,
-                    "message": f"no coverage profile at {args.profile}",
-                    "detail": "the tests task declares it as an output; a run that "
-                    "reports success without one measured nothing",
+                    "message": "no --evidence profile was named",
+                    "detail": "the tests task must declare its coverage profile as "
+                    "evidence; without one this adapter measured nothing",
                 }
             ],
         )
         return
 
-    with open(args.profile, encoding="utf-8") as fh:
-        files = shorten(parse_profile(fh.read()))
+    # Every profile named is merged. parse_profile keys blocks by file and span
+    # and takes the highest count, which is what merging means, so several
+    # profiles compose the same way one profile's repeated blocks do.
+    text = "\n".join(
+        pathlib.Path(path).read_text(encoding="utf-8") for path in args.evidence
+    )
+    files = shorten(parse_profile(text))
 
     excluded = [re.compile(p) for p in args.exclude]
     reasons = []
@@ -125,9 +181,10 @@ def main():
         if pct + 1e-9 < args.min:
             reasons.append(
                 {
+                    "kind": "coverage-below-minimum",
                     "checker": CHECKER,
                     "file": name,
-                    "message": f"{pct:.1f}% of statements covered, below {args.min:.0f}%",
+                    "message": f"{name}: {pct:.1f}% of statements covered, below {args.min:.0f}%",
                     "covered": covered,
                     "statements": total,
                     "percent": round(pct, 1),
@@ -135,25 +192,42 @@ def main():
             )
 
     total_pct = 100.0 * covered_total / statements_total if statements_total else 0.0
+    # Counted before the test failure joins them, so the statistic keeps meaning
+    # the number of files under the minimum rather than the number of reasons.
+    below_minimum = len(reasons)
+    if failed:
+        reasons.insert(0, failed)
     emit(
+        work_dir,
         not reasons,
         reasons,
         {
             "files": len(files),
-            "below_minimum": len(reasons),
+            "below_minimum": below_minimum,
             # Context only. Nothing branches on the total, by design.
             "total_percent": round(total_pct, 1),
         },
     )
 
 
-def emit(success, reasons, statistics=None):
+def emit(work_dir, success, reasons, statistics=None):
+    """Write the envelope bolt reads, in the shape wrench validates.
+
+    The name never varies and the directory is the one bolt gave, so nothing
+    here decides where a verdict goes. Writing to stdout would be captured as
+    `adapter-output` and read by nobody.
+
+    `envelope.schema.json` requires `message` and `kind` on every reason, and
+    puts statistics under `metadata`. The reason shape is open past those two,
+    so the per-file counts travel with the verdict.
+    """
     doc = {"success": success}
     if reasons:
         doc["reasons"] = reasons
     if statistics:
-        doc["statistics"] = statistics
-    yaml.safe_dump(doc, sys.stdout, sort_keys=False)
+        doc["metadata"] = {"statistics": statistics}
+    with open(work_dir / "output.yaml", "w", encoding="utf-8") as fh:
+        yaml.safe_dump(doc, fh, sort_keys=False)
 
 
 if __name__ == "__main__":

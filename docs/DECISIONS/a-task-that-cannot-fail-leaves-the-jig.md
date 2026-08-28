@@ -2,15 +2,22 @@
 
 Decided 2026-08-27, during the port to the format the rebuilt bolt reads.
 
-## What was decided
+## The decision, and it has since been discharged
 
-`coverage` is **not** in `bolt.go-std-quality.yaml`. It was, and it comes back
-when `adapters/go/coverage.py` speaks the current contract, which is
-`clank/tasks/toolbox/port-the-jigs/10`.
+`coverage` was removed from `bolt.go-std-quality.yaml` rather than shipped with
+its adapter unported. **It is back**, at `adapters/go/coverage.py` speaking the
+current contract, and its rules are unchanged: judged per file at 80% of
+statements, no aggregate threshold.
 
-Its rules are unchanged and are recorded there so they are not re-litigated:
-judged per file at 80% of statements, no aggregate threshold, generated code
-excluded.
+It returned attached to the `tests` task rather than as a task of its own,
+because a task's work directory is its own and the profile is written into
+`tests`'s. A separate task had no path to it that did not hardcode a sibling's
+directory. So the adapter answers for both, reading the captured exit status so
+a suite that failed while leaving a profile behind is a failure and not a pass
+with a coverage number beside it.
+
+The decision below is kept because the reasoning is what generalises, and three
+adapters are still unported under exactly the same question.
 
 ## Why it left rather than shipping
 
@@ -35,11 +42,22 @@ and reports a guarantee it never established. The second is worse in exactly the
 way this repository exists to prevent, and it is worse in four repositories at
 once.
 
-## What it costs, stated so it is not discovered
+## What it cost while it was out
 
-Four Go adopters have no coverage gate until `port-the-jigs/10` lands. That is a
-real regression from the retired bolt, which ran the adapter. It is written into
-the jig, into `START_HERE.md` and here.
+Four Go adopters had no coverage gate. That was a real regression from the
+retired bolt, which ran the adapter, and it was written into the jig, into
+`START_HERE.md` and here rather than left to be discovered. It lasted one day.
+
+## Where the same question is still open
+
+`adapters/go/gofmt.py`, `adapters/go/govet.py` and `adapters/common/lizard.py`
+all still read an execution record on stdin, write their envelope to stdout, and
+emit no `kind`. Measured 2026-08-28. **None is wired to a jig**, so none can
+fail; wiring one before porting it produces `adapter-wrote-invalid`.
+
+`format` gates on `test -z "$(gofmt -l .)"` and needs no adapter to be correct,
+so porting `gofmt.py` buys back the per-file reasons rather than the verdict.
+`vet` and `complexity` are the same shape. That is `port-the-jigs/10`.
 
 ## The same test applied elsewhere in the same change
 
