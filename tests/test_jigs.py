@@ -219,6 +219,35 @@ def test_a_task_that_excludes_anything_names_every_slot():
             )
 
 
+# COVERS: FR-1.6 | regression
+def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
+    """An adopter's `.venv` is thousands of files nobody here wrote.
+
+    Measured 2026-08-28 against a violation planted in a fake `.venv`: five of
+    the eight tasks read it. `analyse` does not fail on it, it HANGS, because
+    skid's virtualenv holds 11,795 files and the task was killed at 900s having
+    produced nothing.
+
+    TWO SPELLINGS SATISFY THIS AND THEY ARE NOT INTERCHANGEABLE. Naming
+    `.venv` works for a tool with no opinion of its own. `--extend-exclude` is
+    for ruff, whose `--exclude` REPLACES a built-in default list that already
+    held `.venv`, so scoping the task with the obvious flag silently un-excluded
+    what ruff was already excluding. A future edit swapping one spelling for the
+    other reintroduces the defect in whichever direction it moves, which is why
+    this asserts on the command rather than on a run.
+    """
+    for path in JIGS:
+        if "python" not in path.name:
+            continue
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for task, command in excluding_tasks(jig):
+            covered = ".venv" in command or "--extend-exclude" in command
+            assert covered, (
+                f"{path.name}:{task} excludes directories but would still walk "
+                f"a virtualenv; name .venv or use --extend-exclude: {command!r}"
+            )
+
+
 # COVERS: FR-1.6 | property
 def test_every_slot_a_jig_uses_has_a_default_and_an_override():
     """A slot with no default fails only in the adopter that first runs it.

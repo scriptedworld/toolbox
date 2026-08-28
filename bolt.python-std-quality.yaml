@@ -95,15 +95,32 @@ tasks:
   # --check reports without writing. A formatter that reformats during a check
   # is a check with a side effect, and in CI it produces a green run against a
   # tree nobody has seen.
+  #
+  # --extend-exclude AND NOT --exclude, IN BOTH RUFF TASKS. `--exclude` REPLACES
+  # ruff's built-in default list, which already holds `.venv`, `venv`, `build`,
+  # `dist` and the caches. So naming three directories to scope the task also
+  # un-excluded every directory ruff was excluding for us, and the flag added
+  # to narrow the run widened it. `--extend-exclude` adds to the defaults.
+  #
+  # Measured 2026-08-28 against a planted violation in a fake `.venv`:
+  #
+  #   ruff check, no flag              venv 0 findings, own 2
+  #   ruff check --exclude <three>     venv 2 findings, own 2
+  #   ruff check --extend-exclude      venv 0 findings, own 2
+  #
+  # ruff format behaves identically. This is the reverse of the failure in
+  # docs/LESSONS/a-tool-can-accept-an-exclusion-and-exclude-nothing.md: there a
+  # flag was accepted and excluded nothing, here it was accepted, excluded what
+  # it named, and silently stopped excluding everything else.
   - name: format
     description: every file is ruff-format clean
-    command: ruff format --check --exclude {excluded_one},{excluded_two},{excluded_three} .
+    command: ruff format --check --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # --output-format=concise keeps the artifact readable; the default emits
   # several lines and a source excerpt per finding.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
-    command: ruff check --output-format=concise --exclude {excluded_one},{excluded_two},{excluded_three} .
+    command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # ---- correctness ----------------------------------------------------------
 
@@ -117,9 +134,29 @@ tasks:
 
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
+  #
+  # `.venv,venv` IS NAMED HERE AND NOT LEFT TO A SLOT, because a virtualenv is
+  # never an adopter's own source in any project, so it is a constant of the
+  # language rather than a value an adopter chooses. The three slots stay for
+  # what an adopter does choose.
+  #
+  # WITHOUT IT THIS TASK DOES NOT FAIL, IT HANGS, which is the expensive part.
+  # Measured in skid 2026-08-28: `.venv` held 11,795 files including torch and
+  # transformers, the task was killed at 900s having produced no result.yaml,
+  # and a gate that never returns reads as a slow gate, so the natural response
+  # is to wait longer.
+  #
+  # --ignore AND NOT --ignore-paths. skid measured three spellings of
+  # --ignore-paths, two flags and a pyproject table, and all three still walked
+  # the virtualenv. --ignore takes basenames and works:
+  #
+  #   pylint --ignore <three>              venv 5 findings, own 5
+  #   pylint --ignore <three>,.venv,venv   venv 0 findings, own 5
   - name: analyse
     description: pylint's cross-module analysis
-    command: pylint --recursive=y --ignore {excluded_one},{excluded_two},{excluded_three} .
+    command: >-
+      pylint --recursive=y
+      --ignore {excluded_one},{excluded_two},{excluded_three},.venv,venv .
 
   # ---- properties of the source ---------------------------------------------
 
@@ -145,9 +182,15 @@ tasks:
   #
   # --min-confidence 80 is the useful line. Below it the false positives from
   # dynamic dispatch, plugin registration and test fixtures swamp the signal.
+  #
+  # `.venv,venv` for the same reason as `analyse`. Vulture reads a virtualenv
+  # as ordinary source and reports every unreferenced definition in it, which
+  # in a dependency tree is most of them.
   - name: dead-code
     description: no unreferenced definition above 80% confidence
-    command: vulture --min-confidence 80 --exclude {excluded_one},{excluded_two},{excluded_three} .
+    command: >-
+      vulture --min-confidence 80
+      --exclude {excluded_one},{excluded_two},{excluded_three},.venv,venv .
 
   # --fail-under 80 matches the statement threshold the Go jig uses, on the same
   # reasoning: a percentage nobody is held to drifts down. -e excludes the
@@ -177,11 +220,16 @@ tasks:
   # So the tree without its tests is held to everything, and the tests are held
   # to everything except the rule they exist to break. The limit is on the
   # command line rather than in a config file, so a reader of the jig sees it.
+  #
+  # `./.venv,./venv` for the same reason as `analyse`, and it matters more here
+  # than anywhere: bandit over a dependency tree reports other people's
+  # security findings as this project's, and there is nothing an adopter can do
+  # about any of them.
   - name: security
     description: no bandit finding outside the test tree
     command: >-
       bandit -r -q
-      -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir} .
+      -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir},./.venv,./venv .
 
   # B101 only. A test that shells out still answers for B404 and B603, because
   # deliberate subprocess use is a design choice worth seeing rather than noise
