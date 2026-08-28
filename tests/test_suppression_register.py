@@ -225,3 +225,57 @@ def test_an_unreadable_register_reports_why_and_does_not_raise(checker, tmp_path
         (tmp_path / "SUPPRESSIONS").chmod(0o644)
     assert code == 1
     assert "cannot be read" in out
+
+
+# ---- trees this project is not answerable for -------------------------------
+
+
+# COVERS: FR-2.5 | regression
+def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
+    """The register walked every `*.go` with no skip list at all.
+
+    A vendored dependency carrying `//nolint` failed the project that vendored
+    it, for somebody else's decision, and a scratch file in `.ephemera` did the
+    same for a file that is no part of the project. Both directions of the
+    check were wrong about whose code they were reading.
+    """
+    for relative in ("vendor/dep/v.go", ".ephemera/probe/p.go"):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
+        )
+    code, out = checker(register_checker, ARGV, tmp_path)
+    assert code == 0, out
+    assert "no suppression pragmas anywhere" in out
+
+
+# COVERS: FR-2.5 | positive
+def test_the_projects_own_pragma_is_still_found(checker, tmp_path):
+    """The skip list may not swallow the thing the check exists for."""
+    vendored = tmp_path / "vendor" / "v.go"
+    vendored.parent.mkdir(parents=True)
+    vendored.write_text(
+        "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
+    )
+    (tmp_path / "main.go").write_text(
+        "package main\n\nfunc h() { i() } //nolint:errcheck\n", encoding="utf-8"
+    )
+    code, out = checker(register_checker, ARGV, tmp_path)
+    assert code == 1
+    assert "1 pragma(s)" in out
+
+
+# COVERS: FR-2.5 | property
+def test_both_checkers_skip_the_same_directories():
+    """Two copies of one list, in scripts that share no module.
+
+    They are loaded by path, so neither can import the other, and the list in
+    each is free to drift from the other. A tree skipped by one checker and
+    walked by the other is the kind of difference nobody looks for.
+    """
+    traceability = load("bin/test-traceability.py")
+    assert register_checker.SKIP_DIRS == traceability.SKIP_DIRS, (
+        "bin/suppression-register.py and bin/test-traceability.py disagree about "
+        f"which trees to skip: {register_checker.SKIP_DIRS ^ traceability.SKIP_DIRS}"
+    )

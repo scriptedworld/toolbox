@@ -56,10 +56,35 @@ def rules_of(found: re.Match) -> frozenset[str]:
     return frozenset(part for part in re.split(r"[\s,]+", text.strip()) if part)
 
 
+# Directories holding code this project is not answerable for. A vendored
+# dependency carrying `//nolint` would otherwise be reported as an unregistered
+# pragma, failing the project that vendored it for somebody else's decision, and
+# a scratch file in `.ephemera` would do the same for a file that is not part of
+# the project at all.
+#
+# KEPT IN STEP WITH `test-traceability.py` BY A TEST, because the two checkers
+# are loaded by path and share no module, so this list is a second copy free to
+# drift from the first.
+SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".ephemera",
+        ".venv",
+        "venv",
+        "node_modules",
+        "vendor",
+        "__pycache__",
+        "testdata",
+        "site-packages",
+        "target",
+    }
+)
+
+
 def scan_source(root: Path) -> Counter[tuple[str, frozenset[str]]]:
     """Count the pragmas in the tree, by file and by the rules they silence."""
     found: Counter[tuple[str, frozenset[str]]] = Counter()
-    for path in sorted(root.rglob("*.go")):
+    for path in sorted(p for p in root.rglob("*.go") if SKIP_DIRS.isdisjoint(p.parts)):
         text = path.read_text(encoding="utf-8")
         for match in SOURCE_PRAGMA.finditer(text):
             key = path.relative_to(root).as_posix()
