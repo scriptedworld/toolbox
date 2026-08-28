@@ -64,6 +64,11 @@
         },
         "matching": { "$ref": "#/$defs/pathList" },
         "excluding": { "$ref": "#/$defs/pathList" },
+        "allow-empty": {
+          "type": "boolean",
+          "default": false,
+          "description": "An empty selection is an acceptable result for this task. Left out, a filtered selection matching nothing is a failure, because a pattern that matches nothing is far more often a stale path than a deliberate one. Only meaningful where a selection exists, so a command naming neither {each_path} nor {all_paths} may not declare it."
+        },
         "adapter": {
           "type": "string",
           "minLength": 1,
@@ -118,6 +123,18 @@
             "output-dir": false,
             "definitions": false,
             "needs-repository-root": false
+          },
+          "if": {
+            "required": ["allow-empty"],
+            "properties": { "allow-empty": { "const": true } }
+          },
+          "then": {
+            "properties": {
+              "command": {
+                "pattern": "\\{each_path\\}|\\{all_paths\\}",
+                "$comment": "allow-empty says an empty SELECTION is acceptable, so a command with no selection to be empty cannot declare it. Refused here rather than left to the runner, because it is a property of the jig as written."
+              }
+            }
           }
         },
         {
@@ -130,6 +147,7 @@
             "evidence": false,
             "matching": false,
             "excluding": false,
+            "allow-empty": false,
             "needs-repository-root": false
           }
         }
