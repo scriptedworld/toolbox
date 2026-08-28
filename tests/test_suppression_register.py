@@ -39,7 +39,25 @@ def test_no_pragmas_and_no_register_passes(checker, tmp_path):
     tree = project(tmp_path, None, main_go="package main\n\nfunc main() {}\n")
     code, out = checker(register_checker, ARGV, tree)
     assert code == 0
-    assert "no suppression pragmas anywhere" in out
+    assert "no suppression pragmas in 1 source file(s)" in out
+
+
+# COVERS: FR-5.2 | regression
+def test_a_run_that_read_no_source_at_all_fails(checker, tmp_path):
+    """Read nothing and found nothing are different results.
+
+    The old output said `no suppression pragmas anywhere` for both, and a
+    reader takes that as a clean bill. Measured 2026-08-28 over skid, which is
+    Python: the Go-only scan printed exactly that and exited 0 while five
+    registered pragmas sat in the tree.
+
+    It fails rather than warns on this repository's own decision that a task
+    which cannot fail is worse than an absent one.
+    """
+    (tmp_path / "README.md").write_text("Prose, and no source.\n", encoding="utf-8")
+    code, out = checker(register_checker, ARGV, tmp_path)
+    assert code == 1
+    assert "read nothing" in out
 
 
 # COVERS: FR-5.1 | positive
@@ -120,18 +138,18 @@ def test_pragmas_with_no_register_at_all_fails(checker, tmp_path):
 
 
 # COVERS: FR-5.4 | regression
-def test_python_pragmas_are_invisible_to_this_checker(checker, tmp_path):
-    """DEFECT, pinned rather than asserted as correct.
+def test_a_python_pragma_is_seen_and_must_be_registered(checker, tmp_path):
+    """The defect this test used to PIN is fixed, so the test is inverted.
 
-    `suppressions` is in the language-agnostic common jig, and its register
-    format accepts `.py` paths, but `scan_source` walks `*.go` only, and the
-    rule ids must be gosec's `G\\d+` or a `//nolint:` list. A Python project's
-    `# nosec`, `# noqa` and `# type: ignore` are therefore not silenced-and-
-    justified; they are silenced and *unseen*, and the gate reports a pass.
+    It read `*.go` only, so a Python project's `# nosec` was not
+    silenced-and-justified but silenced and unseen, and the gate reported a
+    pass. Measured 2026-08-28 in skid: `no suppression pragmas anywhere`, exit
+    0, over a tree holding five registered ones.
 
-    This test exists so the limitation is executable rather than folklore.
-    Change it when the checker learns Python, and see NEXT_STEPS item 7,
-    because doing so newly fails every adopter carrying an unregistered pragma.
+    Kept as a regression rather than deleted, because the failure it describes
+    was invisible from toolbox: this repository is Go-free and Python-only, so
+    the checker's own suite could pass forever while the shipped behaviour was
+    wrong in every adopter.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -140,8 +158,71 @@ def test_python_pragmas_are_invisible_to_this_checker(checker, tmp_path):
         encoding="utf-8",
     )
     code, out = checker(register_checker, ARGV, tree)
-    assert code == 0
-    assert "no suppression pragmas anywhere" in out
+    assert code == 1
+    assert "app.py" in out
+    assert "B602" in out
+
+
+# COVERS: FR-5.2 | regression
+def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
+    """Selecting by extension is the fault this checker sat beside.
+
+    `silo/bin/board` and `dotfiles/home/.git-hooks/no-ai-attribution` are shell
+    with no suffix, and the second is 170 lines enforcing a hard rule. A
+    shebang says what a file is where an extension does not.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    hook = tree / "hook"
+    hook.write_text(
+        "#!/usr/bin/env bash\n# shellcheck disable=SC2086\necho $x\n", encoding="utf-8"
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 1
+    assert "hook" in out
+    assert "SC2086" in out
+
+
+# COVERS: FR-5.2 | regression
+def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
+    """A pragma IS a comment, so no rule about strings separates the two.
+
+    Position does: a real pragma opens its comment, and prose mentions the
+    spelling mid-sentence. Without this the checker fails on its own source and
+    its own fixtures, which is the tool being graded as a use of itself.
+    Measured 2026-08-28: 28 findings in toolbox, none of them a suppression.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    (tree / "doc.py").write_text(
+        '"""A rule covering `# nosec` and not `# noqa` is arbitrary."""\n\n'
+        "# The spellings are `# nosec`, `# noqa` and `# type: ignore`.\n"
+        'PATTERN = "# nosec"\n',
+        encoding="utf-8",
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 0, out
+    assert "no suppression pragmas" in out
+
+
+# COVERS: FR-5.2 | regression
+def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
+    """`// #nosec G304 -- reason` is how palette-print writes every one of its.
+
+    Requiring the pragma AT the comment opener missed three genuine Go
+    suppressions there, which is the false-negative direction: it turns a gate
+    green. The pragma may open the comment or be the first thing inside it.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    (tree / "load.go").write_text(
+        "package main\n\n// #nosec G304 -- the path is the user's own\n"
+        "func read() { open(p) }\n",
+        encoding="utf-8",
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 1
+    assert "G304" in out
 
 
 # ---- the wiring -------------------------------------------------------------
@@ -245,9 +326,15 @@ def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
         path.write_text(
             "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
         )
+    # The project's own file, carrying nothing. Without it this tree holds no
+    # readable source at all, and the run fails for having read nothing rather
+    # than passing for having correctly skipped what it should skip. The two
+    # outcomes agreed before that distinction existed, which is why the fixture
+    # did not need it.
+    (tmp_path / "main.go").write_text("package main\n\nfunc main() {}\n", "utf-8")
     code, out = checker(register_checker, ARGV, tmp_path)
     assert code == 0, out
-    assert "no suppression pragmas anywhere" in out
+    assert "no suppression pragmas in 1 source file(s)" in out
 
 
 # COVERS: FR-2.5 | positive
