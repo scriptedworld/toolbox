@@ -42,7 +42,9 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
 ## Layout
 
     bolt.common-quality.yaml     language-agnostic: traceability, suppressions, complexity
-    bolt.go-std-quality.yaml     Go: format, tidy, build, vet, lint, tests, coverage, vuln
+    bolt.go-std-quality.yaml     Go: format, tidy, build, vet, lint, tests, vuln.
+                                 No coverage; see docs/DECISIONS/
+                                 a-task-that-cannot-fail-leaves-the-jig.md
     bolt.python-std-quality.yaml Python: format, lint, types, analyse, cognitive,
                                  dead-code, docstrings, security, tests
     bolt.secrets.yaml            gitleaks, detect-secrets
@@ -56,7 +58,8 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
       common/lizard.py         complexity, any language lizard reads
       go/{gofmt,govet,coverage}.py
     config/         tool configuration that travels with a jig
-    schema/         jig.schema.json, validating a jig against what the parser accepts
+    schema/         jig.schema.json and definitions.schema.json, copied from
+                    wrench and held equal to it by a test
     tests/          one file per script under test; see
                     docs/PATTERNS/testing-checkers-and-adapters.md
 
@@ -91,13 +94,19 @@ each.
 | Task | | Why | Tracked as |
 |---|---|---|---|
 | `traceability` | ✗ 1 | 12 settled requirements have no test | `own-gate/10` |
-| `analyse` | ✗ 16 | pylint 9.83/10, nine missing docstrings across six files | `own-gate/20` |
-| `security` | ✗ 1 | bandit, 117 findings, **all Low**, 108 of them `assert` in a test | `own-gate/20` |
+| `analyse` | ✗ 16 | pylint 9.91/10, two missing docstrings in `adapters/common/lizard.py` | `own-gate/20` |
+| `security` | ✗ 1 | bandit, 181 findings, **all Low**, 175 of them `assert` in a test, every one in `tests/` | `own-gate/20` |
 | `detect-secrets` | ✗ 2 | crashes where no baseline exists | `own-gate/30` |
 
-`complexity` genuinely measures this repository's own code: the artifact lists
-functions from `adapters/common/` and `tests/`. **It does not do that for the
-other five adopters**, which is `shared-checkers/30`.
+`complexity` measures each adopter's own code now, which it did not before. The
+shared jigs exclude the directories adoption fills, so an adopter is no longer
+graded on the checkers it adopted. Measured 2026-08-27: `agent-support` reads 1
+function of its own where it read 23 of toolbox's, and `dotfiles`, `qwark` and
+`palette-print` read 428, 485 and 232.
+
+What remains of `shared-checkers/30` is narrower than it was: `complexity` still
+misses a script with no file extension, which is how `silo`'s only source went
+unread.
 
 Of the 12 uncovered requirements, three are testable and are `own-gate/10`. The
 other nine are design properties held by review, and *"a jig carries the rule and
@@ -105,6 +114,17 @@ never the subject"* is not an assertion. They are settled and not open, so they
 carry no `[?]`.
 
 ## Its adopters
+
+**Eight repositories run `common-quality` from this file**, measured 2026-08-27
+by resolving each `bolt.common-quality.yaml`: `agent-support`, `anvil`,
+`dotfiles`, `infobot`, `palette-print`, `qwark`, `silo`, and toolbox itself,
+which holds the real file. `skid` runs the Python jig too.
+
+All eight were refused outright until `51b8d59` ported the jigs to the format
+the rebuilt bolt reads. `qwark` passes; the other seven fail on findings of
+their own.
+
+The table below is from commissioning and counts links rather than adopters.
 
 Measured with `link-jigs.py --check`:
 
@@ -134,14 +154,14 @@ reports drift that does not exist. It is `adoption/10`, and a precondition for
 `~/.projects/clank/tasks/toolbox/` holds the tasks, one directory each, grouped.
 The listing is the index, and `NEXT_STEPS.md` holds only what has no task yet.
 
-`~/.projects/clank/inbox/toolbox/` holds eleven findings filed by other sessions,
-every one of them now tracked by a task. An inbox entry is an observation, and
+`~/.projects/clank/inbox/toolbox/` holds 14 findings filed by other sessions.
+Not all are tracked by a task. An inbox entry is an observation, and
 **only this project's session resolves one**.
 
 ## Documents
 
 - `README.md`, for a human arriving cold.
-- `REQUIREMENTS.md`, 48 requirements, deliberately still one file.
+- `REQUIREMENTS.md`, 59 requirements, still one file and no longer forced to be.
 - `NEXT_STEPS.md`, the open decisions and the handoff owed to bolt, never the
   queue.
 - `docs/PATTERNS/testing-checkers-and-adapters.md`, how the two contracts are
@@ -149,12 +169,17 @@ every one of them now tracked by a task. An inbox entry is an observation, and
 - `docs/DECISIONS/` and `docs/LESSONS/`, one file per decision and per lesson.
 - `silo/docs/GLOSSARY.md`, the vocabulary, shared with bolt and anvil.
 
-**`REQUIREMENTS.md` and `SUPPRESSIONS` stay single files, and the reason is
-mechanical.** `test-traceability.py --requirements <DIR>` dies with an unhandled
-`IsADirectoryError`, because the guard is `.exists()` and a directory satisfies
-it. This repository is gated on that checker, so splitting its own requirements
-would turn a check that runs into one that crashes. The split waits on
-`shared-checkers/10`.
+**`REQUIREMENTS.md` and `SUPPRESSIONS` are still single files and are no longer
+forced to be.** They stayed single because `--requirements <DIR>` died with an
+unhandled `IsADirectoryError`, the guard being `.exists()`, which a directory
+satisfies. `shared-checkers/10` closed that at `cc65aad`: both checkers read a
+directory or a file, and `.retired` names a retired requirement without needing
+a `## Retired` heading.
+
+Measured 2026-08-27, splitting a copy of this repository's own document: 59 rows
+into 59 files, both forms reporting `43 of 55 requirements covered; 4 open and
+exempt`, byte-identical output. So the split is available and is a separate
+change nobody has made. `skid` and `agent-support` have made theirs.
 
 There is no `SUPPRESSIONS` file and no `docs/SUPPRESSIONS/`, because nothing here
 is silenced. See `docs/DECISIONS/no-suppressions-file-while-nothing-is-silenced.md`.

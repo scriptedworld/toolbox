@@ -35,11 +35,51 @@ safety it never established.
 
 ## Open decisions with no task
 
-Where does the schema belong? `schema/jig.schema.json` describes bolt's
+**Where do the two migration scripts live?** `.ephemera/split-probe.py` splits a
+`REQUIREMENTS.md` into a directory and proves the verdict does not move;
+`.ephemera/retired-parity.sh` checks that every retired id survived such a split,
+and names the dropped one. Both are gitignored, so they exist in one working
+tree and no clone.
+
+The asymmetry is the whole argument, and bolt put it best: each repository
+migrates once, so the tools run eight times and then never, which argues for
+scratch. But the cost of not having them once is a silently reusable requirement
+id, which is unbounded and undetectable. The eighth person should not be
+rewriting either from memory.
+
+Both were cited as evidence from places that outlive a scratch directory, a
+`.complete` task and a message to another session. Those citations are removed
+as an interim rather than the question pre-empted.
+
+**Where does the schema belong?** `schema/jig.schema.json` describes bolt's
 configuration format, which is bolt's to define, and it lives here only because
-this is where jigs live. If bolt ever ships its own, this one is deleted rather
-than left to drift into a second, disagreeing description of one format. Nothing
-to do until bolt does something.
+this is where jigs live. `NFR-6` carries the rule: if bolt ships its own, this
+one is deleted rather than left to drift into a second, disagreeing description.
+
+**The condition has now been met and the question is live.** wrench ships the
+authoritative schemas and bolt validates against them. The local copies are
+synced and a test fails on divergence, which fired in anger on 2026-08-27 when
+wrench added `allow-empty`. That makes the drift detectable rather than
+answering `NFR-6`.
+
+One thing to know before answering it: **bolt embeds the schemas at build time**,
+so a binary enforces whatever wrench said when it was last built. Measured
+2026-08-27, `allow-empty` was in the bolt built at 20:11 and absent from the one
+built at 13:11. Agreeing with wrench's source is necessary and not sufficient.
+
+**Maintainability index: drop it from the standard, or declare it Python-only?**
+Only Python has a tool, `radon mi`. Go, Rust and TypeScript have no maintained
+one, and the multi-language candidate `rust-code-analysis` was last updated
+2023-01-13. From
+`clank/inbox/toolbox/quality-jigs-with-comparable-analysis-per-language/`, which
+argues a language that cannot meet the standard should declare it rather than
+omit it silently.
+
+**Promoting bolt's Rust jig to a shared `bolt.rust-quality.yaml`.** Routed
+2026-08-27 through silo from wrench as our user's choice, so it is second-hand
+here; confirm the shape with our user rather than with either of them. It needs
+bolt to agree and toolbox to take it. `bolt/bolt.rust-quality.yaml` exists and
+is used, and its header already records which shared jig each task belongs to.
 
 Should jigs be discoverable by short name? `bolt --use go-std-quality` would
 resolve against a `BOLT_TOOLBOX` environment variable instead of repeated `-c`
