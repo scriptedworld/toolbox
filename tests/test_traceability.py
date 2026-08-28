@@ -652,6 +652,63 @@ def test_a_retired_filename_retires_without_any_heading(checker, tmp_path):
     assert "FR-3.3" not in out
 
 
+# COVERS: FR-4.17 | regression
+def test_a_heading_does_not_un_retire_the_rows_below_it(checker, tmp_path):
+    """`whatever it contains` includes its headings.
+
+    A `## Superseded by` section is the likeliest thing to write in a retired
+    requirement's file, and it is the record the name-based form exists to
+    make room for. Letting it turn retirement off puts back the switch the
+    filename removed, in the one document guaranteed to want a heading.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-2.2-gone.retired": (
+                requirements(("FR-2.2", "[A]"))
+                + "\n## Superseded by\n\n"
+                + requirements(("FR-3.3", "[A]"))
+            ),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-3.3" not in out
+
+
+# COVERS: FR-4.17 | regression
+def test_an_id_below_a_heading_in_a_retired_file_cannot_be_reused(checker, tmp_path):
+    """An escaped row is still caught, and named as the wrong thing.
+
+    Measured against the unfixed checker: redeclaring the id does not pass,
+    because the escaped row is live in two documents and the duplicate check
+    fires. It reports `declared more than once` rather than `both live and
+    retired`, and the obvious remedy for a duplicate is to delete one of the
+    two rows, which here would delete the retirement record itself.
+
+    So the assertion is on which check fires, not on whether one does.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-9.9-gone.retired": (
+                requirements(("FR-8.8", "[A]"))
+                + "\n## Superseded by\n\n"
+                + requirements(("FR-9.9", "[A]"))
+            ),
+            "core/FR-9.9-again.md": requirements(("FR-9.9", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-9.9" in out
+
+
 # COVERS: FR-4.18 | regression
 def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     """A `.retired` document the glob misses holds no id at all.

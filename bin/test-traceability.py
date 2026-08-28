@@ -277,15 +277,24 @@ def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     The heading's reach stops at the end of the file either way. Concatenating
     a tree would let a document ending inside `## Retired` carry that state
     into the next one and silently retire its rows.
+
+    A NAME-RETIRED DOCUMENT IGNORES ITS HEADINGS ENTIRELY. Otherwise the first
+    heading that is not `## Retired` turns retirement back off for the rest of
+    the file, and `## Superseded by` is the likeliest thing to write in a
+    retired requirement's file. The failure points the wrong way: the id leaves
+    the retired set, so declaring it again passes the never-reuse check and the
+    gate demands a test for a requirement that has gone.
     """
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
-    in_retired = is_retired_by_name(path)
+    retired_by_name = is_retired_by_name(path)
+    in_retired = retired_by_name
 
     for line in path.read_text(encoding="utf-8").splitlines():
         heading = HEADING.match(line)
         if heading:
-            in_retired = bool(RETIRED_HEADING.match(heading.group("title")))
+            if not retired_by_name:
+                in_retired = bool(RETIRED_HEADING.match(heading.group("title")))
             continue
 
         row = REQ_ROW.match(line)
