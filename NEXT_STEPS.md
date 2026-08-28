@@ -23,15 +23,20 @@ most of the tasks are meaningless without it.
 
 | Group | About |
 |---|---|
-| `shared-checkers` | The three defects that affect **every adopter**: the directory crash, the Go-only pragma scan, and `complexity` measuring the wrong files |
+| `shared-checkers` | The defects that affect **every adopter**. The directory crash closed at `cc65aad` and the Go-only pragma scan at `6ac4304`; what remains is `complexity` measuring the wrong files |
 | `own-gate` | Getting toolbox's own four failing tasks green |
 | `python-jig` | Adapters, and coverage enforced per file |
 | `new-languages` | Rust, Ruby, shell, and the `LANGUAGES` change Rust forces |
 | `adoption` | What `link-jigs` still does not record, ignore, or compose |
 
-**Start with `shared-checkers`.** Those three are producing wrong answers in
-other people's repositories, and two of them are false greens: a gate reporting
-safety it never established.
+**`shared-checkers` was the place to start and two of its three are closed.**
+Both were false greens, a gate reporting safety it never established. The
+directory crash went at `cc65aad`; the Go-only pragma scan went at `6ac4304`,
+which also made a run that reads no source fail rather than pass. What remains
+is `complexity` measuring the wrong files, and that one is now understood as an
+instance of a wider fault rather than a defect of its own: see
+`clank/tasks/toolbox/jig-validation/20`, where the selection rule being invisible
+and narrower than the question is stated generally with five instances.
 
 ## Open decisions with no task
 
