@@ -84,6 +84,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -254,6 +255,34 @@ def requirement_documents(path: Path) -> list[Path]:
     return [path]
 
 
+def rows_in_retirement_order(
+    path: Path,
+) -> Iterator[tuple[bool, str, list[str]]]:
+    """Every requirement row in one document, each with whether it has gone.
+
+    Walking and classifying are separated because the retirement state is a
+    property of position in the file, and the caller only wants the answer. It
+    yields `(gone, id, cells)` so `read_document` sorts rows into two
+    dictionaries and does no parsing of its own.
+    """
+    retired_by_name = is_retired_by_name(path)
+    in_retired = retired_by_name
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        heading = HEADING.match(line)
+        if heading and not retired_by_name:
+            in_retired = bool(RETIRED_HEADING.match(heading.group("title")))
+            continue
+        if heading:
+            continue
+
+        row = REQ_ROW.match(line)
+        if not row:
+            continue
+        cells = [cell.strip() for cell in CELL.split(row.group("rest"))]
+        yield in_retired, row.group(1), [cell for cell in cells if cell]
+
+
 def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     """Collect what one document declares live, and what it has retired.
 
@@ -287,26 +316,12 @@ def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     """
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
-    retired_by_name = is_retired_by_name(path)
-    in_retired = retired_by_name
 
-    for line in path.read_text(encoding="utf-8").splitlines():
-        heading = HEADING.match(line)
-        if heading:
-            if not retired_by_name:
-                in_retired = bool(RETIRED_HEADING.match(heading.group("title")))
+    for gone, req_id, trailing in rows_in_retirement_order(path):
+        if gone:
+            retired[req_id] = " ".join(trailing)
             continue
-
-        row = REQ_ROW.match(line)
-        if not row:
-            continue
-        cells = [cell.strip() for cell in CELL.split(row.group("rest"))]
-        trailing = [cell for cell in cells if cell]
-
-        if in_retired:
-            retired[row.group(1)] = " ".join(trailing)
-            continue
-        declared[row.group(1)] = (
+        declared[req_id] = (
             trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
         )
     return declared, retired
