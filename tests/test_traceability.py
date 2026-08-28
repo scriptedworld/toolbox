@@ -629,6 +629,70 @@ def test_a_retired_heading_does_not_reach_the_next_file(checker, tmp_path):
     assert "declares no requirements" not in out
 
 
+# COVERS: FR-4.17 | positive
+def test_a_retired_filename_retires_without_any_heading(checker, tmp_path):
+    """The name carries it, so there is no switch for a row to fall under.
+
+    Both spellings, and nested, because a group nests and the retired row
+    stays in the group it always sat in.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "api/v1/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+            "api/v1/FR-2.2-gone.retired": requirements(("FR-2.2", "[A]")),
+            "api/FR-3.3-gone.retired.md": requirements(("FR-3.3", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-2.2" not in out
+    assert "FR-3.3" not in out
+
+
+# COVERS: FR-4.18 | regression
+def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
+    """A `.retired` document the glob misses holds no id at all.
+
+    Nothing then stops the id being declared again, and every existing
+    reference to it silently means something else. That is the failure the
+    never-reuse rule exists to prevent, arrived at by an invisible file.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-gone.retired": requirements(("FR-1.1", "[A]")),
+            "core/FR-1.1-again.md": requirements(("FR-1.1", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-1.1" in out
+
+
+# COVERS: FR-4.17 | edge
+def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
+    """Retired is not deleted. A test citing one is told, not left guessing."""
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-9.9-gone.retired": requirements(("FR-9.9", "[A]")),
+        },
+        {
+            "test_it.py": "# COVERS: FR-1.1, FR-9.9 | positive\ndef test_t():\n    pass\n"
+        },
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "FR-9.9" in out
+    assert "retired" in out
+
+
 # COVERS: FR-2.4 | edge
 def test_a_directory_holding_no_rows_refuses_to_pass(checker, tmp_path):
     """An empty tree is zero requirements agreeing with zero citations."""

@@ -9,8 +9,19 @@ compares them, in both directions.
 Every test function must carry, somewhere in the comment block immediately
 above it, a line of the form:
 
-    // COVERS: FR-4.4 | property          (Go)
+    // COVERS: FR-4.4 | property          (Go, and Rust)
     # COVERS: FR-1.4, FR-1.5 | negative   (Python)
+
+RUST WRITES IT `//` AND NEVER `///`. A doc comment is not a comment for this
+purpose: the pattern wants whitespace or `COVERS:` where the third slash sits,
+so `/// COVERS: FR-1.1 | positive` matches nothing and the test then reads as
+carrying no annotation at all. That is invisible rather than loud, which is the
+kind of wrong that survives, and `///` is exactly what a doc-comment reflex
+reaches for. A `///` line between the marker and the `fn` is fine and expected;
+it is stepped over.
+
+A Rust test is found by its `#[test]` attribute rather than by its name, so a
+helper function in a test file is not a test and is not asked to cite anything.
 
 The requirement ids must exist in REQUIREMENTS.md, so a renamed or deleted
 requirement fails here rather than leaving a test citing something gone. The
@@ -19,7 +30,20 @@ whose only tests are `positive` has had its happy path checked and nothing
 else, and that is worth being able to see.
 
 RETIRED REQUIREMENTS. A requirement can be retired or superseded, and its id
-is never reused. A `## Retired` section records each one and what replaced it:
+is never reused. Two things record it, and a split repository should use the
+first.
+
+THE FILENAME, which is the better one:
+
+    docs/REQUIREMENTS/<level>/<group>/FR-7.4-a-thing.retired
+
+Everything in a `.retired` document has gone, whatever is inside it. There is
+no heading, no switch and no below-this-line, so retiring a requirement and
+appending one are different gestures rather than the same gesture in different
+positions. It shows in `ls` without opening anything, and it leaves the row in
+the group it always sat in. `.retired.md` is read the same way.
+
+A `## Retired` HEADING, for a document that has nowhere else to put the record:
 
     ## Retired
 
@@ -27,10 +51,15 @@ is never reused. A `## Retired` section records each one and what replaced it:
     |---|---|---|
     | FR-13.1 | 2026-08-26 | FR-6.2b, the adapter writes into the work directory |
 
-Rows there are not live: they are not held to coverage, and a test citing one
-fails saying where it went rather than saying it does not exist. An id that is
-both live and retired fails outright, because reuse silently rewrites what
-every existing reference to that id meant.
+This is a state switch that runs to the end of the file, so a row appended
+after it is retired by where it landed. Put such a section last and a careless
+append is a silent retirement. It stays because a single `REQUIREMENTS.md` has
+no alternative, and it goes when every repository has split.
+
+Rows retired either way are not live: they are not held to coverage, and a test
+citing one fails saying where it went rather than saying it does not exist. An
+id that is both live and retired fails outright, because reuse silently
+rewrites what every existing reference to that id meant.
 
 THE OTHER DIRECTION. A requirement no test cites is a requirement nothing
 holds the code to, and it fails: unless the document marks it open.
@@ -185,6 +214,22 @@ def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     return (prefix, tuple(segments))
 
 
+def is_retired_by_name(path: Path) -> bool:
+    """A document whose name retires everything in it.
+
+    Retirement carried by the filename has no heading, no switch and no
+    below-this-line, so the row that retires something and the row appended
+    after it cannot be confused. It is also visible in `ls` without opening
+    anything, and it leaves a retired requirement in the group it always sat
+    in, so a reader meeting an old id finds it where it was.
+
+    Both spellings count. `.retired` is the shape a split repository uses, and
+    `.retired.md` is the one that stays readable to anything expecting
+    markdown.
+    """
+    return path.name.endswith((".retired", ".retired.md"))
+
+
 def requirement_documents(path: Path) -> list[Path]:
     """The documents a `--requirements` path names: one file, or a tree of them.
 
@@ -195,11 +240,17 @@ def requirement_documents(path: Path) -> list[Path]:
     sitting in the wrong file. The cost is that a preamble must not contain a
     parseable requirement row.
 
+    `.retired` is read as well as `.md`. A retired document that the checker
+    cannot see is the quiet way to lose the never-reuse guarantee: nothing
+    holds the id, so declaring it again passes, and every existing reference to
+    it silently means something else.
+
     Sorted, so a duplicate id names the same two files whatever order the
     filesystem hands them back in.
     """
     if path.is_dir():
-        return sorted(p for p in path.rglob("*.md") if p.is_file())
+        found = (p for pattern in ("*.md", "*.retired") for p in path.rglob(pattern))
+        return sorted({p for p in found if p.is_file()})
     return [path]
 
 
@@ -209,17 +260,27 @@ def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     A live requirement carries its status marker: the row's last bracketed
     cell, or the empty string where the document has no marker column.
 
-    A row under a `## Retired` heading has gone. It is kept out of the live set
-    so nothing holds it to coverage, and remembered so a test still citing it
-    can be told where it went.
+    A requirement has gone if the document's NAME retires it, or if the row
+    sits under a `## Retired` heading. Either way it is kept out of the live
+    set so nothing holds it to coverage, and remembered so a test still citing
+    it can be told where it went.
 
-    The heading's reach stops at the end of the file. Concatenating a tree
-    would let a document ending inside `## Retired` carry that state into the
-    next one and silently retire its rows.
+    THE TWO ARE NOT EQUAL AND THE NAME IS THE BETTER ONE. A heading is a state
+    switch that runs to the end of the file, so appending a requirement and
+    retiring one are the same gesture, and only their position in the file
+    tells them apart. A name has no below-this-line to fall under.
+
+    The heading survives because a single `REQUIREMENTS.md` has nowhere else to
+    put the record, and seven of the eight repositories here are still one
+    file. It goes when they have all split, not before.
+
+    The heading's reach stops at the end of the file either way. Concatenating
+    a tree would let a document ending inside `## Retired` carry that state
+    into the next one and silently retire its rows.
     """
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
-    in_retired = False
+    in_retired = is_retired_by_name(path)
 
     for line in path.read_text(encoding="utf-8").splitlines():
         heading = HEADING.match(line)
