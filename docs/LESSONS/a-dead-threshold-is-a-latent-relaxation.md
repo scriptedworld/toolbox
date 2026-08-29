@@ -65,8 +65,21 @@ exactly as mypy and ruff read theirs. The jig defers to the adopter for two of
 its three configurable tools and not the third, and the third is where the
 collision happened.
 
-**The docstring question this file came from is retired rather than answered.**
-`analyse` runs pylint's entire default rule set because nothing configures it,
-which is what made `missing-function-docstring` a second docstring gate at all.
-See `clank/tasks/toolbox/own-gate/20`. Do not go looking for a threshold to
-pick.
+**The docstring question this file came from was half a symptom and half a real
+gap**, and calling it simply "retired" was wrong.
+
+The symptom: `analyse` runs pylint's entire default rule set because nothing
+configures it, which is the only reason `missing-function-docstring` was a
+second docstring gate. Configuring the split the jig's header already describes
+removes the collision without anyone choosing a percentage.
+
+The real gap, given as direction 2026-08-28: **the test side is held to a more
+relaxed standard than the source side, and nothing in the jig expresses that.**
+Tests must carry their `COVERS` metadata, which
+`bin/test-traceability.py` already enforces on `def test_*` alone, so fixtures
+and helpers are exempt by construction. Docstrings are wanted on tests and are
+not the same requirement they are on source.
+
+So there is still no percentage to pick, and there IS a distinction to encode.
+Per-file ignores for the test tree are the shape that says it.
+`clank/tasks/toolbox/own-gate/20` carries it.
