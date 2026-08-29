@@ -359,11 +359,40 @@ def is_open(marker: str) -> bool:
 
 
 def comment_block_above(lines: list[str], index: int, language: Language) -> list[str]:
-    """Return the comment lines above index, stepping over decorators."""
+    """Return the comment lines above index, stepping over decorators.
+
+    A DECORATOR MAY WRAP, AND ITS CONTINUATION LINE STARTS WITH NEITHER `@` NOR
+    `#`. Walking up from the declaration, a line inside an unclosed bracket
+    group belongs to whatever opened it, so it is stepped over whatever it
+    begins with. Without that the block stops at the wrapped line and a test
+    carrying a correct mark reports as citing nothing.
+
+    Filed by agent-support 2026-08-28 after three of seven tests read as uncited
+    on first run, all three from wrapped decorators. **`ruff format` wraps a long
+    decorator by default**, so this is reachable by formatting a conformant file
+    rather than by writing one oddly, and the failure points the wrong way: the
+    report blames the test for citing nothing while the mark sits right there,
+    so the author's fix is to add what is already present.
+
+    Balance is counted from the declaration upwards, so a line only counts as a
+    continuation while something below it is still open. An ordinary statement
+    is balanced and ends the block exactly as before.
+    """
     block = []
     cursor = index - 1
-    while cursor >= 0 and language.continuation.match(lines[cursor]):
-        block.append(lines[cursor])
+    owed = 0
+    while cursor >= 0:
+        line = lines[cursor]
+        closes = (line.count(")") - line.count("(")) + (
+            line.count("]") - line.count("[")
+        )
+        # A line closing more than it opens is finishing something declared
+        # above it, so read upward it is a continuation whatever it starts
+        # with. `owed` carries that need until the opener is found.
+        if owed <= 0 and closes <= 0 and not language.continuation.match(line):
+            break
+        block.append(line)
+        owed = max(0, owed + closes)
         cursor -= 1
     return block
 

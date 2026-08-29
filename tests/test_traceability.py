@@ -227,6 +227,60 @@ def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
     assert code == 0, out
 
 
+# COVERS: FR-4.8 | regression
+def test_a_decorator_wrapped_onto_a_second_line_does_not_hide_it(checker, tmp_path):
+    """`ruff format` wraps a long decorator, so this is reachable by formatting.
+
+    The continuation line begins with whitespace rather than `@` or `#`, so the
+    block walk stopped there and the test reported as citing nothing while
+    carrying a correct mark. The failure points the wrong way: the report blames
+    the test, so the author's fix is to add a mark that is already present.
+
+    Filed by agent-support 2026-08-28, who hit it on three of seven tests in one
+    file and worked around it by hoisting every parametrize list to a module
+    constant so each decorator fit on one line.
+    """
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {
+            "test_it.py": (
+                "import pytest\n\n\n"
+                "# COVERS: FR-1.1 | edge\n"
+                '@pytest.mark.parametrize("n", [1, 2],\n'
+                '                         ids=["one", "two"])\n'
+                "def test_wrapped(n):\n    pass\n"
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS: FR-4.8 | negative
+def test_an_ordinary_statement_still_ends_the_block(checker, tmp_path):
+    """The bracket rule must not swallow code between a mark and a test.
+
+    Stepping over any indented line would let a COVERS mark far above attach to
+    an unrelated test below it. Only a line inside an unclosed group is stepped
+    over, and an ordinary statement is balanced.
+    """
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {
+            "test_it.py": (
+                "# COVERS: FR-1.1 | edge\n"
+                "VALUE = compute(1)\n"
+                "def test_unmarked():\n    pass\n"
+            )
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "test_unmarked" in out
+
+
 # COVERS: FR-4.8 | edge
 def test_indented_and_async_tests_are_found(checker, tmp_path):
     """A method on a test class and an async test are both tests."""
