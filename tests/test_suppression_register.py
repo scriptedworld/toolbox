@@ -246,6 +246,93 @@ def test_the_script_runs_as_a_script(tmp_path):
     assert "main.go" in result.stdout
 
 
+# ---- one register, more than one scan base ----------------------------------
+
+
+def two_base_repo(tmp_path):
+    """A repository with two packs, one register at its root.
+
+    The `.git` marker is what makes the root discoverable, and it is how a real
+    adopter is shaped. Without it the checker falls back to the scan root, which
+    is the behaviour it had before a frame existed.
+    """
+    (tmp_path / ".git").mkdir()
+    for pack, name in (("python", "app.py"), ("go", "main.go")):
+        (tmp_path / pack).mkdir()
+        (tmp_path / pack / name).write_text(
+            "import subprocess  # nosec B404\n"
+            if name.endswith(".py")
+            else "package main\n\nfunc f() { g() } //nolint:errcheck\n",
+            encoding="utf-8",
+        )
+    return tmp_path
+
+
+# COVERS: FR-5.1 | regression
+def test_a_root_register_is_read_from_a_pack_below_it(checker, tmp_path):
+    """The register names a file from the ROOT and the scan runs at the pack.
+
+    Both spellings are correct and they are not the same string: a scan at
+    `python/` calls the file `app.py` where the register at the root calls it
+    `python/app.py`. Comparing them as strings made one of the two wrong, and a
+    repository running the shared jig at two bases had no valid register at all.
+
+    Filed by wrench, who declined a task over it.
+    """
+    tree = two_base_repo(tmp_path)
+    (tree / "SUPPRESSIONS").write_text(
+        "Register.\n\n    python/app.py   # nosec B404\n"
+        "    go/main.go   //nolint:errcheck\n",
+        encoding="utf-8",
+    )
+    code, out = checker(
+        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python"
+    )
+    assert code == 0, out
+
+
+# COVERS: FR-5.1 | regression
+def test_the_other_packs_rows_are_not_phantoms(checker, tmp_path):
+    """Resolving both sides is necessary and not sufficient.
+
+    One register serving two bases is read whole by each scan, so every row for
+    the other pack would report as a pragma that has gone. A row outside the
+    scan root whose file exists belongs to another scan and is left alone.
+    """
+    tree = two_base_repo(tmp_path)
+    (tree / "SUPPRESSIONS").write_text(
+        "Register.\n\n    python/app.py   # nosec B404\n"
+        "    go/main.go   //nolint:errcheck\n",
+        encoding="utf-8",
+    )
+    code, out = checker(
+        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "go"
+    )
+    assert code == 0, out
+    assert "app.py" not in out
+
+
+# COVERS: FR-5.1 | negative
+def test_a_row_naming_nothing_is_still_a_phantom(checker, tmp_path):
+    """The half of the phantom check that still means something outside the scan.
+
+    A row pointing at a file that exists nowhere is caught wherever it sits,
+    because no other scan would ever catch it either.
+    """
+    tree = two_base_repo(tmp_path)
+    (tree / "SUPPRESSIONS").write_text(
+        "Register.\n\n    python/app.py   # nosec B404\n"
+        "    go/gone.go   //nolint:errcheck\n",
+        encoding="utf-8",
+    )
+    code, out = checker(
+        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python"
+    )
+    assert code == 1
+    assert "gone.go" in out
+    assert "points at nothing" in out
+
+
 # ---- a directory of suppressions --------------------------------------------
 
 

@@ -287,7 +287,7 @@ def is_source(path: Path) -> bool:
         return False
 
 
-def scan_source(root: Path) -> tuple[Counter[tuple[str, str, frozenset[str]]], int]:
+def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], int]:
     """Count the pragmas in the tree, and how many files were read.
 
     THE FILE COUNT IS RETURNED BECAUSE A ZERO IS NOT A PASS. "No pragmas
@@ -296,7 +296,7 @@ def scan_source(root: Path) -> tuple[Counter[tuple[str, str, frozenset[str]]], i
     anywhere` over a Python tree holding five registered ones and exited 0.
     A reader takes that as a clean bill. Callers can now tell the two apart.
     """
-    found: Counter[tuple[str, str, frozenset[str]]] = Counter()
+    found: Counter[tuple[Path, str, frozenset[str]]] = Counter()
     read = 0
     for path in sorted(p for p in root.rglob("*") if is_source(p)):
         try:
@@ -304,7 +304,17 @@ def scan_source(root: Path) -> tuple[Counter[tuple[str, str, frozenset[str]]], i
         except OSError:
             continue
         read += 1
-        key = path.relative_to(root).as_posix()
+        # RESOLVED, NOT RELATIVE TO THE SCAN ROOT. The register is one document
+        # at the repository root and the shared jig runs at each pack's base, so
+        # the two speak different frames: a scan at `python/` calls a file
+        # `tests/x.py` where the register at the root calls it
+        # `python/tests/x.py`. Both spellings are correct and they are not the
+        # same string, so comparing them as strings makes one of the two wrong
+        # and there is no spelling a two-base repository can choose.
+        #
+        # Both sides resolve to an absolute path, and the frame question stops
+        # existing. Filed by wrench, who declined a task over it.
+        key = path.resolve()
         for kind, rules in pragmas_in(text):
             found[(key, kind, rules)] += 1
     return found, read
@@ -322,16 +332,47 @@ def register_documents(path: Path) -> list[Path]:
     return [path]
 
 
-def scan_register(path: Path) -> Counter[tuple[str, str, frozenset[str]]]:
+def repository_of(document: Path, fallback: Path) -> Path:
+    """The repository a register document sits in, or the fallback frame.
+
+    Walking up for `.git` finds the frame register rows are written in. It is
+    what a person means by a path in that document: skid's register is at
+    `docs/SUPPRESSIONS.md` and names `src/skid/install.py`, which is relative to
+    the repository and not to `docs/`, so resolving against the document's own
+    directory would break an adopter that works today.
+
+    THE FALLBACK IS THE SCAN ROOT, which is what this checker always used, so a
+    register outside any repository behaves exactly as it did before the frame
+    existed. A fixture in a scratch directory is that case.
+    """
+    here = document.resolve().parent
+    for candidate in (here, *here.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return fallback.resolve()
+
+
+def scan_register(path: Path, root: Path) -> Counter[tuple[Path, str, frozenset[str]]]:
     """Read the register's index into the same shape as the source scan.
 
     Counts add across documents, so one file per suppression totals the same as
     one document listing them all, and a file carrying `×2` still says two.
+
+    A ROW'S PATH IS RESOLVED AGAINST THE REPOSITORY, not against the document
+    and not against the scan root. That is the frame people actually write in,
+    measured rather than assumed: skid's register sits at `docs/SUPPRESSIONS.md`
+    and names `src/skid/install.py`, so resolving against the document's own
+    directory would look for `docs/src/skid/install.py` and break an adopter
+    that works today.
+
+    Both sides of the comparison are then absolute and the scan root stops
+    mattering, which is what lets one register serve two bases.
     """
-    listed: Counter[tuple[str, str, frozenset[str]]] = Counter()
+    listed: Counter[tuple[Path, str, frozenset[str]]] = Counter()
     if not path.exists():
         return listed
     for document in register_documents(path):
+        base = repository_of(document, root)
         for line in document.read_text(encoding="utf-8").splitlines():
             row = INDEX_ROW.match(line)
             if not row:
@@ -341,38 +382,64 @@ def scan_register(path: Path) -> Counter[tuple[str, str, frozenset[str]]]:
             # express. A row naming no recognised pragma is prose.
             for kind, rules in pragmas_in(row.group("pragma")):
                 count = int(row.group("count") or 1)
-                listed[(row.group("path"), kind, rules)] += count
+                where = (base / row.group("path")).resolve()
+                listed[(where, kind, rules)] += count
     return listed
 
 
-def describe(key: tuple[str, str, frozenset[str]]) -> str:
-    """Name one entry the way the register writes it."""
+def describe(key: tuple[Path, str, frozenset[str]], frame: Path) -> str:
+    """Name one entry in the frame a reader of the register would use."""
     where, kind, rules = key
+    try:
+        shown = where.relative_to(frame).as_posix()
+    except ValueError:
+        shown = str(where)
     named = " ".join(sorted(rules)) if rules else "everything"
-    return f"{where} ({kind}: {named})"
+    return f"{shown} ({kind}: {named})"
 
 
 def compare(
-    source: Counter[tuple[str, str, frozenset[str]]],
-    register: Counter[tuple[str, str, frozenset[str]]],
+    source: Counter[tuple[Path, str, frozenset[str]]],
+    register: Counter[tuple[Path, str, frozenset[str]]],
+    root: Path,
+    frame: Path,
 ) -> list[str]:
-    """Every way the two can disagree, said in the register's own terms."""
+    """Every way the two can disagree, said in the register's own terms.
+
+    A REGISTER ROW OUTSIDE THE SCAN ROOT BELONGS TO ANOTHER SCAN. Resolving both
+    sides is necessary and not sufficient: one register serving two bases is
+    read whole by each scan, so every row for the other base would report as a
+    pragma that has gone. Those are held to existing rather than to being found,
+    which is the half of the phantom check that still means something here.
+
+    A row naming a file that exists nowhere is still a phantom and still fails,
+    whichever base it sits in, because nothing else would ever catch it.
+    """
     failures = []
-    for key in sorted(set(source) | set(register)):
+    for key in sorted(set(source) | set(register), key=lambda k: (str(k[0]), k[1])):
+        where = key[0]
+        if where not in source and not where.is_relative_to(root):
+            if not where.exists():
+                failures.append(
+                    f"{describe(key, frame)} ×{register[key]} names a file that does "
+                    "not exist; the register points at nothing"
+                )
+            continue
         here, there = source[key], register[key]
         if there == 0:
             failures.append(
-                f"{describe(key)} ×{here} is in the source and in no register entry; "
-                "ask before it stays, then register it, or remove it"
+                f"{describe(key, frame)} ×{here} is in the source and in no register "
+                "entry; ask before it stays, then register it, or remove it"
             )
         elif here == 0:
             failures.append(
-                f"{describe(key)} ×{there} is registered and is not in the source; "
-                "the pragma moved or went, and the register did not follow"
+                f"{describe(key, frame)} ×{there} is registered and is not in the "
+                "source; the pragma moved or went, and the register did not follow"
             )
         elif here != there:
             failures.append(
-                f"{describe(key)}: the source carries {here}, the register says {there}"
+                f"{describe(key, frame)}: the source carries {here}, "
+                f"the register says {there}"
             )
     return failures
 
@@ -420,7 +487,7 @@ def main() -> int:
     # would otherwise raise, and a traceback from a gate task reads as a broken
     # checker rather than as a permission the adopter can fix.
     try:
-        register = scan_register(args.register)
+        register = scan_register(args.register, args.root)
     except OSError as unreadable:
         print(f"{args.register} cannot be read: {unreadable.strerror}")
         return 1
@@ -429,7 +496,11 @@ def main() -> int:
         print(f"{sum(source.values())} pragma(s) in the source and no {args.register}")
         return 1
 
-    return report(compare(source, register), sum(source.values()), files, args.register)
+    # Findings are reported in the register's own frame, so a person reads a
+    # path they can check by hand against the document they are holding.
+    frame = repository_of(args.register, args.root)
+    failures = compare(source, register, args.root.resolve(), frame)
+    return report(failures, sum(source.values()), files, args.register)
 
 
 if __name__ == "__main__":
