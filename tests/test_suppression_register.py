@@ -246,6 +246,82 @@ def test_the_script_runs_as_a_script(tmp_path):
     assert "main.go" in result.stdout
 
 
+# COVERS: FR-5.2 | regression
+def test_a_pragma_with_a_trailing_reason_is_still_seen(checker, tmp_path):
+    """Writing WHY beside a suppression is the good habit, and it hid one.
+
+    The rule list used to run to end of line, so `# noqa: BLE001 - the reason`
+    matched nothing and the pragma was invisible. Measured 2026-08-29: this
+    checker reported `no suppression pragmas` over a tree where its own author
+    had just written one in exactly that form, an hour after committing the
+    scanner. A false negative here turns a gate green, and it hides precisely
+    the suppressions whose authors documented them.
+
+    The codes end the pragma and prose may follow, which is how the `nosec`
+    spelling already worked.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    (tree / "app.py").write_text(
+        "import os  # noqa: E402 - imported late on purpose, see the docstring\n",
+        encoding="utf-8",
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 1
+    assert "app.py" in out
+    assert "E402" in out
+
+
+# COVERS: FR-5.2 | negative
+def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path):
+    """`# nosec` alone is a pragma; `#  nosec marks are...` is a sentence.
+
+    Both open their comment, so the position rule cannot separate them and the
+    trailing text is what does: a bare spelling naming no codes must end the
+    line. Found in silo 2026-08-29, in a lesson document about this checker,
+    which was the estate's only false positive.
+
+    Requiring code before the comment was the other obvious rule and is wrong.
+    palette-print writes all twelve of its on their own line above the
+    statement, so that rule would have lost them all.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    (tree / "notes.py").write_text(
+        "#   nosec marks in one file they do not own.\n"
+        "#   noqa marks are the same shape.\n",
+        encoding="utf-8",
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS: FR-5.2 | regression
+def test_a_triple_quote_inside_a_string_does_not_open_a_docstring(checker, tmp_path):
+    """The docstring skipper was defeated by its own source.
+
+    `code_lines` finds a fence with `re.search(r'\"\"\"|...', line)`, and that
+    line spells the delimiter inside a raw string. Counting it as a fence
+    toggled the state, so every docstring after it in this checker read as code
+    and a sentence in its own documentation was reported as a suppression.
+
+    Measured 2026-08-29. Third instance in one file of the tool being read as a
+    use of itself, after the pattern table and the test fixtures.
+    """
+    tree = tmp_path
+    (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
+    (tree / "scanner.py").write_text(
+        "import re\n\n"
+        'FENCE = re.search(r\'"""|x\', "")\n\n'
+        "def f():\n"
+        '    """Prose mentioning `# nosec B404` after a quote in a literal."""\n'
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    code, out = checker(register_checker, ARGV, tree)
+    assert code == 0, out
+
+
 # ---- one register, more than one scan base ----------------------------------
 
 

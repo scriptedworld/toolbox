@@ -86,9 +86,30 @@ from pathlib import Path
 # pragma taken for one, by a different tool, in the file that exists to tell
 # the two apart.
 SPELLINGS = (
-    ("nosec", r"#\s*nosec\b[:=]?[ \t]*(?P<rules>[A-Z]+\d+(?:[ \t,]+[A-Z]+\d+)*)?"),
+    # A BARE SPELLING NAMING NO CODES MUST END THE LINE. `# nosec` alone is a
+    # real pragma; `#  nosec marks in one file they do not own.` is a sentence
+    # that begins with the word. Both open their comment, so position cannot
+    # separate them and the trailing text is what does.
+    #
+    # Found in silo 2026-08-29, in a lesson document about this checker, which
+    # is the only false positive the estate holds. Requiring code before the
+    # comment would have been the other obvious rule and is wrong: palette-print
+    # writes all twelve of its on their own line above the statement.
+    (
+        "nosec",
+        r"#\s*nosec\b[:=]?[ \t]*(?:(?P<rules>[A-Z]+\d+(?:[ \t,]+[A-Z]+\d+)*)|[ \t]*$)",
+    ),
     ("nolint", r"//\s*nolint:(?P<rules>[\w,]+)"),
-    ("noqa", r"#\s*noqa\b(?::[ \t]*(?P<rules>[\w][\w, \t]*?))?[ \t]*(?=$|#)"),
+    # THE CODES END THE PRAGMA, AND PROSE MAY FOLLOW. An earlier spelling ran
+    # the rule list to end-of-line, so a noqa directive followed by a dash and a
+    # reason matched nothing at all and the pragma was invisible. A false
+    # negative here turns a gate green, and it hid one this checker's own author
+    # had just written. Spelled without the leading hash for the reason the
+    # table's own note gives.
+    (
+        "noqa",
+        r"#\s*noqa\b(?::[ \t]*(?P<rules>[A-Z]+\d+(?:[ \t,]+[A-Z]+\d+)*)|[ \t]*$)",
+    ),
     ("type-ignore", r"#\s*type:[ \t]*ignore(?:\[(?P<rules>[^\]]+)\])?"),
     ("pylint", r"#\s*pylint:[ \t]*disable=(?P<rules>[\w,\- \t]+)"),
     ("shellcheck", r"#\s*shellcheck\s+disable=(?P<rules>SC\d+(?:[ \t,]+SC\d+)*)"),
@@ -213,7 +234,20 @@ def code_lines(text: str) -> Iterator[str]:
                 fence = None
             continue
         opener = re.search(r'"""|\'\'\'', line)
-        if opener and line.count(opener.group()) == 1:
+        # A TRIPLE QUOTE INSIDE A STRING LITERAL DOES NOT OPEN A DOCSTRING, and
+        # this function's own source is the case that proves it: the line above
+        # spells both delimiters inside a raw string, so counting it as a fence
+        # toggled the state and every docstring after it in this file read as
+        # code. Measured 2026-08-29, when the checker reported a suppression
+        # that was a sentence in its own documentation.
+        #
+        # Third instance in this one file of the tool being read as a use of
+        # itself, after the pattern table and the test fixtures.
+        if (
+            opener
+            and not in_a_string(line, opener.start())
+            and line.count(opener.group()) == 1
+        ):
             fence = opener.group()
             continue
         yield line

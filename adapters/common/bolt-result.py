@@ -128,7 +128,7 @@ def child_verdict(path: pathlib.Path) -> tuple[dict | None, dict | None]:
 
     try:
         wrench.ENVELOPE_SCHEMA.validate(document)
-    except Exception as invalid:  # noqa: BLE001 - any validation failure is one kind
+    except wrench.ValidationError as invalid:
         return None, reason(
             "child-result-invalid",
             f"{path} is not a valid result: {invalid}",
