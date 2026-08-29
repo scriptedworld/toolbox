@@ -120,54 +120,49 @@ def test_failure(path):
     }
 
 
-def main():
+def arguments():
+    """The command line bolt hands an adapter.
+
+    Every flag bolt passes is declared, including the ones this adapter does not
+    read, so an unexpected argument is an error here rather than something
+    silently ignored.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--min", type=float, default=80.0)
     ap.add_argument("--exclude", action="append", default=[])
     ap.add_argument("--evidence", action="append", default=[])
     ap.add_argument("--work-dir", dest="work_dir", required=True)
-    # Bolt passes these to every adapter. Declared so an unexpected one is an
-    # error here rather than a silently ignored argument.
     ap.add_argument("--stdout")
     ap.add_argument("--stderr")
     ap.add_argument("--exitcode")
     ap.add_argument("--project-root", dest="project_root")
     ap.add_argument("--base-dir", dest="base_dir")
-    args = ap.parse_args()
+    return ap.parse_args()
 
-    work_dir = pathlib.Path(args.work_dir)
 
-    # This adapter is attached to the task that RUNS the tests, because that is
-    # the task whose work directory holds the profile. So it answers for the
-    # test run as well: a suite that failed while leaving a profile behind would
-    # otherwise be reported as a pass with a coverage number beside it.
-    failed = test_failure(args.exitcode)
+def merged_profile(paths):
+    """Every named profile, read as one document.
 
-    if not args.evidence:
-        emit(
-            work_dir,
-            False,
-            [
-                {
-                    "kind": "evidence-missing",
-                    "checker": CHECKER,
-                    "message": "no --evidence profile was named",
-                    "detail": "the tests task must declare its coverage profile as "
-                    "evidence; without one this adapter measured nothing",
-                }
-            ],
+    `parse_profile` keys blocks by file and span and takes the highest count,
+    which is what merging means, so several profiles compose exactly the way one
+    profile's repeated blocks do. That is what lets the entry point be measured
+    in a second run and counted with the first.
+    """
+    return shorten(
+        parse_profile(
+            "\n".join(pathlib.Path(path).read_text(encoding="utf-8") for path in paths)
         )
-        return
-
-    # Every profile named is merged. parse_profile keys blocks by file and span
-    # and takes the highest count, which is what merging means, so several
-    # profiles compose the same way one profile's repeated blocks do.
-    text = "\n".join(
-        pathlib.Path(path).read_text(encoding="utf-8") for path in args.evidence
     )
-    files = shorten(parse_profile(text))
 
-    excluded = [re.compile(p) for p in args.exclude]
+
+def judge(files, minimum, patterns):
+    """Per file against the minimum, with the totals for context.
+
+    PER FILE AND NOT IN AGGREGATE, which is hard rule 5's reason: an aggregate
+    lets a well-tested file carry an untested one, and the exclusion that would
+    settle a failure drops the guarantee quietly.
+    """
+    excluded = [re.compile(p) for p in patterns]
     reasons = []
     covered_total = statements_total = 0
 
@@ -178,13 +173,13 @@ def main():
         covered_total += covered
         statements_total += total
         pct = 100.0 * covered / total
-        if pct + 1e-9 < args.min:
+        if pct + 1e-9 < minimum:
             reasons.append(
                 {
                     "kind": "coverage-below-minimum",
                     "checker": CHECKER,
                     "file": name,
-                    "message": f"{name}: {pct:.1f}% of statements covered, below {args.min:.0f}%",
+                    "message": f"{name}: {pct:.1f}% of statements covered, below {minimum:.0f}%",
                     "covered": covered,
                     "statements": total,
                     "percent": round(pct, 1),
@@ -192,22 +187,46 @@ def main():
             )
 
     total_pct = 100.0 * covered_total / statements_total if statements_total else 0.0
-    # Counted before the test failure joins them, so the statistic keeps meaning
-    # the number of files under the minimum rather than the number of reasons.
-    below_minimum = len(reasons)
+    return reasons, {
+        "files": len(files),
+        "below_minimum": len(reasons),
+        # Context only. Nothing branches on the total, by design.
+        "total_percent": round(total_pct, 1),
+    }
+
+
+NO_EVIDENCE = {
+    "kind": "evidence-missing",
+    "checker": CHECKER,
+    "message": "no --evidence profile was named",
+    "detail": "the tests task must declare its coverage profile as "
+    "evidence; without one this adapter measured nothing",
+}
+
+
+def main():
+    args = arguments()
+    work_dir = pathlib.Path(args.work_dir)
+
+    # This adapter is attached to the task that RUNS the tests, because that is
+    # the task whose work directory holds the profile. So it answers for the
+    # test run as well: a suite that failed while leaving a profile behind would
+    # otherwise be reported as a pass with a coverage number beside it.
+    failed = test_failure(args.exitcode)
+
+    if not args.evidence:
+        emit(work_dir, False, [dict(NO_EVIDENCE)])
+        return
+
+    files = merged_profile(args.evidence)
+    reasons, statistics = judge(files, args.min, args.exclude)
+
+    # The test failure joins the list after the statistics are counted, so
+    # `below_minimum` keeps meaning the number of files under the minimum rather
+    # than the number of reasons.
     if failed:
         reasons.insert(0, failed)
-    emit(
-        work_dir,
-        not reasons,
-        reasons,
-        {
-            "files": len(files),
-            "below_minimum": below_minimum,
-            # Context only. Nothing branches on the total, by design.
-            "total_percent": round(total_pct, 1),
-        },
-    )
+    emit(work_dir, not reasons, reasons, statistics)
 
 
 def emit(work_dir, success, reasons, statistics=None):
