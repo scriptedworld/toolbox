@@ -15,11 +15,7 @@ from conftest import ROOT
 # supplies values for a jig's placeholders and validates against a different
 # schema, so a glob that swallows it fails every run here. The same shape of
 # mistake is why qwark names its adoption entries one at a time.
-JIGS = sorted(
-    path
-    for path in ROOT.glob("bolt.*.yaml")
-    if not path.name.endswith(".definitions.yaml")
-)
+JIGS = sorted(path for path in ROOT.glob("bolt.*.yaml") if not path.name.endswith(".definitions.yaml"))
 
 DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 
@@ -78,11 +74,7 @@ def commands(jig: dict) -> list[tuple[str, str]]:
 
 def adapters(jig: dict) -> list[tuple[str, str]]:
     """Every adapter a jig names, paired with the task name."""
-    return [
-        (task["name"], task["adapter"])
-        for task in jig.get("tasks") or []
-        if task.get("adapter")
-    ]
+    return [(task["name"], task["adapter"]) for task in jig.get("tasks") or [] if task.get("adapter")]
 
 
 # COVERS: FR-1.2 | edge
@@ -129,10 +121,7 @@ def test_the_schema_comes_from_wrench_and_not_from_a_copy():
     object wrench ships, so there is no local artefact left to drift.
     """
     assert SCHEMA is wrench.JIG_SCHEMA
-    assert not (ROOT / "schema").exists(), (
-        "a local schema/ has reappeared; NFR-6 says wrench ships these and "
-        "this repository keeps no copy"
-    )
+    assert not (ROOT / "schema").exists(), "a local schema/ has reappeared; NFR-6 says wrench ships these and this repository keeps no copy"
 
 
 # COVERS: FR-1.4 | property
@@ -147,13 +136,9 @@ def test_every_path_into_this_repository_is_config_dir_rooted():
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
         for task, command in commands(jig):
             for directory in OURS:
-                for hit in [
-                    i for i in range(len(command)) if command.startswith(directory, i)
-                ]:
+                for hit in [i for i in range(len(command)) if command.startswith(directory, i)]:
                     prefix = command[:hit]
-                    assert prefix.endswith("{config_dir}/"), (
-                        f"{path.name}:{task} reaches {directory} without {{config_dir}}: {command!r}"
-                    )
+                    assert prefix.endswith("{config_dir}/"), f"{path.name}:{task} reaches {directory} without {{config_dir}}: {command!r}"
 
 
 # COVERS: FR-1.4 | regression
@@ -170,13 +155,8 @@ def test_an_adapter_is_named_and_not_config_dir_prefixed():
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
         for task, adapter in adapters(jig):
-            assert "{config_dir}" not in adapter, (
-                f"{path.name}:{task} prefixes its adapter with {{config_dir}}, "
-                f"which resolves twice: {adapter!r}"
-            )
-            assert not adapter.startswith("/"), (
-                f"{path.name}:{task} names an absolute adapter path: {adapter!r}"
-            )
+            assert "{config_dir}" not in adapter, f"{path.name}:{task} prefixes its adapter with {{config_dir}}, which resolves twice: {adapter!r}"
+            assert not adapter.startswith("/"), f"{path.name}:{task} names an absolute adapter path: {adapter!r}"
 
 
 # COVERS: FR-1.5 | negative
@@ -189,12 +169,8 @@ def test_no_jig_names_a_project_specific_entry_point():
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
         for task, command in commands(jig):
-            assert "./cmd/" not in command, (
-                f"{path.name}:{task} names a specific main package: {command!r}"
-            )
-            assert "github.com/" not in command, (
-                f"{path.name}:{task} names a specific module: {command!r}"
-            )
+            assert "./cmd/" not in command, f"{path.name}:{task} names a specific main package: {command!r}"
+            assert "github.com/" not in command, f"{path.name}:{task} names a specific module: {command!r}"
 
 
 # ---- what is excluded, and in six spellings ---------------------------------
@@ -205,11 +181,7 @@ SLOTS = ("excluded_one", "excluded_two", "excluded_three")
 
 def excluding_tasks(jig: dict) -> list[tuple[str, str]]:
     """Every task whose command names an exclusion slot."""
-    return [
-        (task, command)
-        for task, command in commands(jig)
-        if any(f"{{{slot}}}" in command for slot in SLOTS)
-    ]
+    return [(task, command) for task, command in commands(jig) if any(f"{{{slot}}}" in command for slot in SLOTS)]
 
 
 # COVERS: FR-1.6 | property
@@ -226,9 +198,7 @@ def test_a_task_that_excludes_anything_names_every_slot():
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
         for task, command in excluding_tasks(jig):
             missing = [slot for slot in SLOTS if f"{{{slot}}}" not in command]
-            assert not missing, (
-                f"{path.name}:{task} excludes but does not name {missing}: {command!r}"
-            )
+            assert not missing, f"{path.name}:{task} excludes but does not name {missing}: {command!r}"
 
 
 # COVERS: FR-1.6 | regression
@@ -255,8 +225,7 @@ def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
         for task, command in excluding_tasks(jig):
             covered = ".venv" in command or "--extend-exclude" in command
             assert covered, (
-                f"{path.name}:{task} excludes directories but would still walk "
-                f"a virtualenv; name .venv or use --extend-exclude: {command!r}"
+                f"{path.name}:{task} excludes directories but would still walk a virtualenv; name .venv or use --extend-exclude: {command!r}"
             )
 
 
@@ -268,20 +237,12 @@ def test_every_slot_a_jig_uses_has_a_default_and_an_override():
     where every other adopter holds links to them, so a missing entry there
     would silently stop it gating its own code.
     """
-    overrides = {
-        path.name: yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        for path in DEFINITIONS
-    }
+    overrides = {path.name: yaml.safe_load(path.read_text(encoding="utf-8")) or {} for path in DEFINITIONS}
     assert overrides, "no definitions file found; the override is untested"
 
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
-        used = {
-            slot
-            for _, command in commands(jig)
-            for slot in (*SLOTS, "excluded_regex")
-            if f"{{{slot}}}" in command
-        }
+        used = {slot for _, command in commands(jig) for slot in (*SLOTS, "excluded_regex") if f"{{{slot}}}" in command}
         declared = jig.get("definitions") or {}
         for slot in sorted(used):
             assert slot in declared, f"{path.name} uses {slot} and defines no default"

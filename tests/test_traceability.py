@@ -23,9 +23,7 @@ HEADER = "# Fixture\n\n| ID | Requirement | |\n|---|---|---|\n"
 
 def requirements(*rows: tuple[str, str]) -> str:
     """Build a requirements document from (id, marker) pairs."""
-    body = "".join(
-        f"| {req} | Some requirement. | {marker} |\n" for req, marker in rows
-    )
+    body = "".join(f"| {req} | Some requirement. | {marker} |\n" for req, marker in rows)
     return HEADER + body
 
 
@@ -48,9 +46,7 @@ def test_every_settled_requirement_covered_passes(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]"), ("FR-1.2", "[D]")),
-        {
-            "test_it.py": "# COVERS: FR-1.1, FR-1.2 | positive\ndef test_both():\n    pass\n"
-        },
+        {"test_it.py": "# COVERS: FR-1.1, FR-1.2 | positive\ndef test_both():\n    pass\n"},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 0
@@ -92,9 +88,7 @@ def test_a_row_with_no_marker_claims_no_exemption(checker, tmp_path):
     tree = project(
         tmp_path,
         "# Fixture\n\n| ID | Requirement |\n|---|---|\n| FR-1.1 | Uncovered. |\n",
-        {
-            "test_it.py": "# COVERS: FR-9.9 | positive\ndef test_nothing_real():\n    pass\n"
-        },
+        {"test_it.py": "# COVERS: FR-9.9 | positive\ndef test_nothing_real():\n    pass\n"},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
@@ -124,9 +118,7 @@ def test_citing_an_undeclared_requirement_fails(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")),
-        {
-            "test_it.py": "# COVERS: FR-1.1, FR-4.4 | positive\ndef test_one():\n    pass\n"
-        },
+        {"test_it.py": "# COVERS: FR-1.1, FR-4.4 | positive\ndef test_one():\n    pass\n"},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
@@ -214,14 +206,7 @@ def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")),
-        {
-            "test_it.py": (
-                "import pytest\n\n\n"
-                "# COVERS: FR-1.1 | edge\n"
-                '@pytest.mark.parametrize("n", [1, 2])\n'
-                "def test_decorated(n):\n    pass\n"
-            )
-        },
+        {"test_it.py": ('import pytest\n\n\n# COVERS: FR-1.1 | edge\n@pytest.mark.parametrize("n", [1, 2])\ndef test_decorated(n):\n    pass\n')},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 0, out
@@ -268,13 +253,7 @@ def test_an_ordinary_statement_still_ends_the_block(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")),
-        {
-            "test_it.py": (
-                "# COVERS: FR-1.1 | edge\n"
-                "VALUE = compute(1)\n"
-                "def test_unmarked():\n    pass\n"
-            )
-        },
+        {"test_it.py": ("# COVERS: FR-1.1 | edge\nVALUE = compute(1)\ndef test_unmarked():\n    pass\n")},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
@@ -319,9 +298,7 @@ def test_a_rust_test_is_found_through_its_attribute_and_doc_comment(checker, tmp
     Stepping over only one of them leaves the annotation unreachable, which
     fails louder than skipping the file and is just as wrong.
     """
-    tree = project(
-        tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST}
-    )
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST})
     code, out = checker(traceability, ARGV, tree)
     assert code == 0, out
 
@@ -336,11 +313,7 @@ def test_a_rust_helper_without_the_attribute_is_not_a_test(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")),
-        {
-            "tests/skeleton.rs": (
-                "fn write_jig(body: &str) -> PathBuf {\n    todo!()\n}\n\n" + RUST_TEST
-            )
-        },
+        {"tests/skeleton.rs": ("fn write_jig(body: &str) -> PathBuf {\n    todo!()\n}\n\n" + RUST_TEST)},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 0, out
@@ -384,9 +357,7 @@ def test_a_rust_unit_test_inside_src_is_found(checker, tmp_path):
 # COVERS: FR-2.5 | regression
 def test_cargo_build_output_is_not_scanned(checker, tmp_path):
     """`target/` carries vendored `.rs` sources, and bolt's held twelve."""
-    tree = project(
-        tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST}
-    )
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST})
     vendored = tree / "target" / "debug" / "build" / "vendored.rs"
     vendored.parent.mkdir(parents=True)
     vendored.write_text("#[test]\nfn theirs() {}\n", encoding="utf-8")
@@ -451,9 +422,7 @@ def test_a_lettered_requirement_id_sorts_without_raising():
 # COVERS: FR-4.9 | property
 def test_requirements_sort_numerically_not_lexically():
     """FR-7.10 comes after FR-7.3, which a string sort gets backwards."""
-    assert traceability.requirement_key("FR-7.3") < traceability.requirement_key(
-        "FR-7.10"
-    )
+    assert traceability.requirement_key("FR-7.3") < traceability.requirement_key("FR-7.10")
 
 
 # ---- the wiring -------------------------------------------------------------
@@ -462,9 +431,7 @@ def test_requirements_sort_numerically_not_lexically():
 # COVERS: NFR-3 | positive
 def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or an import that fails."""
-    (tmp_path / "REQUIREMENTS.md").write_text(
-        requirements(("FR-1.1", "[?]")), encoding="utf-8"
-    )
+    (tmp_path / "REQUIREMENTS.md").write_text(requirements(("FR-1.1", "[?]")), encoding="utf-8")
     result = subprocess.run(
         [sys.executable, str(ROOT / "bin" / "test-traceability.py"), *ARGV],
         cwd=tmp_path,
@@ -479,10 +446,7 @@ def test_the_script_runs_as_a_script(tmp_path):
 # ---- retired requirements ---------------------------------------------------
 
 
-RETIRED = (
-    "\n## Retired\n\n| ID | Retired | Superseded by |\n|---|---|---|\n"
-    "| FR-9.9 | 2026-08-26 | FR-1.1, which says it better. |\n"
-)
+RETIRED = "\n## Retired\n\n| ID | Retired | Superseded by |\n|---|---|---|\n| FR-9.9 | 2026-08-26 | FR-1.1, which says it better. |\n"
 
 
 # COVERS: FR-4.10 | positive
@@ -504,12 +468,7 @@ def test_citing_a_retired_requirement_says_where_it_went(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")) + RETIRED,
-        {
-            "test_it.py": (
-                "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n"
-                "# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n"
-            )
-        },
+        {"test_it.py": ("# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n")},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
@@ -524,12 +483,7 @@ def test_an_id_that_is_both_live_and_retired_fails(checker, tmp_path):
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]"), ("FR-9.9", "[A]")) + RETIRED,
-        {
-            "test_it.py": (
-                "# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n"
-                "# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n"
-            )
-        },
+        {"test_it.py": ("# COVERS: FR-1.1 | positive\ndef test_one():\n    pass\n\n# COVERS: FR-9.9 | positive\ndef test_two():\n    pass\n")},
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
@@ -557,10 +511,7 @@ def test_a_heading_after_retired_returns_to_live_rows(checker, tmp_path):
     """Only the rows under the heading are retired. A section following it
     declares live requirements like any other."""
     document = (
-        requirements(("FR-1.1", "[A]"))
-        + RETIRED
-        + "\n## Later\n\n| ID | Requirement | |\n|---|---|---|\n"
-        + "| FR-2.2 | Live again. | [A] |\n"
+        requirements(("FR-1.1", "[A]")) + RETIRED + "\n## Later\n\n| ID | Requirement | |\n|---|---|---|\n" + "| FR-2.2 | Live again. | [A] |\n"
     )
     tree = project(
         tmp_path,
@@ -598,9 +549,7 @@ def test_a_directory_reaches_the_same_verdict_as_one_document(checker, tmp_path)
     The same two requirements and the same test, written one way and then the
     other, and the reported figures have to agree.
     """
-    covering = {
-        "test_it.py": "# COVERS: FR-1.1, FR-1.2 | positive\ndef test_t():\n    pass\n"
-    }
+    covering = {"test_it.py": "# COVERS: FR-1.1, FR-1.2 | positive\ndef test_t():\n    pass\n"}
     (tmp_path / "whole").mkdir()
     (tmp_path / "parts").mkdir()
     whole = project(
@@ -719,11 +668,7 @@ def test_a_heading_does_not_un_retire_the_rows_below_it(checker, tmp_path):
         tmp_path,
         {
             "core/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
-            "core/FR-2.2-gone.retired": (
-                requirements(("FR-2.2", "[A]"))
-                + "\n## Superseded by\n\n"
-                + requirements(("FR-3.3", "[A]"))
-            ),
+            "core/FR-2.2-gone.retired": (requirements(("FR-2.2", "[A]")) + "\n## Superseded by\n\n" + requirements(("FR-3.3", "[A]"))),
         },
         {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
     )
@@ -748,11 +693,7 @@ def test_an_id_below_a_heading_in_a_retired_file_cannot_be_reused(checker, tmp_p
     tree = split(
         tmp_path,
         {
-            "core/FR-9.9-gone.retired": (
-                requirements(("FR-8.8", "[A]"))
-                + "\n## Superseded by\n\n"
-                + requirements(("FR-9.9", "[A]"))
-            ),
+            "core/FR-9.9-gone.retired": (requirements(("FR-8.8", "[A]")) + "\n## Superseded by\n\n" + requirements(("FR-9.9", "[A]"))),
             "core/FR-9.9-again.md": requirements(("FR-9.9", "[A]")),
         },
         {},
@@ -794,9 +735,7 @@ def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
             "core/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
             "core/FR-9.9-gone.retired": requirements(("FR-9.9", "[A]")),
         },
-        {
-            "test_it.py": "# COVERS: FR-1.1, FR-9.9 | positive\ndef test_t():\n    pass\n"
-        },
+        {"test_it.py": "# COVERS: FR-1.1, FR-9.9 | positive\ndef test_t():\n    pass\n"},
     )
     code, out = checker(traceability, DIR_ARGV, tree)
     assert code == 1

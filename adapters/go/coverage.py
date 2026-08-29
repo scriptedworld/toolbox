@@ -32,9 +32,7 @@ CHECKER = "coverage"
 
 # github.com/x/y/pkg/file.go:12.34,15.2 3 1
 #                           ^block span      ^statements ^count
-LINE = re.compile(
-    r"^(?P<file>.+?):(?P<span>\d+\.\d+,\d+\.\d+) (?P<stmts>\d+) (?P<count>\d+)$"
-)
+LINE = re.compile(r"^(?P<file>.+?):(?P<span>\d+\.\d+,\d+\.\d+) (?P<stmts>\d+) (?P<count>\d+)$")
 
 
 def parse_profile(text):
@@ -106,8 +104,7 @@ def test_failure(path):
             "kind": "exit-status-unreadable",
             "checker": CHECKER,
             "message": f"no readable exit status at {path}",
-            "detail": "the test run's status could not be read, so whether the "
-            "suite passed is unknown and coverage alone cannot stand for it",
+            "detail": "the test run's status could not be read, so whether the suite passed is unknown and coverage alone cannot stand for it",
         }
     if status == 0:
         return None
@@ -115,8 +112,7 @@ def test_failure(path):
         "kind": "tests-failed",
         "checker": CHECKER,
         "message": f"the test run exited {status}",
-        "detail": "coverage is reported for context; a profile from a failed "
-        "run measures what ran, not what passed",
+        "detail": "coverage is reported for context; a profile from a failed run measures what ran, not what passed",
     }
 
 
@@ -148,11 +144,7 @@ def merged_profile(paths):
     profile's repeated blocks do. That is what lets the entry point be measured
     in a second run and counted with the first.
     """
-    return shorten(
-        parse_profile(
-            "\n".join(pathlib.Path(path).read_text(encoding="utf-8") for path in paths)
-        )
-    )
+    return shorten(parse_profile("\n".join(pathlib.Path(path).read_text(encoding="utf-8") for path in paths)))
 
 
 def judge(files, minimum, patterns):
@@ -199,8 +191,7 @@ NO_EVIDENCE = {
     "kind": "evidence-missing",
     "checker": CHECKER,
     "message": "no --evidence profile was named",
-    "detail": "the tests task must declare its coverage profile as "
-    "evidence; without one this adapter measured nothing",
+    "detail": "the tests task must declare its coverage profile as evidence; without one this adapter measured nothing",
 }
 
 

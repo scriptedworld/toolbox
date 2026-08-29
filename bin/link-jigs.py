@@ -74,9 +74,7 @@ def load_manifest(path: Path) -> dict[str, dict]:
     if not isinstance(document, dict):
         raise ManifestError(f"{path} is not a mapping")
     if document.get("version") != 1:
-        raise ManifestError(
-            f"{path} declares version {document.get('version')!r}; only 1 exists"
-        )
+        raise ManifestError(f"{path} declares version {document.get('version')!r}; only 1 exists")
     sets = document.get("sets")
     if not isinstance(sets, dict) or not sets:
         raise ManifestError(f"{path} declares no sets; refusing to link nothing")
@@ -120,10 +118,7 @@ def entries_for(sets: dict[str, dict], names: list[str]) -> list[str]:
 def inside(path: Path, root: Path) -> bool:
     """True when path is at or below root once every link on the way is followed."""
     resolved = Path(os.path.realpath(path))
-    return (
-        resolved == Path(os.path.realpath(root))
-        or Path(os.path.realpath(root)) in resolved.parents
-    )
+    return resolved == Path(os.path.realpath(root)) or Path(os.path.realpath(root)) in resolved.parents
 
 
 def points_to(source: Path, destination: Path, absolute: bool) -> str:
@@ -169,9 +164,7 @@ def missing_sources(root: Path, entries: list[str]) -> list[str]:
     return [entry for entry in entries if not (root / entry).exists()]
 
 
-def orphans(
-    root: Path, target: Path, sets: dict[str, dict], keep: set[Path]
-) -> list[Path]:
+def orphans(root: Path, target: Path, sets: dict[str, dict], keep: set[Path]) -> list[Path]:
     """Links into this repository that no longer belong to the adopted sets.
 
     Only the directories the manifest itself uses are scanned, across every set
@@ -246,12 +239,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("target", type=Path, help="the project to link into")
     parser.add_argument("sets", nargs="+", help="which sets from the manifest")
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
-    parser.add_argument(
-        "--plan", action="store_true", help="say what would happen, and stop"
-    )
-    parser.add_argument(
-        "--check", action="store_true", help="verify without writing; exit 1 on drift"
-    )
+    parser.add_argument("--plan", action="store_true", help="say what would happen, and stop")
+    parser.add_argument("--check", action="store_true", help="verify without writing; exit 1 on drift")
     parser.add_argument("--yes", action="store_true", help="do not ask")
     parser.add_argument(
         "--absolute",
@@ -277,10 +266,7 @@ def gather(args: argparse.Namespace, root: Path) -> tuple[dict[str, dict], list[
     absent = missing_sources(root, entries)
     if absent:
         named = "\n".join(f"  {entry}" for entry in absent)
-        raise ManifestError(
-            f"{len(absent)} entry(ies) named by the manifest are not here:\n{named}\n\n"
-            "the manifest is wrong, and nothing was linked"
-        )
+        raise ManifestError(f"{len(absent)} entry(ies) named by the manifest are not here:\n{named}\n\nthe manifest is wrong, and nothing was linked")
     return sets, entries
 
 

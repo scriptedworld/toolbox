@@ -2,6 +2,30 @@
 # path, never a package anyone installs, so there is no [project] table and
 # nothing here builds a distribution.
 
+# ONE LINE LENGTH, DECLARED ONCE, AND BOTH TOOLS PINNED TO IT.
+#
+# 150 is the estate's number. Before this, NEITHER tool enforced it: ruff's
+# default rule set does not include E501 at all, so ruff checked no length, and
+# pylint's default of 100 was the only limit in play. Three lines at 101 to 103
+# characters failed `analyse` against a limit nobody had chosen, while the
+# declared standard went unenforced.
+#
+# That is the shape `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`
+# describes, in its worst form: not two tools disagreeing about one property,
+# but two tools neither of which held the number the project meant.
+#
+# `line-length` drives ruff's formatter as well as its linter. Measured
+# 2026-08-29 before changing it: no file reflows at 150, because the formatter
+# does not expand code already wrapped shorter.
+[tool.ruff]
+line-length = 150
+
+[tool.ruff.lint]
+# E501 is line length, and it is selected explicitly because ruff's defaults
+# leave it out. Declaring the number without selecting the rule would be a limit
+# that cannot bind, which is the same fault one step earlier.
+extend-select = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # bin/test-traceability.py is a checker, not a test file. It does not match
@@ -39,3 +63,43 @@ exclude_also = ["if __name__ == .__main__.:"]
 [[tool.mypy.overrides]]
 module = ["yaml", "pytest", "wrench"]
 ignore_missing_imports = true
+
+# PYLINT RUNS ONLY WHAT RUFF CANNOT, which is what the shared jig's own header
+# has always claimed and what nothing configured. `analyse` runs a bare
+# `pylint --recursive=y`, so it ran pylint's ENTIRE default rule set here.
+# Measured 2026-08-29: 16 findings, of which ONE was cross-module analysis and
+# the rest were rules ruff already runs. toolbox was the only one of three
+# adopters of the Python jig with no pylint configuration at all.
+#
+# AN ALLOWLIST, NOT A DENYLIST. A denylist has to be remembered every time ruff
+# gains a rule and will not be; an allowlist is wrong in the safe direction, by
+# missing a new pylint check rather than by silently running a duplicate. The
+# shape is wrench's, arrived at independently there and adopted here on its
+# reasoning rather than by copying its list.
+#
+# EVERY ENTRY NEEDS MORE THAN ONE FILE IN VIEW, OR TYPE INFERENCE. That is the
+# test each one is held to, and it is what pylint's slowness is being paid for.
+# `duplicate-code` is the clearest case: ruff has no equivalent and cannot have
+# one, because it is a whole-program question.
+#
+# What is deliberately NOT here, so it is not added back by habit:
+# `line-too-long` and `invalid-name` and `missing-function-docstring` are all
+# single-file judgements. ruff owns line length above, at the estate's 150.
+# The module names it objects to are hyphenated because these are EXECUTABLES
+# invoked by path rather than importable modules, which is deliberate and is
+# why a naming rule is the wrong instrument for them.
+[tool.pylint."MESSAGES CONTROL"]
+disable = ["all"]
+enable = [
+    "duplicate-code",
+    "cyclic-import",
+    "no-member",
+    "not-callable",
+    "no-value-for-parameter",
+    "unexpected-keyword-arg",
+    "import-error",
+    "arguments-differ",
+    "abstract-method",
+    "attribute-defined-outside-init",
+    "inconsistent-return-statements",
+]

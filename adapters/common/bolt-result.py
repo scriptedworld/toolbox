@@ -84,19 +84,13 @@ def named_result(stdout: str | None) -> tuple[pathlib.Path | None, dict | None]:
     if not stdout:
         return None, reason(
             "child-wrote-nothing",
-            "the child run named no result; bolt prints the path to the "
-            "result.yaml it wrote, so nothing printed means nothing was written",
+            "the child run named no result; bolt prints the path to the result.yaml it wrote, so nothing printed means nothing was written",
         )
-    lines = [
-        line.strip()
-        for line in pathlib.Path(stdout).read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    lines = [line.strip() for line in pathlib.Path(stdout).read_text(encoding="utf-8").splitlines() if line.strip()]
     if not lines:
         return None, reason(
             "child-wrote-nothing",
-            f"the child run printed nothing to {stdout}; it died before writing "
-            "a result rather than completing with a verdict",
+            f"the child run printed nothing to {stdout}; it died before writing a result rather than completing with a verdict",
         )
     # THE LAST LINE, NOT THE FIRST. FR-10.3a says bolt prints the path to the
     # result it wrote, and the Rust build prints that alone. The Go build still

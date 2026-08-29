@@ -153,9 +153,7 @@ class Language:
         annotation carrying nothing.
         """
         marker = re.escape(self.comment)
-        return re.compile(
-            rf"^\s*{marker}\s*COVERS:\s*(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$"
-        )
+        return re.compile(rf"^\s*{marker}\s*COVERS:\s*(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$")
 
     @property
     def continuation(self) -> re.Pattern[str]:
@@ -321,9 +319,7 @@ def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
         if gone:
             retired[req_id] = " ".join(trailing)
             continue
-        declared[req_id] = (
-            trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
-        )
+        declared[req_id] = trailing[-1] if trailing and MARKER.match(trailing[-1]) else ""
     return declared, retired
 
 
@@ -383,9 +379,7 @@ def comment_block_above(lines: list[str], index: int, language: Language) -> lis
     owed = 0
     while cursor >= 0:
         line = lines[cursor]
-        closes = (line.count(")") - line.count("(")) + (
-            line.count("]") - line.count("[")
-        )
+        closes = (line.count(")") - line.count("(")) + (line.count("]") - line.count("["))
         # A line closing more than it opens is finishing something declared
         # above it, so read upward it is a continuation whatever it starts
         # with. `owed` carries that need until the opener is found.
@@ -406,9 +400,7 @@ def annotation_of(block: list[str], language: Language) -> re.Match[str] | None:
     return None
 
 
-def check_annotation(
-    found: re.Match[str], declared: dict[str, str], retired: dict[str, str]
-) -> list[str]:
+def check_annotation(found: re.Match[str], declared: dict[str, str], retired: dict[str, str]) -> list[str]:
     """Validate one COVERS annotation against the requirements document."""
     problems = []
     ids = REQ_ID.findall(found.group("ids"))
@@ -425,9 +417,7 @@ def check_annotation(
     return problems
 
 
-def scan_file(
-    path: Path, language: Language, declared: dict[str, str], retired: dict[str, str]
-) -> tuple[list[str], set[str]]:
+def scan_file(path: Path, language: Language, declared: dict[str, str], retired: dict[str, str]) -> tuple[list[str], set[str]]:
     """Check every test in one file. Returns its failures and the ids it cites."""
     failures = []
     cited: set[str] = set()
@@ -441,23 +431,16 @@ def scan_file(
         # Where a language marks its tests with an attribute rather than in the
         # name, a declaration without it is a helper and not a test. Reporting
         # it would fail every test file for the functions supporting its tests.
-        if language.attribute and not any(
-            language.attribute.match(above) for above in block
-        ):
+        if language.attribute and not any(language.attribute.match(above) for above in block):
             continue
 
         where = f"{path}:{number + 1}: {test.group(1)}"
         found = annotation_of(block, language)
         if not found:
-            failures.append(
-                f"{where} has no `{language.comment} COVERS: <ids> | <kind>` line"
-            )
+            failures.append(f"{where} has no `{language.comment} COVERS: <ids> | <kind>` line")
             continue
         cited.update(REQ_ID.findall(found.group("ids")))
-        failures.extend(
-            f"{where} {problem}"
-            for problem in check_annotation(found, declared, retired)
-        )
+        failures.extend(f"{where} {problem}" for problem in check_annotation(found, declared, retired))
     return failures, cited
 
 
@@ -479,9 +462,7 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str]) -> in
     untested = [req for req in uncovered if not is_open(declared[req])]
 
     if unresolved:
-        print(
-            f"context: {len(unresolved)} open requirement(s) have no test, which is not a failure:"
-        )
+        print(f"context: {len(unresolved)} open requirement(s) have no test, which is not a failure:")
         for req in unresolved:
             print(f"  {req} {declared[req]}")
         print()
@@ -503,14 +484,9 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str]) -> in
     covered = len(declared) - len(uncovered)
     held = len(declared) - len(unresolved)
     if failures or untested:
-        print(
-            f"{covered} of {held} requirements covered; {len(unresolved)} open and exempt"
-        )
+        print(f"{covered} of {held} requirements covered; {len(unresolved)} open and exempt")
         return 1
-    print(
-        "all tests cite a declared requirement, and every requirement held to "
-        f"coverage has one ({covered} of {held})"
-    )
+    print(f"all tests cite a declared requirement, and every requirement held to coverage has one ({covered} of {held})")
     return 0
 
 
@@ -524,10 +500,7 @@ def main() -> int:
     # is in the shared jig, so this is the first thing an adopter without a
     # requirements document sees, and it should read as an instruction.
     if not args.requirements.exists():
-        print(
-            f"{args.requirements} does not exist; "
-            "traceability has nothing to hold the code to"
-        )
+        print(f"{args.requirements} does not exist; traceability has nothing to hold the code to")
         return 1
 
     # Unreadable is its own case. A traceback here reads as a broken checker
@@ -539,9 +512,7 @@ def main() -> int:
         print(f"{args.requirements} cannot be read: {unreadable.strerror}")
         return 1
     if not declared:
-        print(
-            f"{args.requirements} declares no requirements; refusing to pass vacuously"
-        )
+        print(f"{args.requirements} declares no requirements; refusing to pass vacuously")
         return 1
 
     # Two files declaring one id is the split's own failure mode, and it is

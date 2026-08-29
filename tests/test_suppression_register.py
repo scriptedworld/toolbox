@@ -110,11 +110,7 @@ def test_a_second_pragma_in_a_registered_file_fails(checker, tmp_path):
     tree = project(
         tmp_path,
         "Register.\n\n  main.go   #nosec G304\n",
-        main_go=(
-            "package main\n\n"
-            "func a() { open(p) } //#nosec G304\n"
-            "func b() { open(q) } //#nosec G304\n"
-        ),
+        main_go=("package main\n\nfunc a() { open(p) } //#nosec G304\nfunc b() { open(q) } //#nosec G304\n"),
     )
     code, out = checker(register_checker, ARGV, tree)
     assert code == 1
@@ -174,9 +170,7 @@ def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
     hook = tree / "hook"
-    hook.write_text(
-        "#!/usr/bin/env bash\n# shellcheck disable=SC2086\necho $x\n", encoding="utf-8"
-    )
+    hook.write_text("#!/usr/bin/env bash\n# shellcheck disable=SC2086\necho $x\n", encoding="utf-8")
     code, out = checker(register_checker, ARGV, tree)
     assert code == 1
     assert "hook" in out
@@ -216,8 +210,7 @@ def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
     (tree / "load.go").write_text(
-        "package main\n\n// #nosec G304 -- the path is the user's own\n"
-        "func read() { open(p) }\n",
+        "package main\n\n// #nosec G304 -- the path is the user's own\nfunc read() { open(p) }\n",
         encoding="utf-8",
     )
     code, out = checker(register_checker, ARGV, tree)
@@ -232,9 +225,7 @@ def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
 def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or a missing import."""
     (tmp_path / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
-    (tmp_path / "main.go").write_text(
-        "package main\n\nfunc read() { open(p) } //#nosec G304\n", encoding="utf-8"
-    )
+    (tmp_path / "main.go").write_text("package main\n\nfunc read() { open(p) } //#nosec G304\n", encoding="utf-8")
     result = subprocess.run(
         [sys.executable, str(ROOT / "bin" / "suppression-register.py"), *ARGV],
         cwd=tmp_path,
@@ -288,8 +279,7 @@ def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path)
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
     (tree / "notes.py").write_text(
-        "#   nosec marks in one file they do not own.\n"
-        "#   noqa marks are the same shape.\n",
+        "#   nosec marks in one file they do not own.\n#   noqa marks are the same shape.\n",
         encoding="utf-8",
     )
     code, out = checker(register_checker, ARGV, tree)
@@ -336,9 +326,7 @@ def two_base_repo(tmp_path):
     for pack, name in (("python", "app.py"), ("go", "main.go")):
         (tmp_path / pack).mkdir()
         (tmp_path / pack / name).write_text(
-            "import subprocess  # nosec B404\n"
-            if name.endswith(".py")
-            else "package main\n\nfunc f() { g() } //nolint:errcheck\n",
+            "import subprocess  # nosec B404\n" if name.endswith(".py") else "package main\n\nfunc f() { g() } //nolint:errcheck\n",
             encoding="utf-8",
         )
     return tmp_path
@@ -357,13 +345,10 @@ def test_a_root_register_is_read_from_a_pack_below_it(checker, tmp_path):
     """
     tree = two_base_repo(tmp_path)
     (tree / "SUPPRESSIONS").write_text(
-        "Register.\n\n    python/app.py   # nosec B404\n"
-        "    go/main.go   //nolint:errcheck\n",
+        "Register.\n\n    python/app.py   # nosec B404\n    go/main.go   //nolint:errcheck\n",
         encoding="utf-8",
     )
-    code, out = checker(
-        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python"
-    )
+    code, out = checker(register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python")
     assert code == 0, out
 
 
@@ -377,13 +362,10 @@ def test_the_other_packs_rows_are_not_phantoms(checker, tmp_path):
     """
     tree = two_base_repo(tmp_path)
     (tree / "SUPPRESSIONS").write_text(
-        "Register.\n\n    python/app.py   # nosec B404\n"
-        "    go/main.go   //nolint:errcheck\n",
+        "Register.\n\n    python/app.py   # nosec B404\n    go/main.go   //nolint:errcheck\n",
         encoding="utf-8",
     )
-    code, out = checker(
-        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "go"
-    )
+    code, out = checker(register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "go")
     assert code == 0, out
     assert "app.py" not in out
 
@@ -397,13 +379,10 @@ def test_a_row_naming_nothing_is_still_a_phantom(checker, tmp_path):
     """
     tree = two_base_repo(tmp_path)
     (tree / "SUPPRESSIONS").write_text(
-        "Register.\n\n    python/app.py   # nosec B404\n"
-        "    go/gone.go   //nolint:errcheck\n",
+        "Register.\n\n    python/app.py   # nosec B404\n    go/gone.go   //nolint:errcheck\n",
         encoding="utf-8",
     )
-    code, out = checker(
-        register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python"
-    )
+    code, out = checker(register_checker, ["--register", "../SUPPRESSIONS", "."], tree / "python")
     assert code == 1
     assert "gone.go" in out
     assert "points at nothing" in out
@@ -421,16 +400,10 @@ def test_a_directory_register_totals_what_one_document_totals(checker, tmp_path)
     entries = tmp_path / "SUPPRESSIONS"
     (entries / "a").mkdir(parents=True)
     (entries / "b").mkdir(parents=True)
-    (entries / "a" / "one.md").write_text(
-        "# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8"
-    )
-    (entries / "b" / "two.md").write_text(
-        "# Two\n\n    two.go   //nolint:errcheck\n", encoding="utf-8"
-    )
+    (entries / "a" / "one.md").write_text("# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8")
+    (entries / "b" / "two.md").write_text("# Two\n\n    two.go   //nolint:errcheck\n", encoding="utf-8")
     for name in ("one.go", "two.go"):
-        (tmp_path / name).write_text(
-            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
-        )
+        (tmp_path / name).write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
     code, out = checker(register_checker, DIR_ARGV, tmp_path)
     assert code == 0, out
     assert "2 pragma(s)" in out
@@ -441,13 +414,9 @@ def test_a_directory_register_still_fails_an_unregistered_pragma(checker, tmp_pa
     """Splitting the register may not soften either direction of the check."""
     entries = tmp_path / "SUPPRESSIONS" / "a"
     entries.mkdir(parents=True)
-    (entries / "one.md").write_text(
-        "# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8"
-    )
+    (entries / "one.md").write_text("# One\n\n    one.go   //nolint:errcheck\n", encoding="utf-8")
     for name in ("one.go", "two.go"):
-        (tmp_path / name).write_text(
-            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
-        )
+        (tmp_path / name).write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
     code, out = checker(register_checker, DIR_ARGV, tmp_path)
     assert code == 1
     assert "two.go" in out
@@ -456,12 +425,8 @@ def test_a_directory_register_still_fails_an_unregistered_pragma(checker, tmp_pa
 # COVERS: FR-2.3 | negative
 def test_an_unreadable_register_reports_why_and_does_not_raise(checker, tmp_path):
     """Absent and unreadable are different, and neither is a traceback."""
-    (tmp_path / "SUPPRESSIONS").write_text(
-        "# Register\n\n    main.go   //nolint:errcheck\n", encoding="utf-8"
-    )
-    (tmp_path / "main.go").write_text(
-        "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
-    )
+    (tmp_path / "SUPPRESSIONS").write_text("# Register\n\n    main.go   //nolint:errcheck\n", encoding="utf-8")
+    (tmp_path / "main.go").write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
     (tmp_path / "SUPPRESSIONS").chmod(0o000)
     try:
         code, out = checker(register_checker, ARGV, tmp_path)
@@ -486,9 +451,7 @@ def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
     for relative in ("vendor/dep/v.go", ".ephemera/probe/p.go"):
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
-        )
+        path.write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
     # The project's own file, carrying nothing. Without it this tree holds no
     # readable source at all, and the run fails for having read nothing rather
     # than passing for having correctly skipped what it should skip. The two
@@ -505,12 +468,8 @@ def test_the_projects_own_pragma_is_still_found(checker, tmp_path):
     """The skip list may not swallow the thing the check exists for."""
     vendored = tmp_path / "vendor" / "v.go"
     vendored.parent.mkdir(parents=True)
-    vendored.write_text(
-        "package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8"
-    )
-    (tmp_path / "main.go").write_text(
-        "package main\n\nfunc h() { i() } //nolint:errcheck\n", encoding="utf-8"
-    )
+    vendored.write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
+    (tmp_path / "main.go").write_text("package main\n\nfunc h() { i() } //nolint:errcheck\n", encoding="utf-8")
     code, out = checker(register_checker, ARGV, tmp_path)
     assert code == 1
     assert "1 pragma(s)" in out

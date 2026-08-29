@@ -243,11 +243,7 @@ def code_lines(text: str) -> Iterator[str]:
         #
         # Third instance in this one file of the tool being read as a use of
         # itself, after the pattern table and the test fixtures.
-        if (
-            opener
-            and not in_a_string(line, opener.start())
-            and line.count(opener.group()) == 1
-        ):
+        if opener and not in_a_string(line, opener.start()) and line.count(opener.group()) == 1:
             fence = opener.group()
             continue
         yield line
@@ -479,27 +475,19 @@ def compare(
         where = key[0]
         if where not in source and not where.is_relative_to(root):
             if not where.exists():
-                failures.append(
-                    f"{describe(key, frame)} ×{register[key]} names a file that does "
-                    "not exist; the register points at nothing"
-                )
+                failures.append(f"{describe(key, frame)} ×{register[key]} names a file that does not exist; the register points at nothing")
             continue
         here, there = source[key], register[key]
         if there == 0:
             failures.append(
-                f"{describe(key, frame)} ×{here} is in the source and in no register "
-                "entry; ask before it stays, then register it, or remove it"
+                f"{describe(key, frame)} ×{here} is in the source and in no register entry; ask before it stays, then register it, or remove it"
             )
         elif here == 0:
             failures.append(
-                f"{describe(key, frame)} ×{there} is registered and is not in the "
-                "source; the pragma moved or went, and the register did not follow"
+                f"{describe(key, frame)} ×{there} is registered and is not in the source; the pragma moved or went, and the register did not follow"
             )
         elif here != there:
-            failures.append(
-                f"{describe(key, frame)}: the source carries {here}, "
-                f"the register says {there}"
-            )
+            failures.append(f"{describe(key, frame)}: the source carries {here}, the register says {there}")
     return failures
 
 
@@ -513,10 +501,7 @@ def report(failures: list[str], total: int, files: int, register: Path) -> int:
     if total == 0:
         print(f"no suppression pragmas in {files} source file(s), and none registered")
         return 0
-    print(
-        f"every suppression is registered, and every entry is real "
-        f"({total} pragma(s) across {files} source file(s))"
-    )
+    print(f"every suppression is registered, and every entry is real ({total} pragma(s) across {files} source file(s))")
     return 0
 
 
@@ -536,10 +521,7 @@ def main() -> int:
     # source. It is a failure rather than a warning because a task that cannot
     # fail is worse than an absent one, which is this repository's own decision.
     if files == 0:
-        print(
-            f"no source files found under {args.root}; "
-            "this checker read nothing and cannot report on what it did not read"
-        )
+        print(f"no source files found under {args.root}; this checker read nothing and cannot report on what it did not read")
         return 1
 
     # Unreadable is not absent. A register that exists and cannot be opened

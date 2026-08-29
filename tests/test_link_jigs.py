@@ -45,9 +45,7 @@ EVERY = (
 )
 
 
-def toolbox(
-    tmp_path: Path, files: Sequence[str] = EVERY, manifest: str = MANIFEST
-) -> Path:
+def toolbox(tmp_path: Path, files: Sequence[str] = EVERY, manifest: str = MANIFEST) -> Path:
     """Build a repository holding a manifest and the files it names."""
     root = tmp_path / "toolbox"
     root.mkdir(exist_ok=True)
@@ -81,9 +79,7 @@ def test_entries_land_at_the_same_relative_path(checker, tmp_path):
     code, _ = checker(link_jigs, argv(root, target, "go", "--yes"), tmp_path)
     assert code == 0
     assert (target / "bin/checker.py").is_symlink()
-    assert (target / "bin/checker.py").read_text(
-        encoding="utf-8"
-    ) == "# bin/checker.py\n"
+    assert (target / "bin/checker.py").read_text(encoding="utf-8") == "# bin/checker.py\n"
 
 
 # COVERS: FR-7.2 | positive

@@ -84,9 +84,5 @@ def adapter(
 
 def fixture_text(relative: str) -> str:
     """Read captured tool output, dropping the provenance comment on line one."""
-    lines = (
-        (Path(__file__).parent / "fixtures" / relative)
-        .read_text(encoding="utf-8")
-        .splitlines(keepends=True)
-    )
+    lines = (Path(__file__).parent / "fixtures" / relative).read_text(encoding="utf-8").splitlines(keepends=True)
     return "".join(lines[1:]) if lines and lines[0].startswith("#") else "".join(lines)

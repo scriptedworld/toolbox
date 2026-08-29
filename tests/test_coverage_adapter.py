@@ -39,9 +39,7 @@ PROFILE = (
 
 # Every file fully covered. The mixed profile above cannot demonstrate a pass at
 # any positive minimum, because `b.go` is at zero.
-COVERED = (
-    "mode: atomic\ngithub.com/x/p/a.go:1.1,2.2 2 1\ngithub.com/x/p/c.go:1.1,2.2 3 3\n"
-)
+COVERED = "mode: atomic\ngithub.com/x/p/a.go:1.1,2.2 2 1\ngithub.com/x/p/c.go:1.1,2.2 3 3\n"
 
 
 def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):

@@ -77,10 +77,7 @@ def reasons_from(text):
                 "line": int(m.group("line")),
                 "function": func,
                 "message": (
-                    f"{func} is over threshold: "
-                    f"cyclomatic complexity {m.group('ccn')}, "
-                    f"{m.group('length')} lines, "
-                    f"{m.group('param')} parameter(s)"
+                    f"{func} is over threshold: cyclomatic complexity {m.group('ccn')}, {m.group('length')} lines, {m.group('param')} parameter(s)"
                 ),
                 "ccn": int(m.group("ccn")),
                 "length": int(m.group("length")),
@@ -149,10 +146,7 @@ def main():
             [
                 {
                     "checker": CHECKER,
-                    "message": (
-                        f"lizard exited {code} and produced no warnings this "
-                        "adapter could parse"
-                    ),
+                    "message": (f"lizard exited {code} and produced no warnings this adapter could parse"),
                 }
             ],
             stats,
