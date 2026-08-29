@@ -28,6 +28,34 @@ requires:
   - golangci-lint
   - govulncheck
 
+# THE ENTRYPOINT STEP, defaulted so a project without a binary is unaffected.
+#
+# main() holds statements no test process can reach, because nothing in a test
+# calls main(). Hard rule 5 says measure it rather than exclude it, so the
+# binary is built with -cover, run once, and its profile merged with the test
+# one. Both are declared evidence of the `tests` task and both reach the
+# adapter, which is what keeps this inside FR-4.6: one script, one exit code,
+# one work directory.
+#
+# A PLACEHOLDER IS ONE ARGUMENT, so this names a program and never a command
+# line. FR-4.16c holds a defined value to a scalar and substitute.go shell-
+# quotes it, which makes "a definition meaning several arguments" inexpressible
+# by design. An earlier attempt here supplied the whole build-and-run chain and
+# died at `sh: 1: go build ...: not found`, exit 127, with {work_dir} inside the
+# value never expanded because substitution does not recurse.
+#
+# So the task writes the empty profile itself, then hands the work directory to
+# one program. The default is `true`, which ignores its argument and leaves the
+# empty profile standing, so a project with no binary needs no definitions file
+# and is unaffected. A project with a binary names a script that overwrites it.
+#
+# The evidence is declared unconditionally because it must be: declaring it
+# conditionally is not expressible either, and bolt refuses a task that does not
+# produce evidence it declared. Hence the empty profile rather than an absent
+# one. It merges as a no-op, being a mode line and nothing else.
+definitions:
+  entrypoint: 'true'
+
 tasks:
   # ---- shape ----------------------------------------------------------------
 
@@ -98,12 +126,15 @@ tasks:
   # measures what is actually exercised, but it is not unit-test coverage and
   # should not be read as one.
   - name: tests
-    description: race, shuffle, and coverage judged per file
+    description: race, shuffle, and coverage judged per file including the entry point
     command: >-
       CGO_ENABLED=1 go test -race -shuffle=on -covermode=atomic
-      -coverpkg=./... -coverprofile={work_dir}/coverage.out ./...
+      -coverpkg=./... -coverprofile={work_dir}/cover-test.out ./... &&
+      printf 'mode: atomic\n' > {work_dir}/cover-entry.out &&
+      {entrypoint} {work_dir}
     evidence:
-      - coverage.out
+      - cover-test.out
+      - cover-entry.out
     adapter: adapters/go/coverage.py
 
   # ---- supply chain ---------------------------------------------------------
