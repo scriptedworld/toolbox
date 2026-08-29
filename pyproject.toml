@@ -28,6 +28,14 @@ exclude_also = ["if __name__ == .__main__.:"]
 # nothing in this repository declares runtime dependencies: bolt invokes these
 # scripts by path against whatever interpreter anvil built. Revisit when anvil
 # carries the stub packages: see NEXT_STEPS.
+#
+# `wrench` joined the list 2026-08-29 when the local schema copies went and the
+# tests began importing the pack that ships them, which settles NFR-6. It is
+# resolvable at runtime by editable install and not by mypy's path.
+#
+# `jsonschema` and `referencing` left it the same day: the suite validated jigs
+# by assembling its own validator and now calls the one wrench ships, so neither
+# is imported here any more.
 [[tool.mypy.overrides]]
-module = ["yaml", "pytest", "jsonschema", "referencing"]
+module = ["yaml", "pytest", "wrench"]
 ignore_missing_imports = true

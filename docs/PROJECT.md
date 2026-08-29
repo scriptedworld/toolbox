@@ -32,8 +32,7 @@ then judged against its author's answers.
 Getting this backwards is invisible in the repository that gets it wrong: a jig
 at its own root has `{config_dir}` equal to the run root, so both spellings
 resolve to the same file. `tests/test_jigs.py` exists to catch it, and fails any
-jig that reaches `bin/`, `adapters/`, `config/` or `schema/` without
-`{config_dir}`.
+jig that reaches `bin/`, `adapters/` or `config/` without `{config_dir}`.
 
 Measured in `agent-support`: `{config_dir}` resolves against **the symlink's own
 directory and not its target**, which is why an adopter needs its own `bin/` and
@@ -58,10 +57,16 @@ directory and not its target**, which is why an adopter needs its own `bin/` and
       common/lizard.py         complexity, any language lizard reads
       go/{gofmt,govet,coverage}.py
     config/         tool configuration that travels with a jig
-    schema/         jig.schema.json and definitions.schema.json, copied from
-                    wrench and held equal to it by a test
     tests/          one file per script under test; see
                     docs/PATTERNS/testing-checkers-and-adapters.md
+
+**There is no `schema/`, and that is NFR-6 settled.** wrench ships the jig and
+definitions schemas and bolt is built from them, so a copy here could only be a
+second description free to disagree with the one being enforced. It disagreed
+twice, on `allow-empty` arriving and again on its rename to `optional`, and both
+times a test caught the copy rather than anything failing. `tests/test_jigs.py`
+imports `wrench` and validates against the validator wrench ships. Deleted
+2026-08-29.
 
 ## The gate
 

@@ -56,21 +56,24 @@ Both were cited as evidence from places that outlive a scratch directory, a
 `.complete` task and a message to another session. Those citations are removed
 as an interim rather than the question pre-empted.
 
-**Where does the schema belong?** `schema/jig.schema.json` describes bolt's
-configuration format, which is bolt's to define, and it lives here only because
-this is where jigs live. `NFR-6` carries the rule: if bolt ships its own, this
-one is deleted rather than left to drift into a second, disagreeing description.
+**~~Where does the schema belong?~~ ANSWERED 2026-08-29: wrench, and this
+repository keeps no copy.** `schema/` is deleted and `tests/test_jigs.py`
+imports the pack and validates against the validator wrench ships. `NFR-6` moves
+from `[?]` to settled.
 
-**The condition has now been met and the question is live.** wrench ships the
-authoritative schemas and bolt validates against them. The local copies are
-synced and a test fails on divergence, which fired in anger on 2026-08-27 when
-wrench added `allow-empty`. That makes the drift detectable rather than
-answering `NFR-6`.
+The copy disagreed twice, on `allow-empty` arriving and again on its rename to
+`optional`, and each time a test caught the copy and the fix was to copy the
+file again. **Importing removes the class rather than the instance: there is no
+local artefact left to drift.**
 
-One thing to know before answering it: **bolt embeds the schemas at build time**,
-so a binary enforces whatever wrench said when it was last built. Measured
-2026-08-27, `allow-empty` was in the bolt built at 20:11 and absent from the one
-built at 13:11. Agreeing with wrench's source is necessary and not sufficient.
+One thing that survives the answer, because it is about bolt rather than about
+the copy: **bolt embeds the schemas at build time**, so a binary enforces
+whatever wrench said when it was last built. Measured 2026-08-27, the field was
+in the bolt built at 20:11 and absent from the one built at 13:11. **Agreeing
+with wrench's source is necessary and not sufficient**, and a jig using a field
+younger than an adopter's binary is accepted and silently ignored, because the
+schema does not refuse unknown keys. That is recorded in `tests/test_jigs.py`
+where somebody validating a jig will meet it.
 
 **Maintainability index: drop it from the standard, or declare it Python-only?**
 Only Python has a tool, `radon mi`. Go, Rust and TypeScript have no maintained

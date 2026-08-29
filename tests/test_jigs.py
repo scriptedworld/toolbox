@@ -7,11 +7,7 @@ against the path rule that decides whether it is adoptable at all.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import jsonschema
-import referencing
+import wrench
 import yaml
 from conftest import ROOT
 
@@ -27,42 +23,41 @@ JIGS = sorted(
 
 DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 
-SCHEMA_DIR = ROOT / "schema"
-SCHEMA = SCHEMA_DIR / "jig.schema.json"
-
-# Wrench's schemas, which are the source bolt is built from. This repository
-# keeps a copy so its own tests need nothing outside the tree, and the copy is
-# only worth having while it agrees with the original.
+# THE SCHEMAS COME FROM WRENCH AND THIS REPOSITORY KEEPS NO COPY.
+#
+# Decided 2026-08-29, which settles NFR-6. wrench ships them and bolt is built
+# from them, so a second copy here could only ever be a description free to
+# disagree with the one being enforced. It did disagree, twice: on `allow-empty`
+# when wrench added it, and again when wrench renamed it to `optional`. Both
+# times the copy was detected by a test rather than by anything failing, and
+# both times the fix was to copy the file again.
+#
+# Importing the pack removes the class of bug rather than the instance. There is
+# no longer a local artefact to drift.
 #
 # THIS IS THE SOURCE AND NOT WHAT ANY BINARY ENFORCES. Bolt embeds these at
 # build time, so a binary enforces whatever wrench said when it was last built.
-# Measured: `allow-empty` is in the binary built at 20:11 and absent from the
-# one built at 13:11, seven hours after the field existed. Agreeing with this
+# Measured 2026-08-27: the field was in the bolt built at 20:11 and absent from
+# the one built at 13:11, seven hours after it existed. Agreeing with this
 # source is therefore necessary and not sufficient, and a jig using a field
 # younger than an adopter's binary is accepted and silently ignored, because the
 # schema does not refuse unknown keys.
-ENFORCED_DIR = Path.home() / ".projects" / "wrench" / "schemas"
-
-# A jig schema refers to the definitions schema by its published URI, which
-# nothing resolves offline. Registering each local file under its own $id is
-# what lets the reference resolve without a network call.
-SCHEMAS = ("jig.schema.json", "definitions.schema.json")
-
-
-def registry() -> referencing.Registry:
-    """Every local schema, keyed by the $id it publishes itself under."""
-    store = referencing.Registry()
-    for name in SCHEMAS:
-        document = json.loads((SCHEMA_DIR / name).read_text(encoding="utf-8"))
-        resource = referencing.Resource.from_contents(document)
-        store = resource @ store
-    return store
+#
+# wrench ships a compiled VALIDATOR rather than a document, and it attaches its
+# own registry, so a jig schema referencing the definitions schema by `$id`
+# resolves without a network call and without this file assembling one. The
+# registry helper that used to live here is gone with the copies.
+SCHEMA = wrench.JIG_SCHEMA
+DEFINITIONS_SCHEMA = wrench.DEFINITIONS_SCHEMA
 
 
 # Directories that belong to this repository. A command reaching one of them is
 # reaching for THE RULE, and must say {config_dir} to find it in the adopter's
 # checkout rather than in the adopter's own tree.
-OURS = ("bin/", "adapters/", "config/", "schema/")
+#
+# `schema/` was here and is gone with the directory, 2026-08-29. NFR-6 is
+# settled: wrench ships the schemas and this repository keeps no copy.
+OURS = ("bin/", "adapters/", "config/")
 
 
 def commands(jig: dict) -> list[tuple[str, str]]:
@@ -99,28 +94,45 @@ def test_there_are_jigs_to_check():
 # COVERS: FR-1.2 | property
 def test_every_jig_validates_against_the_schema():
     """A jig that does not validate is one bolt may accept today and reject tomorrow."""
-    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
-    validator = jsonschema.Draft202012Validator(schema, registry=registry())
     for path in JIGS:
-        validator.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+        SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
+# COVERS: FR-1.2 | property
+def test_every_definitions_file_validates_against_its_own_schema():
+    """The definitions files were never validated against anything.
+
+    A jig has been held to its schema since the suite existed; the definitions
+    files beside it, which supply that jig's placeholder values, were not. They
+    have their own schema and wrench ships it, so the omission was that nobody
+    reached for it rather than that it was unavailable.
+
+    Noticed 2026-08-29 while removing the local schema copies: the constant was
+    imported and used nowhere.
+    """
+    assert DEFINITIONS, "no bolt.*.definitions.yaml found; this proves nothing"
+    for path in DEFINITIONS:
+        DEFINITIONS_SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 # COVERS: FR-1.2 | regression
-def test_the_local_schemas_still_match_wrenchs_source():
-    """Drift here is silent and it hid a dead gate in eight repositories.
+def test_the_schema_comes_from_wrench_and_not_from_a_copy():
+    """The drift this replaces was silent and hid a dead gate in eight repos.
 
-    The local copy required `id` and `command` long after wrench's required
+    A local copy required `id` and `command` long after wrench's required
     `name`, so every jig validated in this suite while bolt refused the same
     files. A test that checks a document against a copy of the rule nobody
     enforces reports on the copy.
+
+    The copy is gone rather than resynced, which settles NFR-6. This asserts
+    the property that replaced it: the schema being validated against is the
+    object wrench ships, so there is no local artefact left to drift.
     """
-    for name in SCHEMAS:
-        enforced = ENFORCED_DIR / name
-        if not enforced.exists():
-            continue
-        assert (SCHEMA_DIR / name).read_text(encoding="utf-8") == enforced.read_text(
-            encoding="utf-8"
-        ), f"schema/{name} has drifted from {enforced}; sync it or resolve NFR-6"
+    assert SCHEMA is wrench.JIG_SCHEMA
+    assert not (ROOT / "schema").exists(), (
+        "a local schema/ has reappeared; NFR-6 says wrench ships these and "
+        "this repository keeps no copy"
+    )
 
 
 # COVERS: FR-1.4 | property
