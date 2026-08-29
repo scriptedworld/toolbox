@@ -23,6 +23,31 @@ The index is the indented block at the end of the register, one row per file:
 part of the comparison, so a second suppression added to an already-registered
 file is caught rather than hidden behind the first.
 
+A ROW IS ONE PRAGMA'S CODE SET, NOT A FILE'S. `×2  #nosec B404, B603` says the
+file carries two pragmas, each silencing both codes. Two pragmas of one code
+each are two rows:
+
+    src/app.py   #nosec B404
+    src/app.py   #nosec B603
+
+Both readings are defensible and the example above does not distinguish them, so
+this says which one the checker uses. Raised by wrench, who wrote the first and
+meant the second.
+
+PATHS IN A ROW ARE RELATIVE TO THE REPOSITORY, found by walking up for `.git`,
+and never to the register's own directory or to the directory being scanned.
+That is what lets ONE register serve a repository whose packs are checked at
+their own bases: a scan at `python/` and a row saying `python/tests/x.py` both
+resolve to the same absolute path.
+
+    UPGRADING FROM A VERSION THAT KEYED ON THE SCAN ROOT HAS TWO STEPS.
+
+An adopter that worked around the old behaviour has the register itself to put
+back into the repository frame, AND any wrapper that rewrote rows between frames
+before calling this. With both sides resolved, such a translation doubles the
+prefix, and the symptom is the ROOT spelling failing a root-based run after the
+upgrade. Reported by wrench, who hit exactly that and had two things to undo.
+
 Exiting 0 is this task's contract, which is why it prints its findings rather
 than returning an envelope: bolt's configuration never says what success means,
 and a tool whose exit code genuinely is the answer needs no adapter.
