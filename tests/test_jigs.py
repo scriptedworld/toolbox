@@ -115,7 +115,7 @@ def test_every_definitions_file_validates_against_its_own_schema():
         DEFINITIONS_SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
-# COVERS: FR-1.2 | regression
+# COVERS: NFR-6 | regression
 def test_the_schema_comes_from_wrench_and_not_from_a_copy():
     """The drift this replaces was silent and hid a dead gate in eight repos.
 
