@@ -73,12 +73,13 @@ instead of symlinks, so `{config_dir}` is the repository root natively.
     bolt --definitions toolbox python-std-quality .
     bolt secrets .
 
-**`--definitions toolbox` is not optional here, and no other adopter passes
-it.** The shared jigs exclude `bin/` and `adapters/`, because in every other
-adopter those hold symlinks to this repository's checkers and the adopter's
-tools would grade toolbox's code as their own. This repository holds the real
-files, so taking the default would stop it gating its own checkers, which is
-silencing a gate rather than scoping one. `bolt.toolbox.definitions.yaml`
+**`--definitions toolbox` is not optional here.** The name is toolbox's own; an
+adopter overriding a placeholder passes its own file instead, and one taking the
+defaults passes none. The shared jigs exclude `bin/` and `adapters/`, because in
+every other adopter those hold symlinks to this repository's checkers and the
+adopter's tools would grade toolbox's code as their own. This repository holds
+the real files, so taking the default would stop it gating its own checkers,
+which is silencing a gate rather than scoping one. `bolt.toolbox.definitions.yaml`
 carries the override and says so.
 
 One jig and one directory per run. Flags come before the positionals, and the

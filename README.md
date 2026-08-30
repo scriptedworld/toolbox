@@ -77,8 +77,18 @@ on drift.
 | `REQUIREMENTS.md` | `traceability` | a failure: the check has nothing to hold the code to |
 | `SUPPRESSIONS` | `suppressions` | fine if you have no pragmas, a failure if you do |
 | `coverage.out` | `tests` | produced by the `tests` task, not by you |
+| `bolt.<name>.definitions.yaml` | any task carrying a placeholder | the jig's own defaults stand, which suit a project laid out like this one |
 
 Everything else a jig needs lives here. Nothing reaches outside those two places.
+
+A definitions file overrides a jig's placeholders and is passed by name, so
+`bolt --definitions mine common-quality .` reads `bolt.mine.definitions.yaml`
+from the config directory. It is a flat mapping of placeholder to scalar and
+carries no `definitions:` wrapper, unlike the block inside a jig that declares
+the defaults. Each value becomes one shell word, so a placeholder names a path
+or a program and never a command line. Every jig's header lists what it defines
+and what its default assumes; the Go jig's `entrypoint` is the one most adopters
+have to fill, because it names the script that measures `main()`.
 
 ### Running one
 

@@ -15,11 +15,12 @@ bolt --definitions toolbox python-std-quality .
 bolt secrets .
 ```
 
-**`--definitions toolbox` is not optional here, and no other adopter passes
-it.** The shared jigs exclude `bin/` and `adapters/`, because everywhere else
-those directories hold links to this repository's code and an adopter's tools
-would otherwise grade toolbox's work as their own. Here they are the real files,
-so taking the default would stop toolbox gating its own checkers.
+**`--definitions toolbox` is not optional here.** The name is toolbox's own; an
+adopter overriding a placeholder passes its own file instead, and one taking the
+defaults passes none. The shared jigs exclude `bin/` and `adapters/`, because
+everywhere else those directories hold links to this repository's code and an
+adopter's tools would otherwise grade toolbox's work as their own. Here they are
+the real files, so taking the default would stop toolbox gating its own checkers.
 `bolt.toolbox.definitions.yaml` holds the override.
 
 Read `result.yaml` rather than the exit status. bolt exits 0 when the run

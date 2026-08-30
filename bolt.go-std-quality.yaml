@@ -48,6 +48,16 @@ requires:
 # empty profile standing, so a project with no binary needs no definitions file
 # and is unaffected. A project with a binary names a script that overwrites it.
 #
+# A DEFINITIONS FILE IS A FLAT MAPPING of name to scalar, and carries no
+# `definitions:` wrapper. The block below has one because it sits inside a
+# larger document; `bolt.go-std-quality.definitions.yaml` is nothing else, so it
+# is the mapping alone:
+#
+#     entrypoint: scripts/cover-entrypoint.sh
+#
+# wrench's definitions schema refuses the wrapped guess, and reports the value's
+# type at `/definitions` rather than the shape of the file.
+#
 # The evidence is declared unconditionally because it must be: declaring it
 # conditionally is not expressible either, and bolt refuses a task that does not
 # produce evidence it declared. Hence the empty profile rather than an absent
@@ -155,24 +165,3 @@ tasks:
 # Cobertura document from statement data. Gating on those numbers would report a
 # guarantee nothing established, which is the same failure as gating on
 # `test -f`. So the gate measures statements and says so.
-#
-# ---- ENTRYPOINT IS NOT HERE, FOR A DIFFERENT REASON --------------------------
-#
-# It measures the one statement in main() that `go test` can never reach, by
-# building with `go build -cover`, running the binary once and appending the
-# profile. It names the project's own main package and its own smallest safe
-# invocation, so every Go project needs a different one and bolt has no
-# substitution that could stand in. Left in a shared file it fails for every
-# adopter, in a way that looks like the adopter's fault.
-#
-# It belongs in the project's own jig, where hardcoding is correct because the
-# file is about that one project:
-#
-#     tasks:
-#       - name: entrypoint
-#         description: the built binary runs, so its one statement is measured
-#         command: >-
-#           go build -cover -covermode=atomic -coverpkg=./...
-#           -o {work_dir}/app ./cmd/app && {work_dir}/app help
-#
-# A shared definition carries the rule and never the subject.
