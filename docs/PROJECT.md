@@ -108,12 +108,23 @@ it had adopted rather than on its own source.
 One gap remains in what `complexity` reads: it misses a script with no file
 extension, which is how one adopter's only source file went unread.
 
-The 11 uncovered requirements are `FR-1.1`, `FR-1.3`, `FR-2.1`, `FR-2.2`,
-`FR-3.3`, `FR-6.1`, `FR-7.3`, `FR-7.14`, `NFR-1`, `NFR-2` and `NFR-4`. A few are
-straightforwardly testable. The rest are design properties held by review, and
-*"a jig carries the rule and never the subject"* is not an assertion a test can
-make. All of them are settled rather than open, so they carry no `[?]` and the
-gate is right to fail on them.
+Eleven requirements have no test citing them, and they split two ways.
+
+**A test can reach two of them.** `FR-7.14` refuses a link resolving outside the
+target project, through a `State.ESCAPES` in `link-jigs.py` that nothing
+exercises. `NFR-4` requires every adapter fixture to record the tool version and
+the capture date, which both fixtures under `tests/fixtures/` do and no test
+asserts.
+
+**The other nine are design properties held by review, not a backlog.**
+`FR-1.1`, `FR-1.3`, `FR-2.1`, `FR-2.2`, `FR-3.3`, `FR-6.1`, `FR-7.3`, `NFR-1`
+and `NFR-2`. *"A jig carries the rule and never the subject"* is not an
+assertion a test can make. `FR-1.4` and `FR-1.5` looked the same way and turned
+out assertable against the jig documents themselves, so the nine are what nobody
+has yet found a way to reach rather than a set anybody has proved unreachable.
+
+All eleven are settled rather than open, so they carry no `[?]` and the gate is
+right to fail on them.
 
 ## Adoption
 
