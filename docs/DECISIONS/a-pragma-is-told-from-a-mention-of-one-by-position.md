@@ -10,11 +10,10 @@ A pragma **is** a comment. So no rule about strings, quoting or file type
 separates a suppression from prose describing one, and the checker's own source
 has to quote every spelling it hunts for.
 
-FACT 2026-08-28, measured before the guard existed: 28 findings in toolbox, 22
-of them fixture data in `tests/test_suppression_register.py` and 6 in the
-checker itself. Not one was a suppression of anything. Every adopter would have
-inherited the same, since adoption links this repository's checkers into their
-`bin/`.
+Measured before the guard existed: 28 findings in toolbox, 22 of them fixture
+data in `tests/test_suppression_register.py` and 6 in the checker itself. Not
+one was a suppression of anything. Every adopter would have inherited the same,
+since adoption links this repository's checkers into their `bin/`.
 
 This is `a-project-cannot-test-its-own-tooling`, filed by wrench against the
 traceability checker, arriving in a second checker: the tool cannot say *this
