@@ -103,3 +103,36 @@ tasks:
     command: >-
       lizard -C 15 -a 5 -L 60
       -x {excluded_one_glob} -x {excluded_two_glob} -x {excluded_three_glob} .
+
+  # ---- secrets ---------------------------------------------------------------
+
+  # THE SECRETS JIG RUNS FROM HERE, COMPOSED RATHER THAN COPIED. Directed
+  # 2026-08-29: the common jig should run the security one as well.
+  #
+  # Before this, "all the quality tooling" reached secret scanning nowhere. The
+  # two sets were adopted separately, ten repositories to nine, so a project
+  # running only its common gate scanned for no credentials at all and nothing
+  # said so.
+  #
+  # COMPOSED, so `bolt.secrets.yaml` stays the single definition of what a
+  # secret scan is. Copying the two tasks here would put detect-secrets'
+  # configuration in two files free to drift, which is the fault this estate
+  # spent two days finding in other shapes, and the drift would be between two
+  # documents that both look authoritative.
+  #
+  # THE ADAPTER IS NOT OPTIONAL. Bolt exits 0 whenever it carried a run out,
+  # whatever the tools concluded, so a composed task with no adapter passes
+  # however badly the child failed. Measured 2026-08-29 on a deliberately
+  # failing child: with the adapter `success=False`, without it `success=True`.
+  # The adapter reads the child's result and folds its reasons up, so a
+  # credential found by the child reports here as the child's own finding rather
+  # than as a path to go and read.
+  #
+  # `--output-dir` is named because bolt refuses a directory that already holds
+  # a run, and the child must not land in the parent's own.
+  - name: secrets
+    description: the secrets jig, run over this project as a child
+    command: >-
+      bolt --config-dir {config_dir} --output-dir {work_dir}/child
+      secrets {base_dir}
+    adapter: adapters/common/bolt-result.py

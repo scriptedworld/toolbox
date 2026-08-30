@@ -20,14 +20,23 @@ version: 1
 
 sets:
   # Checks that do not care what language the project is written in. Every
-  # language set includes this one; `secrets` deliberately does not, because
-  # scanning a repository for credentials needs nothing else to be true of it.
+  # language set includes this one.
+  #
+  # COMMON INCLUDES SECRETS, and the arrow only points that way. The common jig
+  # composes `bolt.secrets.yaml` as a child, so an adopter of `common` needs the
+  # secrets definition on disk or that task cannot run. `secrets` still includes
+  # nothing, because scanning a repository for credentials needs nothing else to
+  # be true of it, and a project may adopt it alone.
   common:
+    includes: [secrets]
     files:
       - bolt.common-quality.yaml
       - bin/test-traceability.py
       - bin/suppression-register.py
       - adapters/common/lizard.py
+      # The composition adapter, which turns the child secrets run's verdict
+      # into this jig's. Without it the composed task cannot fail.
+      - adapters/common/bolt-result.py
 
   go:
     includes: [common]
