@@ -61,6 +61,6 @@ The estate spent 2026-08-28 on one fault: **a tool's selection rule is invisible
 and answers a narrower question than its name.** This is that fault turned
 inward, where the thing being selected wrongly is the tool's own source.
 
-`clank/tasks/toolbox/jig-validation/20` holds the general version with five
-instances. Whatever is decided there should be checked against this one, because
-this is the case where the answer already exists and works.
+The general version of that fault has several instances across these tools, and
+whatever is decided for it should be checked against this one, because this is
+the case where the answer already exists and works.

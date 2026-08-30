@@ -5,8 +5,7 @@
 # THE COMMON CHECKS ARE NOT HERE. traceability, suppressions and complexity live
 # in bolt.common-quality.yaml, and a project runs both. How the two compose is
 # unsettled: it used to be an overlay, `bolt -c common -c go`, which the current
-# CLI cannot express. See that file's header and
-# `clank/tasks/toolbox/port-the-jigs/10`.
+# CLI cannot express. See that file's header and NEXT_STEPS.md.
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #

@@ -80,6 +80,5 @@ Tests must carry their `COVERS` metadata, which
 and helpers are exempt by construction. Docstrings are wanted on tests and are
 not the same requirement they are on source.
 
-So there is still no percentage to pick, and there IS a distinction to encode.
+So there is still no percentage to pick, and there is a distinction to encode.
 Per-file ignores for the test tree are the shape that says it.
-`clank/tasks/toolbox/own-gate/20` carries it.

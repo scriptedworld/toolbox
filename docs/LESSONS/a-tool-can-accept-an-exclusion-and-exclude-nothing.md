@@ -52,6 +52,5 @@ This is the false-green family. A check that runs, reports nothing and exits 0
 is indistinguishable from a check that was never pointed at anything, and the
 green row reads as a checked property either way.
 
-`clank/inbox/silo/a-claim-outliving-its-own-check/` carries the wider version:
-the thing that would falsify a claim living on a shorter timescale than the
-claim.
+The wider version of this is a claim outliving its own check: the thing that
+would falsify a claim lives on a shorter timescale than the claim does.

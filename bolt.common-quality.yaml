@@ -21,8 +21,8 @@
 # adjust a task here without restating it. The current CLI cannot express that.
 # Nesting replaces it, and a nested jig has no id to override, so a language
 # either accepts these numbers or declares a second task that disagrees with
-# them. `clank/tasks/toolbox/port-the-jigs/10` holds the three candidate answers
-# and none is chosen yet.
+# them. NEXT_STEPS.md carries the question; none of the candidate answers is
+# chosen yet.
 
 version: "1.0.0"
 

@@ -3,8 +3,10 @@
 How this repository tests the code it ships, and why the two kinds of code get
 two different shapes of test.
 
-Read `silo/docs/GLOSSARY.md` if *checker*, *adapter*, *record* or *envelope* is
-unfamiliar. The split below is the glossary's split, applied to tests.
+A checker is what a task runs, taking `argv` and the filesystem and returning a
+verdict as its exit code. An adapter takes an execution **record** on stdin and
+returns an **envelope** on stdout, and its own exit code means nothing. The
+split below is that distinction applied to tests.
 
 ---
 

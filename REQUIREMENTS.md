@@ -1,9 +1,10 @@
 # toolbox, Requirements
 
 toolbox holds the **jigs** bolt runs, and the **checkers** and **adapters** those
-jigs name. Read `silo/docs/GLOSSARY.md` before this document: *checker* and
-*adapter* mean specific and opposite things, and several requirements below are
-meaningless if the two are read as synonyms.
+jigs name. *Checker* and *adapter* mean specific and opposite things, and several
+requirements below are meaningless if the two are read as synonyms: a checker is
+what a task runs and its exit code is the verdict, while an adapter reads the
+execution record afterwards and returns the envelope that becomes the verdict.
 
 Each requirement is stated as an observable property, saying what is true of a
 run rather than how the code is arranged. Mechanism appears only where the
@@ -23,7 +24,7 @@ requirement it marks is testable.
 
 ## FR-1, What a jig is
 
-*Derives from:* `silo/docs/GLOSSARY.md`, **The file**; `README.md`, **Using them**.
+*Derives from:* `README.md`, **Adopting a jig**.
 
 | ID | Requirement | |
 |---|---|---|
@@ -36,8 +37,8 @@ requirement it marks is testable.
 
 ## FR-2, Checkers
 
-*Derives from:* `silo/docs/GLOSSARY.md`, **Inside a jig**;
-`docs/PATTERNS/testing-checkers-and-adapters.md`, **Two contracts**.
+*Derives from:* `docs/PATTERNS/testing-checkers-and-adapters.md`,
+**Two contracts**.
 
 | ID | Requirement | |
 |---|---|---|
@@ -49,8 +50,7 @@ requirement it marks is testable.
 
 ## FR-3, Adapters
 
-*Derives from:* `README.md`, **Checkers and adapters**;
-`silo/docs/GLOSSARY.md`, **What a run produces**.
+*Derives from:* `README.md`, **Checkers and adapters**.
 
 | ID | Requirement | |
 |---|---|---|
