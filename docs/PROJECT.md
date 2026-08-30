@@ -1,8 +1,10 @@
 # toolbox, the project
 
-Read `silo/docs/GLOSSARY.md` before editing anything here. *Checker* and
-*adapter* mean specific and opposite things, and most of what follows is
-meaningless if the two are read as synonyms.
+*Checker* and *adapter* mean specific and opposite things here, and most of what
+follows is meaningless if the two are read as synonyms. A checker is what a task
+runs and its exit code is the verdict; an adapter reads the execution record
+afterwards and returns the envelope that becomes the verdict. `README.md` has
+the worked distinction.
 
 ## What toolbox is FOR
 
@@ -18,25 +20,19 @@ keeping a second copy beside them.
 
 ## The one rule that decides whether a jig is adoptable
 
-> **A path resolves against `{config_dir}` if it travels with the jig.** A
-> checker, an adapter, a linter's config: these are **the rule**.
->
-> **A path stays relative to the run root if it belongs to the project being
-> checked.** Its source, its `REQUIREMENTS.md`, its `SUPPRESSIONS`: these are
-> **the subject**.
+The path rule, stated in `README.md`: a jig carries whatever does the checking
+and never anything about the project being checked. Two things about enforcing
+it belong here rather than there.
 
-A shared jig carries the rule and never the subject. Bundle a document *about a
-codebase* into one and it has stopped being adoptable, since every adopter is
-then judged against its author's answers.
+`tests/test_jigs.py` is what catches a breach, because the mistake is invisible
+in the repository that makes it. It fails any jig reaching `bin/`, `adapters/`
+or `config/` without `{config_dir}`, and any jig that prefixes an `adapter:`
+with `{config_dir}`, which would resolve twice.
 
-Getting this backwards is invisible in the repository that gets it wrong: a jig
-at its own root has `{config_dir}` equal to the run root, so both spellings
-resolve to the same file. `tests/test_jigs.py` exists to catch it, and fails any
-jig that reaches `bin/`, `adapters/` or `config/` without `{config_dir}`.
-
-Measured in `agent-support`: `{config_dir}` resolves against **the symlink's own
-directory and not its target**, which is why an adopter needs its own `bin/` and
-`adapters/` links and cannot simply name a jig.
+`{config_dir}` resolves against **the symlink's own directory and not its
+target**. That is measured rather than assumed, and it is why an adopter needs
+its own `bin/` and `adapters/` links instead of simply naming a jig that lives
+elsewhere.
 
 ## Layout
 
@@ -93,86 +89,60 @@ in one invocation was the overlay model, which the current CLI does not have.
 completed, whatever the tools concluded, and the verdict is in the artifact. It
 also exits 0 when it refuses the jig outright.
 
-From that artifact, **10 pass and 4 fail**. All four are open defects with a task
-each.
+Across the three runs, **13 of 16 tasks pass**. The three that fail are open
+defects rather than unknowns.
 
-| Task | | Why | Tracked as |
-|---|---|---|---|
-| `traceability` | ✗ 1 | 12 settled requirements have no test | `own-gate/10` |
-| `analyse` | ✗ 16 | pylint 9.91/10, two missing docstrings in `adapters/common/lizard.py` | `own-gate/20` |
-| `security` | ✗ 1 | bandit, 181 findings, **all Low**, 175 of them `assert` in a test, every one in `tests/` | `own-gate/20` |
-| `detect-secrets` | ✗ 2 | crashes where no baseline exists | `own-gate/30` |
+| Task | Jig | Why |
+|---|---|---|
+| `traceability` | common | 11 settled requirements have no test citing them |
+| `analyse` | python | pylint 9.99/10, `duplicate-code` between the two checkers and between the two new-contract adapters |
+| `security-tests` | python | bandit, 11 findings, all Low and all high confidence, subprocess calls in the test tree |
 
-`complexity` measures each adopter's own code now, which it did not before. The
-shared jigs exclude the directories adoption fills, so an adopter is no longer
-graded on the checkers it adopted. Measured 2026-08-27: `agent-support` reads 1
-function of its own where it read 23 of toolbox's, and `dotfiles`, `qwark` and
-`palette-print` read 428, 485 and 232.
+`security` and `detect-secrets` both pass, and the secrets jig passes whole.
 
-What remains of `shared-checkers/30` is narrower than it was: `complexity` still
-misses a script with no file extension, which is how `silo`'s only source went
-unread.
+`complexity` measures each adopter's own code, because the shared jigs exclude
+the directories adoption fills. Before that an adopter was graded on the checkers
+it had adopted rather than on its own source.
 
-Of the 12 uncovered requirements, three are testable and are `own-gate/10`. The
-other nine are design properties held by review, and *"a jig carries the rule and
-never the subject"* is not an assertion. They are settled and not open, so they
-carry no `[?]`.
+One gap remains in what `complexity` reads: it misses a script with no file
+extension, which is how one adopter's only source file went unread.
 
-## Its adopters
+The 11 uncovered requirements are `FR-1.1`, `FR-1.3`, `FR-2.1`, `FR-2.2`,
+`FR-3.3`, `FR-6.1`, `FR-7.3`, `FR-7.14`, `NFR-1`, `NFR-2` and `NFR-4`. A few are
+straightforwardly testable. The rest are design properties held by review, and
+*"a jig carries the rule and never the subject"* is not an assertion a test can
+make. All of them are settled rather than open, so they carry no `[?]` and the
+gate is right to fail on them.
 
-**Eight repositories run `common-quality` from this file**, measured 2026-08-27
-by resolving each `bolt.common-quality.yaml`: `agent-support`, `anvil`,
-`dotfiles`, `infobot`, `palette-print`, `qwark`, `silo`, and toolbox itself,
-which holds the real file. `skid` runs the Python jig too.
+## Adoption
 
-All eight were refused outright until `51b8d59` ported the jigs to the format
-the rebuilt bolt reads. `qwark` passes; the other seven fail on findings of
-their own.
+A project adopts a set by linking the files `jigs.yaml` names for it, which
+`bin/link-jigs.py` does. `--check` verifies an existing adoption and exits 1 on
+drift.
 
-The table below is from commissioning and counts links rather than adopters.
+Two things about adoption are worth knowing before relying on it.
 
-Measured with `link-jigs.py --check`:
-
-| Adopter | Sets | Links | `--check` |
-|---|---|---|---|
-| `qwark` | go, secrets | 10 | ✓ |
-| `dotfiles` | go, secrets | 10 | ✓, its Go lives under `go/` |
-| `silo` | common, secrets | 5 | ✓ |
-| `agent-support` | common, secrets | 5 | ✓ |
-| `anvil` | common, secrets | 5 | ✓ |
-| `bolt` | go, secrets | 6 | ✗ |
-
-`bolt` is the one that has not taken. It still carries its own pre-split copies
-at `tools/` and `adapters/`, so `link-jigs` refused four paths rather than
-overwrite them, and against the same tree bolt's fork exits 0 where this
-repository's checker exits 1. Filed at
-`clank/inbox/bolt/gate-runs-a-stale-fork-of-the-checkers/`; only bolt's own
-session resolves it.
+**A vendored copy blocks a link, correctly.** `link-jigs` never overwrites a real
+file. A project that carried its own fork of a checker before adopting keeps that
+fork, and the fork then runs instead of the shared one. That state looks adopted
+and is not, and the way it shows is the two exiting differently against the same
+tree.
 
 **Adoption records nothing about itself.** `--check` needs the set list as an
 argument, and which sets a project adopted is written nowhere, so a wrong guess
-reports drift that does not exist. It is `adoption/10`, and a precondition for
-`--check` ever becoming a gate task.
-
-## Where the work lives
-
-`~/.projects/clank/tasks/toolbox/` holds the tasks, one directory each, grouped.
-The listing is the index, and `NEXT_STEPS.md` holds only what has no task yet.
-
-`~/.projects/clank/inbox/toolbox/` holds 14 findings filed by other sessions.
-Not all are tracked by a task. An inbox entry is an observation, and
-**only this project's session resolves one**.
+reports drift that does not exist. Fixing that is a precondition for `--check`
+ever becoming a gate task.
 
 ## Documents
 
-- `README.md`, for a human arriving cold.
-- `REQUIREMENTS.md`, 59 requirements, still one file and no longer forced to be.
-- `NEXT_STEPS.md`, the open decisions and the handoff owed to bolt, never the
-  queue.
+- `README.md`, for somebody arriving cold, and the adoption instructions.
+- `CONTRIBUTING.md`, how to run the gate here and what a change has to satisfy.
+- `SECURITY.md`, the trust boundary and how to report a vulnerability.
+- `REQUIREMENTS.md`, 60 requirements, still one file and no longer forced to be.
+- `NEXT_STEPS.md`, the open decisions, never the queue.
 - `docs/PATTERNS/testing-checkers-and-adapters.md`, how the two contracts are
   tested and why they differ.
 - `docs/DECISIONS/` and `docs/LESSONS/`, one file per decision and per lesson.
-- `silo/docs/GLOSSARY.md`, the vocabulary, shared with bolt and anvil.
 
 **`REQUIREMENTS.md` and `SUPPRESSIONS` are still single files and are no longer
 forced to be.** They stayed single because `--requirements <DIR>` died with an

@@ -22,19 +22,15 @@ here and installs exactly those.
 
 ## What is not ready
 
-**bolt is not published, and nothing here runs without it.** The jigs are
-readable from a clone; running one is not yet possible for anybody outside the
-machine bolt is built on.
+**bolt is not published, and nothing here runs without it.** The test suite also
+imports wrench, likewise unpublished and currently resolved as a sibling
+checkout. So the jigs are readable from a clone, but neither running one nor
+running `pytest` works from a standalone one.
 
-The Python test suite imports `wrench` for the jig schema. wrench is also
-unpublished and is currently resolved as a sibling checkout, so `pytest` does not
-pass from a standalone clone either.
-
-There are no releases and no version tags. Adoption tracks the default branch.
-
-Jigs exist for Go and Python. Three adapters still speak a retired contract and
-are wired to no task, so `format`, `vet` and `complexity` gate on exit status and
-report no per-finding detail.
+There are no releases and no version tags, so adoption tracks the default
+branch. Jigs exist for Go and Python only. Three adapters still speak a retired
+contract and are wired to no task, which leaves `format`, `vet` and `complexity`
+gating on exit status with no per-finding detail.
 
 ## What is here
 
@@ -46,46 +42,33 @@ report no per-finding detail.
 | `bolt.secrets.yaml` | `gitleaks` and `detect-secrets` |
 
 `common-quality` runs the secrets jig as a child task, so adopting the common
-set gets you a secret scan. The reverse does not hold: `secrets` includes
-nothing, because scanning a repository for credentials needs nothing else to be
-true of it, and a project may adopt it alone.
+set brings a secret scan with it. `secrets` includes nothing and can be adopted
+alone.
 
 ## Adopting a jig
 
-Adoption needs a clone of this repository, Python 3 with PyYAML for the linking
-script, and bolt to run the result. Linking works today; running does not, for
-the reason above.
+Needs a clone of this repository, Python 3 with PyYAML, and bolt to run the
+result. Linking works today; running does not, for the reason above.
 
 `jigs.yaml` declares four sets: `common`, `go`, `python` and `secrets`. A
 language set includes `common`, and `common` includes `secrets`, so naming one
-set brings what it depends on.
-
-Run this from your clone of toolbox, naming the project to link into:
+brings what it depends on. Run this from your clone of toolbox:
 
 ```sh
 python3 bin/link-jigs.py --plan ../your-project python
 python3 bin/link-jigs.py --yes  ../your-project python
 ```
 
-That links seven files into `../your-project`: three jigs, two checkers under
-`bin/`, and two adapters under `adapters/common/`.
+That links seven files: three jigs, two checkers and two adapters. They are
+symlinks rather than copies, landing at the same relative path they have here,
+because a jig finds its checkers through `{config_dir}` and a jig reached
+through a link resolves them back through that link. The links are relative
+unless you pass `--absolute`, so the two directories have to keep their
+positions.
 
-Adoption is symlinks rather than copies. A jig names its checkers through
-`{config_dir}`, which resolves against the directory of the jig naming them, so
-a jig reached through a link resolves them back through that same link and every
-path stays inside the adopting project. Entries land at the same relative path
-they have here, which the same rule forces: a linked jig sits at the target's
-root, so `bin/x.py` has to be at `bin/x.py` to be found.
-
-The links are relative by default, so the adopting project and this repository
-have to keep their relative positions. `--absolute` writes absolute paths
-instead, for a toolbox that does not travel with the project.
-
-Nothing is ever overwritten. A real file where a link belongs is reported and
-left alone, usually a vendored copy that predates adoption. That state looks
-adopted and is not: the vendored copy runs instead of the shared one.
-
-`--check` verifies an adoption without writing, and exits 1 on drift.
+Nothing is ever overwritten, so a project holding an older vendored copy looks
+adopted and is not. `--check` verifies an adoption without writing, and exits 1
+on drift.
 
 ### What your project supplies
 
@@ -116,55 +99,29 @@ The common and language jigs are separate, so a project wanting both runs both.
 
 ### What a first run tends to report
 
-`traceability` fails in both directions: a test that does not say what it
-discharges, and a settled requirement that no test cites. Against an established
-project the second is usually a long list.
-
-The one exemption is the requirement's own status marker, the last bracketed
-cell in its row.
-
-| Row | Uncovered means |
-|---|---|
-| `\| FR-1.1 \| Any command-line tool can be run. \| [A] \|` | failure: settled, so testable |
-| `\| FR-5.9 \| Schema versioning is unresolved. \| [?] \|` | reported, not fatal |
-
-`[?]` marks an open decision that cannot have a test yet. Everything else is
-settled: `[A]`, `[D]`, `[A/D]`, and no marker column at all. A document without
-markers claims no exemptions, since exemption is claimed and never granted by
-omission.
-
-So there are two honest responses to that list: write the test, or mark the
-requirement `[?]` and state in its own text what is still open.
-`docs/DECISIONS/traceability-is-a-gate-not-a-report.md` carries the reasoning
-and what was rejected.
+`traceability` is the strict one, and it fails in both directions: a test that
+does not say what it discharges, and a settled requirement that no test cites.
+Against an established project the second is usually a long list, and the two
+honest responses are to write the test or to mark the requirement as an open
+decision. `docs/DECISIONS/traceability-is-a-gate-not-a-report.md` has the status
+markers and the reasoning.
 
 ## Checkers and adapters
 
 A **checker** is what a task runs: usually an off-the-shelf tool such as
-`gofmt`, `golangci-lint` or `lizard`, and where no such tool exists, a script
-written here. Its exit code is the verdict, which is why most tasks need nothing
-else.
+`gofmt`, `golangci-lint` or `lizard`, and where no such tool exists, a script in
+`bin/`. Its exit code is the verdict, which is why most tasks need nothing else.
 
-An **adapter** is what a task names in its `adapter:` field. It reads the
-execution record bolt captured and returns the envelope that becomes the
-verdict. A task needs one only when the checker's exit code is not the answer.
+An **adapter**, in `adapters/`, is what a task names in its `adapter:` field. It
+reads the execution record bolt captured and returns the envelope that becomes
+the verdict. A task needs one only when the checker's exit code is not the
+answer. `gofmt -l` is the case that forces them: it lists unformatted files and
+exits 0 whichever it finds, so its exit status answers "did gofmt run" and never
+"is this formatted".
 
-```
-1. bolt runs the CHECKER              gofmt -l .            -> exit 0
-2. bolt captures                      stdout, stderr, code  -> the record
-3. bolt hands the record to the ADAPTER
-4. the adapter returns an envelope    success, reasons, statistics
-5. bolt folds that envelope into the run's result
-```
-
-Step 4 is why adapters exist. `gofmt -l` lists unformatted files and exits 0
-whichever it finds, so its exit status answers "did gofmt run" and never "is
-this formatted".
-
-The jig and envelope schemas live in wrench and this repository keeps no copy,
-because a second description of a format is free to disagree with the one being
-enforced. `tests/test_jigs.py` validates every jig here against the validator
-wrench ships.
+The rest of the tree is `config/` for tool configuration travelling with a jig,
+and `tests/`, one file per script under test.
+`docs/PATTERNS/testing-checkers-and-adapters.md` has the two contracts in full.
 
 ## The path rule
 
@@ -184,57 +141,31 @@ now judged against its author's answers.
 
 Getting this backwards is invisible in the repository that gets it wrong. A jig
 living at its own root has a `{config_dir}` equal to its run root, so both
-spellings resolve to the same file and nothing ever shows. It breaks for
-everyone else. Pointing the suppression register's `--register` at
-`{config_dir}` made a project with one justified pragma report ten disagreements
-against another project's register, and no state that project could reach would
-have passed.
-
-`tests/test_jigs.py` fails any jig that reaches `bin/`, `adapters/` or `config/`
-without `{config_dir}`, and fails any jig that prefixes an `adapter:` with it,
-which would resolve twice.
-
-## Layout
-
-```
-bolt.*.yaml     the jigs
-jigs.yaml       which files a project links to adopt a set
-bin/            checkers written here, because no tool does the job
-adapters/       record -> envelope, per task that needs one
-config/         tool configuration that travels with a jig
-tests/          one file per script under test
-```
-
-The suite never runs the tools it is about. An adapter test feeds the adapter
-text the tool once produced, so the suite passes on a machine with none of them
-installed. `docs/PATTERNS/testing-checkers-and-adapters.md` says why that
-matters and what a test here has to assert.
+spellings resolve to the same file and nothing shows. It breaks for everyone
+else: pointing the suppression register at `{config_dir}` made a project with
+one justified pragma report ten disagreements against another project's
+register, and no state that project could reach would have passed.
 
 ## What is deliberately not here
 
-**`entrypoint`**, which measures the statement in `main()` that `go test` can
-never reach. It has to name a specific main package and a specific harmless
-invocation of the resulting binary, and no substitution stands in for either, so
-in a shared jig it fails for every adopter and the failure looks like the
-adopter's own. It belongs in a project's own jig. The comment at the foot of
-`bolt.go-std-quality.yaml` carries a worked example.
+**`entrypoint`**, which measures the statement in `main()` that `go test` cannot
+reach. It has to name a specific main package and a specific invocation of the
+built binary, so in a shared jig it fails for every adopter and the failure
+looks like the adopter's own. The foot of `bolt.go-std-quality.yaml` shows where
+it belongs instead.
 
 **A task that cannot fail.** Where no adapter can read a tool's output yet, the
-task is left out rather than shipped green. An absent check tells a reader the
-gate does not cover that property; a green one claims a guarantee it never
+task is left out rather than shipped green. An absent check tells you the gate
+does not cover that property; a green one claims a guarantee it never
 established. `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md` has the
-worked case and the one exception.
+worked case.
 
 ## Documentation
 
-- `docs/PATTERNS/testing-checkers-and-adapters.md`, the two contracts and the
-  different shape of test each one takes.
-- `docs/DECISIONS/`, one file per decision, each with what was rejected and what
-  would justify revisiting it.
-- `docs/LESSONS/`, one file per fault worth not repeating.
-- `REQUIREMENTS.md`, what a jig, a checker and an adapter have to be true of.
-- `docs/PROJECT.md`, how this repository is laid out and gated.
-- `CONTRIBUTING.md` and `SECURITY.md`.
+`CONTRIBUTING.md` to change something here, `SECURITY.md` for the trust boundary
+and how to report a vulnerability, `REQUIREMENTS.md` for what a jig, a checker
+and an adapter have to be true of, and `docs/` for the decisions, the lessons
+and how the two contracts are tested.
 
 ## Licence
 
