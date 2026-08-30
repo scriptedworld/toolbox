@@ -65,9 +65,7 @@ test does it by hand:
 ```python
 def test_something(checker, tmp_path):
     """One sentence saying what this pins."""
-    code, out = checker(
-        traceability, ["--requirements", "REQUIREMENTS.md", "."], cwd=tmp_path
-    )
+    code, out = checker(traceability, ["--requirements", "REQUIREMENTS.md", "."], cwd=tmp_path)
 
 
 def test_something_else(adapter):
@@ -127,9 +125,7 @@ For a checker, assert the exit code **and** that the finding names the thing:
 ```python
 assert code == 1
 assert "FR-2.1" in out  # the uncovered requirement is named
-assert (
-    "FR-2.2" not in out.split("settled")[1]
-)  # the open one is not in the failing block
+assert "FR-2.2" not in out.split("settled")[1]  # the open one is not in the failing block
 ```
 
 Three cases every checker and adapter gets, each of them a way to be wrong that
