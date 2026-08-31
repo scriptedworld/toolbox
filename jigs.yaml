@@ -28,12 +28,10 @@ sets:
   # shared source anywhere. Nothing detected that they agreed, so nothing would
   # have detected that they had stopped.
   #
-  # WRENCH CANNOT TAKE THIS SET AS IT STANDS. A file lands at the same relative
-  # path in the target, and wrench keeps its two copies per pack, at
-  # `rust/just/base.just` and `python/just/base.just`. A root-relative linker
-  # cannot produce those, so wrench needs either a per-pack adoption or a set
-  # that can land one file at a different path. That is unresolved and is not
-  # settled by adding this.
+  # A REPOSITORY HOLDING SEVERAL PROJECTS CANNOT TAKE THIS AT ITS ROOT. A file
+  # lands at the same relative path it has here, so a repository that wants one
+  # `just/base.just` per subproject adopts per subproject rather than once at
+  # the top. `README.md` has the two adoption models and which to pick.
   base:
     files:
       - just/base.just
