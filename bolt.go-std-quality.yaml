@@ -1,23 +1,17 @@
-# bolt.go-std-quality.yaml, the standard quality gate for a Go project.
+# Standard quality gate for a Go project.  Run it with bolt.common-quality,
+# which holds traceability, suppressions and complexity.
 #
 #     bolt go-std-quality .
-#
-# THE COMMON CHECKS ARE NOT HERE. traceability, suppressions and complexity live
-# in bolt.common-quality.yaml, and a project runs both. How the two compose is
-# unsettled: it used to be an overlay, `bolt -c common -c go`, which the current
-# CLI cannot express. See that file's header and NEXT_STEPS.md.
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
 # THE PATH RULE: a path resolves against {config_dir} if it travels with this
-# file, being an adapter or a linter config. It stays relative to the base if it
-# belongs to the project being checked. See bolt.common-quality.yaml.
+# file; it stays relative to the base if it belongs to the project being checked.
 #
-# EVERY TASK HERE GATES ON ITS EXIT CODE, and two of them only do so because
-# their commands were written to. `gofmt -l` and `test -f` both exit 0 whatever
-# they find, so a task running them bare passes forever. Where a command's exit
-# status does not answer the question the task asks, either the command is
-# rewritten until it does or the task does not belong here.
+# EVERY TASK GATES ON ITS EXIT CODE, and two only do so because their commands
+# were written to.  `gofmt -l` and `test -f` exit 0 whatever they find, so a
+# task running them bare passes forever.  If a command's exit status does not
+# answer the question the task asks, rewrite the command or drop the task.
 
 version: "1.0.0"
 

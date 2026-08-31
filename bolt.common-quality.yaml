@@ -1,28 +1,16 @@
-# bolt.common-quality.yaml, the checks that do not care what language you wrote.
+# Language-independent checks.  A new language gets these for free.
 #
-#     bolt common-quality .
+#     bolt common-quality .          flags before the positionals
 #
-# Flags come before the positionals. The jig is named bare and read as
-# bolt.<name>.yaml from --config-dir, which defaults to the directory.
+# THE PATH RULE.  A path resolves against {config_dir} if it travels with this
+# file: a checker, an adapter, a linter's config.  It stays relative to the base
+# if it belongs to the project being checked: its source, REQUIREMENTS.md,
+# SUPPRESSIONS.  Getting this backwards works in a repository whose jig sits at
+# its own root, where the two are the same directory, and breaks for every
+# adopter.
 #
-# Everything here holds a document against the source, or measures a property of
-# the source that has nothing to do with its language. Nothing here knows what a
-# compiler is, so a new language gets these three for free.
-#
-# THE PATH RULE. A path resolves against {config_dir} if it travels with this
-# file: a checker, an adapter, a linter's config. It stays relative to the base
-# if it belongs to the project being checked: its source, its REQUIREMENTS.md,
-# its SUPPRESSIONS. Getting this backwards is invisible in a repository whose
-# jig sits at its own root, because the two are then the same directory, and it
-# breaks for every adopter. README.md carries the measurement.
-#
-# COMPOSING THIS WITH A LANGUAGE JIG IS UNSETTLED. It used to be an overlay,
-# `bolt -c common -c go`, and later files merged by id so a language jig could
-# adjust a task here without restating it. The current CLI cannot express that.
-# Nesting replaces it, and a nested jig has no id to override, so a language
-# either accepts these numbers or declares a second task that disagrees with
-# them. NEXT_STEPS.md carries the question; none of the candidate answers is
-# chosen yet.
+# Composing this with a language jig is unsettled: a language jig either accepts
+# these numbers or declares its own task.  NEXT_STEPS.md has the question.
 
 version: "1.0.0"
 
@@ -53,51 +41,37 @@ definitions:
 tasks:
   # ---- documents held against the source ------------------------------------
 
-  # A requirements document nobody is held to becomes decoration: it drifts from
-  # the code, and the drift is invisible because nothing compares the two. Both
-  # directions fail here, a test citing nothing and a settled requirement no
-  # test cites. Closed 2026-08-20, and it tightens the verdict for adopters
-  # upgrading past it.
+  # Fails both directions: a test citing nothing, and a settled requirement no
+  # test cites.  README.md has the status markers and worked rows.
   #
-  # README.md has the status markers, the worked rows and the adopter numbers.
-  #
-  # The checker reads Go, Python and Rust tests. A language with a jig here but
-  # no entry in its LANGUAGES table finds no tests at all, cites nothing, and
-  # fails every requirement at once, so a new language jig adds its entry in
-  # the same change.
+  # Reads Go, Python and Rust tests.  A language with a jig here but no entry in
+  # the checker's LANGUAGES table finds no tests and fails every requirement at
+  # once, so a new language jig adds its entry in the same change.
   - name: traceability
     description: every test cites what it discharges, and every settled requirement has one
     command: python3 {config_dir}/bin/test-traceability.py --requirements {requirements} .
 
-  # The same argument, applied to what has been silenced. An unregistered pragma
-  # is a suppression nobody justified, and a registered row with nothing behind
-  # it is cover for whatever replaces it. A project with no pragmas and no
-  # register passes. The checker's own docstring carries the case that produced
-  # it.
+  # An unregistered pragma is a suppression nobody justified; a registered row
+  # with nothing behind it is cover for whatever replaces it.  A project with
+  # neither passes.
   - name: suppressions
     description: every suppression is registered, and every entry is real
     command: python3 {config_dir}/bin/suppression-register.py --register {suppressions} .
 
   # ---- properties of the source, whatever the language ----------------------
 
-  #   -C  cyclomatic complexity per function
-  #   -a  parameter count
-  #   -L  function length in lines
+  #   -C  cyclomatic complexity   -a  parameter count   -L  function length
   #
-  # RUN WITHOUT -w. Warnings-only mode suppresses lizard's summary table, and
-  # that table is where total nloc, function count and average complexity come
-  # from. They are printed whether the task passes or fails, because a number is
-  # only useful as a series.
+  # RUN WITHOUT -w.  Warnings-only mode suppresses lizard's summary table, which
+  # is where nloc, function count and average complexity come from.
   #
-  # THOSE STATISTICS REACH NOBODY YET. Reading them out of the summary is the
-  # adapter's job, and `adapters/common/lizard.py` still speaks the retired
-  # contract, so this task runs on the exit-code adapter and the numbers stay in
-  # captured stdout. The verdict is unaffected: lizard exits 1 over threshold
-  # and 0 under. `port-the-jigs/10` restores the reasons and the series.
+  # Those statistics reach nobody yet: reading them is the adapter's job and
+  # `adapters/common/lizard.py` speaks the retired contract, so this runs on the
+  # exit-code adapter and the numbers stay in captured stdout.  The verdict is
+  # unaffected; lizard exits 1 over threshold.
   #
-  # Test files are measured too. A test is read when it has just failed and
-  # nobody knows why, so it has to be at least as readable as the code it
-  # supports.
+  # Test files are measured too.  A test is read when it has just failed and
+  # nobody knows why.
   - name: complexity
     description: no function over complexity 15, 5 parameters or 60 lines
     command: >-

@@ -1,34 +1,19 @@
-# bolt.python-std-quality.yaml, the standard quality gate for a Python project.
+# Standard quality gate for a Python project.  Run it with bolt.common-quality,
+# which holds traceability, suppressions and complexity.
 #
 #     bolt python-std-quality .
 #
-# THE COMMON CHECKS ARE NOT HERE. traceability, the suppression register and
-# cyclomatic complexity live in bolt.common-quality.yaml, and a project runs
-# both. How the two compose is unsettled; see that file's header.
-#
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
+# Every task gates on its own exit code, so none needs an adapter.
 #
-# WHY SO MANY TOOLS, when ruff replaces most of a traditional stack. ruff covers
-# pyflakes, pycodestyle, pydocstyle, isort, mccabe and a large slice of pylint;
-# the remainder is the part that needs whole-program knowledge rather than a
-# single file. Each tool below sees something the others cannot:
-#
-#   ruff         style, imports, and hundreds of single-file lint rules. Fast.
-#   pylint       cross-module inference: unused arguments, inconsistent
-#                returns, attributes defined outside __init__. Slow, and the
-#                slowness buys the analysis.
-#   mypy         types. Nothing else here does this at all.
-#   bandit       security patterns, and the source of the #nosec pragmas the
-#                common jig's suppression register holds you to.
-#   vulture      dead code, by finding definitions nothing references.
-#   interrogate  docstring coverage, as a number rather than an opinion.
-#   complexipy   COGNITIVE complexity, which is not what lizard measures. See
-#                the note on that task below.
+# ruff covers most of the traditional stack.  The rest are here because each
+# sees something a single-file linter cannot: pylint cross-module inference,
+# mypy types, bandit security patterns, vulture unreferenced definitions,
+# interrogate docstring coverage, complexipy COGNITIVE complexity, which is not
+# what lizard measures.
 #
 # THE PATH RULE: a path resolves against {config_dir} if it travels with this
 # jig; it stays relative to the base if it belongs to the project being checked.
-#
-# Every task here gates on its own exit code, so none needs an adapter.
 
 version: "1.0.0"
 
