@@ -52,7 +52,7 @@ of step within hours of one being edited.
 The direction is a project template covering the three languages against
 library, CLI and MCP shapes, with the gate, the recipes and the standard
 documents present from the first commit rather than adopted afterwards. Copier
-is the mechanism, and `silo/docs/ARCHITECTURE.md` already expects per-language
+is the mechanism, and the estate architecture already expects per-language
 templates to be where `just` recipe contents live. Earlier `python-` and
 `rust-` template repositories existed and are gone.
 
