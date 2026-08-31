@@ -923,6 +923,80 @@ def test_a_retired_directory_reaches_its_supporting_material(checker, tmp_path):
     assert "FR-8.8" not in out
 
 
+# COVERS: FR-4.19 | regression
+def test_a_note_at_the_root_does_not_swallow_the_tree(checker, tmp_path):
+    """The requirements root is the tree, never one requirement in it.
+
+    Unbounded, a `requirement.md` written one level too high makes the root a
+    requirement directory, so every document beneath it resolves to the root as
+    its nearest holder and becomes supporting material. The declared ids vanish
+    and the run PASSES, which is the one outcome this checker exists to
+    prevent.
+
+    FR-4.20 bounds the retirement walk at the root for exactly this reason. The
+    sibling rule is bounded here for the same one.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "requirement.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-2.2-thing.md": requirements(("FR-2.2", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1, out
+    assert "FR-2.2" in out
+    assert "1 of 2" in out
+
+
+# COVERS: FR-4.21 | negative
+def test_a_requirement_directory_inside_another_is_reported(checker, tmp_path):
+    """Dropping the inner id silently is the misleading remedy a third time.
+
+    Nested, the inner note is supporting material by the sibling rule, so its
+    id is never declared. A test citing it is then told the requirement does
+    not exist, and the obvious remedy is to delete a real test's coverage of a
+    requirement that is sitting on disk.
+
+    Ambiguous input is reported rather than resolved, the way a duplicate id
+    is: nothing here can tell a nested requirement from a supporting file that
+    happens to carry the note's name.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-outer/requirement.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-1.1-outer/inner/requirement.md": requirements(("FR-2.2", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1, FR-2.2 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "inside another" in out
+    assert "FR-1.1-outer/inner" in out
+    assert "does not define" not in out
+
+
+# COVERS: FR-4.22 | regression
+def test_an_undefined_id_names_the_requirements_path_it_was_given(checker, tmp_path):
+    """`REQUIREMENTS.md` is not where a tier 2 or tier 3 repository looks.
+
+    The diagnostic named a file that does not exist in either layout, so a
+    reader went looking for a document nobody had, in the message whose whole
+    job is to say where to add the row.
+    """
+    tree = split(
+        tmp_path,
+        {"core/FR-1.1-live.md": requirements(("FR-1.1", "[A]"))},
+        {"test_it.py": "# COVERS: FR-1.1, FR-9.9 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "docs/REQUIREMENTS does not define" in out
+    assert "REQUIREMENTS.md does not define" not in out
+
+
 # COVERS: FR-4.20 | negative
 def test_a_retired_directory_above_the_root_retires_nothing(checker, tmp_path):
     """The search for a retired ancestor stops at the requirements root.

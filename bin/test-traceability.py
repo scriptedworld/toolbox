@@ -296,9 +296,15 @@ def declares_requirements(document: Path, notes: set[Path], root: Path) -> bool:
     supporting material, because everything beside a note is. Comparing against
     the NEAREST holder is what says so, `enclosing_directories` yielding from
     the document's own directory upwards.
+
+    A file called `requirement.md` whose own directory is NOT one of `notes` is
+    read as the ordinary document it appears to be. That is the root's case,
+    the root being excluded from `notes` deliberately: testing the name alone
+    would drop it from the tree entirely rather than merely refusing to treat
+    its directory as one requirement.
     """
     holders = [d for d in enclosing_directories(document, root) if d in notes]
-    if document.name == REQUIREMENT_NOTE:
+    if document.name == REQUIREMENT_NOTE and document.parent in notes:
         return holders == [document.parent]
     return not holders
 
@@ -338,16 +344,79 @@ def requirement_documents(path: Path) -> list[Path]:
     being skipped. That is what makes the rule above safe to add: it narrows
     only where a note says it should.
 
+    THE ROOT IS NEVER ONE OF THOSE DIRECTORIES. It is the tree, not a
+    requirement in it, and a note written one level too high would otherwise
+    make every document beneath it supporting material: the ids vanish and the
+    run passes, which is the one outcome this checker exists to prevent.
+    `requirement.md` at the root is read as the ordinary document it appears to
+    be, so a row in it fails loudly for having no test.
+
+    FR-4.20 bounds the retirement walk at the root for that same reason. Both
+    rules walk upwards and both stop in the same place.
+
     Sorted, so a duplicate id names the same two files whatever order the
     filesystem hands them back in.
     """
     if not path.is_dir():
         return [path]
 
-    found = (p for pattern in ("*.md", "*.retired", "*.superseded") for p in path.rglob(pattern))
-    documents = {p for p in found if p.is_file()}
-    notes = {p.parent for p in documents if p.name == REQUIREMENT_NOTE}
+    documents = collected_documents(path)
+    notes = requirement_directories(documents, path)
     return sorted(p for p in documents if declares_requirements(p, notes, path))
+
+
+def collected_documents(path: Path) -> set[Path]:
+    """Every file under a requirements tree that could carry a row."""
+    found = (p for pattern in ("*.md", "*.retired", "*.superseded") for p in path.rglob(pattern))
+    return {p for p in found if p.is_file()}
+
+
+def requirement_directories(documents: set[Path], root: Path) -> set[Path]:
+    """The directories that are one requirement each, never including the root.
+
+    See `requirement_documents` for why the root is excluded: it is the tree
+    rather than a requirement in it, and including it makes every document
+    beneath supporting material.
+    """
+    return {p.parent for p in documents if p.name == REQUIREMENT_NOTE} - {root}
+
+
+def report_nested(nested: list[tuple[Path, Path]]) -> None:
+    """Say which requirement directories sit inside another, and what follows.
+
+    The closing line is the point of the message. Naming the pair without
+    saying that the inner note declares nothing leaves a reader to discover
+    that from a missing id somewhere else.
+    """
+    print(f"{len(nested)} requirement directory(ies) sit inside another:")
+    for inner, outer in nested:
+        print(f"  {inner} is inside another, {outer}")
+    print("  everything beside a note is supporting material, so the inner note declares nothing")
+
+
+def nested_requirement_directories(path: Path) -> list[tuple[Path, Path]]:
+    """Requirement directories sitting inside another, as (inner, outer) pairs.
+
+    Reported rather than resolved, the way a duplicate id is. Nothing here can
+    tell a genuine nested requirement from a supporting file that happens to
+    carry the note's name, and the sibling rule silently makes the inner one
+    supporting material either way.
+
+    Silence is the expensive outcome: the inner id is never declared, so a test
+    citing it is told the requirement does not exist, and the obvious remedy is
+    to delete a real test's coverage of a requirement sitting on disk. That is
+    the same misleading remedy the retirement suffixes were fixed for twice.
+    """
+    if not path.is_dir():
+        return []
+
+    notes = requirement_directories(collected_documents(path), path)
+    nested = []
+    for directory in sorted(notes):
+        outer = [d for d in enclosing_directories(directory / REQUIREMENT_NOTE, path) if d in notes and d != directory]
+        if outer:
+            nested.append((directory, outer[0]))
+    return nested
 
 
 def rows_in_retirement_order(
@@ -502,8 +571,14 @@ def annotation_of(block: list[str], language: Language) -> re.Match[str] | None:
     return None
 
 
-def check_annotation(found: re.Match[str], declared: dict[str, str], retired: dict[str, str]) -> list[str]:
-    """Validate one COVERS annotation against the requirements document."""
+def check_annotation(found: re.Match[str], declared: dict[str, str], retired: dict[str, str], source: str) -> list[str]:
+    """Validate one COVERS annotation against the requirements document.
+
+    `source` is the `--requirements` path as given, because the message whose
+    job is to say where to add a row must name somewhere that exists. Naming
+    `REQUIREMENTS.md` sent a tier 2 or tier 3 reader looking for a document
+    nobody has.
+    """
     problems = []
     ids = REQ_ID.findall(found.group("ids"))
     if not ids:
@@ -512,14 +587,14 @@ def check_annotation(found: re.Match[str], declared: dict[str, str], retired: di
         if req in retired:
             problems.append(f"cites {req}, retired: {retired[req]}")
         elif req not in declared:
-            problems.append(f"cites {req}, which REQUIREMENTS.md does not define")
+            problems.append(f"cites {req}, which {source} does not define")
     kind = found.group("kind")
     if kind not in KINDS:
         problems.append(f"kind {kind!r} is not one of {', '.join(KINDS)}")
     return problems
 
 
-def scan_file(path: Path, language: Language, declared: dict[str, str], retired: dict[str, str]) -> tuple[list[str], set[str]]:
+def scan_file(path: Path, language: Language, declared: dict[str, str], retired: dict[str, str], source: str) -> tuple[list[str], set[str]]:
     """Check every test in one file. Returns its failures and the ids it cites."""
     failures = []
     cited: set[str] = set()
@@ -542,7 +617,7 @@ def scan_file(path: Path, language: Language, declared: dict[str, str], retired:
             failures.append(f"{where} has no `{language.comment} COVERS: <ids> | <kind>` line")
             continue
         cited.update(REQ_ID.findall(found.group("ids")))
-        failures.extend(f"{where} {problem}" for problem in check_annotation(found, declared, retired))
+        failures.extend(f"{where} {problem}" for problem in check_annotation(found, declared, retired, source))
     return failures, cited
 
 
@@ -617,6 +692,15 @@ def main() -> int:
         print(f"{args.requirements} declares no requirements; refusing to pass vacuously")
         return 1
 
+    # An ambiguous tree shape is reported before anything derived from reading
+    # it, because it is why an id is missing. Left silent, the inner note's
+    # rows are absent and a test citing them is told the requirement does not
+    # exist, which points a reader at deleting real coverage.
+    nested = nested_requirement_directories(args.requirements)
+    if nested:
+        report_nested(nested)
+        return 1
+
     # Two files declaring one id is the split's own failure mode, and it is
     # reported before coverage because the merged entry hides one of them.
     if duplicated:
@@ -639,7 +723,7 @@ def main() -> int:
     failures: list[str] = []
     cited: set[str] = set()
     for path, language in test_files(args.root):
-        file_failures, file_cited = scan_file(path, language, declared, retired)
+        file_failures, file_cited = scan_file(path, language, declared, retired, str(args.requirements))
         failures.extend(file_failures)
         cited.update(file_cited)
     return report(failures, declared, cited)
