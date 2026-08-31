@@ -44,6 +44,27 @@ question about shared tool settings and deciding it alone would likely be undone
 
 ## Decided and not built
 
+**Toolbox is where shared project files live, and the `base` set is the first
+of them.** `just/base.just` is here because five repositories held
+byte-identical copies with no source and nothing detecting drift; they went out
+of step within hours of one being edited.
+
+The direction is a project template covering the three languages against
+library, CLI and MCP shapes, with the gate, the recipes and the standard
+documents present from the first commit rather than adopted afterwards. Copier
+is the mechanism, and `silo/docs/ARCHITECTURE.md` already expects per-language
+templates to be where `just` recipe contents live. Earlier `python-` and
+`rust-` template repositories existed and are gone.
+
+Two things the `base` set does not solve yet, and a template would have to:
+
+- **A file lands at the same relative path in the target**, so wrench cannot
+  take this set: it keeps a copy per pack, at `rust/just/base.just` and
+  `python/just/base.just`. Either adoption is per pack, or a set has to be able
+  to place one source at a different path.
+- **Adoption is recorded nowhere**, so `--check` cannot run as a gate task
+  without being told which sets a project took. That is the precondition below.
+
 **Per-file coverage for Python.** The Go jig judges coverage per file at 80% of
 statements and refuses an aggregate, because an aggregate lets a well-tested
 file carry an untested one. The Python `tests` task already produces
