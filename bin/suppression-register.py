@@ -315,10 +315,11 @@ def is_source(path: Path) -> bool:
     """Whether a file is source this checker should read.
 
     BY SUFFIX, AND THEN BY SHEBANG. Selecting on the extension alone is the
-    defect this checker exists beside: `silo/bin/statusline` is a shell script
-    with no suffix, and `dotfiles/home/.git-hooks/no-ai-attribution` is 170
-    lines of bash enforcing a hard rule, both invisible to any extension match.
-    A file with no suffix whose first line is a shebang is source.
+    defect this checker exists beside. A statusline written as a shell script
+    with no suffix, and a 170-line bash git hook enforcing a project rule, are
+    both invisible to any extension match, and both were real files in the tree
+    this was written against. A file with no suffix whose first line is a
+    shebang is source.
 
     RESOLVED, NOT TESTED FOR A LINK. Adoption puts symlinks to this
     repository's own checkers in every adopter's `bin/`, and this file quotes

@@ -163,9 +163,9 @@ def test_a_python_pragma_is_seen_and_must_be_registered(checker, tmp_path):
 def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
     """Selecting by extension is the fault this checker sat beside.
 
-    `silo/bin/board` and `dotfiles/home/.git-hooks/no-ai-attribution` are shell
-    with no suffix, and the second is 170 lines enforcing a hard rule. A
-    shebang says what a file is where an extension does not.
+    A reporting script and a git hook, both shell with no suffix, and the
+    second 170 lines enforcing a project rule. A shebang says what a file is
+    where an extension does not.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
