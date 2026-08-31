@@ -15,7 +15,7 @@
 #    bolt exits 0 whenever it carried a run out, whatever the tools concluded.
 #    Measured: a jig with one passing and one failing task printed
 #    "success": false into result.yaml and exited 0.
-#    silo/docs/LESSONS/read-the-artifact-not-the-exit-status/ is hard rule 6.
+#    Reading the artifact rather than the exit status is a standing rule here.
 #
 #    bolt's own --result-to-exitcode does make the status carry the verdict,
 #    and is still not used: it collapses a REFUSAL, where no result was
@@ -26,7 +26,7 @@
 #    all. A FIXED directory is what is forbidden, because bolt refuses one that
 #    already holds a run, so naming one works exactly once. The default is
 #    unique per run and `clean` removes them.
-#    silo/docs/DECISIONS/a-justfile-gives-every-project-the-same-two-word-interface.md
+#    Every project answering to the same two words is a settled decision.
 #
 # 3. It quotes the path it read. A verdict with no artifact beside it cannot be
 #    checked by whoever reads the output.
@@ -118,26 +118,19 @@ install:
 # and its deployed artefact are routinely the same file, and the ways a file
 # gets reached are not limited to PATH.
 #
-# `~/bin` IS ITSELF A SYMLINK TO A PROJECT DIRECTORY:
+# THE PATH DIRECTORY ITSELF CAN BE A SYMLINK INTO A PROJECT TREE:
 #
-#     ~/bin -> ~/.projects/dotfiles/bin
+#     ~/bin -> <some project>/bin
 #
-# So a clean in dotfiles removing bin/ does not remove one command, it removes
-# the entire PATH directory. Five project trees are reachable through it:
-# dotfiles, bolt, bolt.go, qwark and toolbox.
-#
-#     ~/bin/bolt  -> ~/.projects/bolt/bin/bolt      every gate runs through it
-#     ~/bin/qwark -> ~/.projects/qwark/bin/qwark    every Bash call runs it
-#
-# qwark is the sharpest: a PreToolUse hook on every Bash call in every live
-# session, so removing it changes what every agent may do rather than degrading
-# one program.
+# So a clean in that project removing bin/ does not remove one command, it
+# removes the entire PATH directory, and every other project reachable through
+# it goes at the same time. Two of the commands behind such a link were a build
+# gate and a pre-execution hook: removing the second changes what every process
+# is permitted to do rather than degrading one program.
 #
 # BEING REACHABLE IS NOT THE SAME AS BEING ON PATH, and the case that actually
-# caused the outage was not on PATH at all:
-#
-#     ~/.projects/silo/bin/statusline -> ../../infobot/bin/infobot
-#     invoked by absolute path from settings.json:36
+# caused the outage was not on PATH at all: a link in one project pointing into
+# another, invoked by absolute path from a configuration file.
 #
 # A check that swept PATH would have missed it. So the question to ask of a
 # path before deleting it is not "is it on PATH" but "does anything execute
@@ -191,7 +184,7 @@ clean:
 # invokes `bolt secrets`. The JIG keeps its name: `bolt.secrets.yaml` is
 # toolbox's and is untouched. Only the recipe moved.
 #
-# silo/docs/DECISIONS/a-justfile-gives-every-project-the-same-two-word-interface.md
+# Every project answering to the same two words is a settled decision.
 
 # the secrets jig alone
 leak-scan:
