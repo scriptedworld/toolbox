@@ -202,6 +202,11 @@ LANGUAGES = (
 
 DIGITS = "0123456789"
 
+# The note inside a directory that IS one requirement. Fixed rather than
+# derived from the directory's name, so retiring is one rename and nothing
+# inside the directory has to change with it.
+REQUIREMENT_NOTE = "requirement.md"
+
 
 def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     """Sort FR-7.3 before FR-7.10, which a plain string sort does not.
@@ -241,8 +246,61 @@ def is_retired_by_name(path: Path) -> bool:
     than left to the glob, which collects it already. Unrecognised, such a
     document is read and every row in it reads live, which inverts the
     never-reuse guarantee instead of merely failing to enforce it.
+
+    This tests a NAME, so it answers for a directory exactly as for a file.
+    Where a requirement is a directory, retiring it is renaming that directory
+    and the suffix lands there rather than on anything inside.
+    `is_retired_by_position` is what applies it to a document's holders.
     """
     return path.name.endswith((".retired", ".retired.md", ".superseded", ".superseded.md"))
+
+
+def enclosing_directories(path: Path, root: Path) -> Iterator[Path]:
+    """Every directory holding a document, from its own up to the root.
+
+    BOUNDED AT THE ROOT, which is the whole point of taking one. Walking to
+    the filesystem root instead reads whatever happens to be above the
+    repository: a tree archived as `holder.retired/`, or a checkout beneath
+    one, would retire every requirement in it. Nothing would then be held to
+    coverage and the run would pass, which is the failure mode this checker
+    exists to prevent arriving through the checker itself.
+    """
+    current = path.parent
+    while True:
+        yield current
+        if current == root or current.parent == current:
+            return
+        current = current.parent
+
+
+def is_retired_by_position(path: Path, root: Path) -> bool:
+    """Whether a document has gone, by its own name or by a directory's.
+
+    A requirement that is a directory carries its state in that directory's
+    name, so everything beneath it has gone with it: the note, and the
+    supporting material beside the note. Retiring is one rename and nothing
+    inside is touched, which is the property the fixed note name buys.
+    """
+    if is_retired_by_name(path):
+        return True
+    return root.is_dir() and any(is_retired_by_name(holder) for holder in enclosing_directories(path, root))
+
+
+def declares_requirements(document: Path, notes: set[Path], root: Path) -> bool:
+    """Whether a document declares requirements or is supporting material.
+
+    `notes` is every directory holding a `requirement.md`, so each such
+    directory is one requirement and only its own note declares anything.
+
+    Nesting resolves outwards: a note inside another requirement's directory is
+    supporting material, because everything beside a note is. Comparing against
+    the NEAREST holder is what says so, `enclosing_directories` yielding from
+    the document's own directory upwards.
+    """
+    holders = [d for d in enclosing_directories(document, root) if d in notes]
+    if document.name == REQUIREMENT_NOTE:
+        return holders == [document.parent]
+    return not holders
 
 
 def requirement_documents(path: Path) -> list[Path]:
@@ -264,17 +322,37 @@ def requirement_documents(path: Path) -> list[Path]:
     What they need is `is_retired_by_name`, or they are collected here and
     read as live.
 
+    A DIRECTORY HOLDING `requirement.md` IS ONE REQUIREMENT, and only that note
+    declares anything. Everything beside it is supporting material: repro
+    evidence, captured output, whatever has to travel with the row. Read as a
+    requirements document, an evidence write-up containing a table would
+    declare a phantom requirement that no test can cover and no author believes
+    they wrote.
+
+    The note's name is fixed rather than matching the directory stem, so
+    retiring is a single directory rename with nothing inside to touch. A
+    stem-matching name would stop matching at exactly that rename.
+
+    A directory without a note keeps the older behaviour, where every `.md`
+    beneath is read and a row in an unexpected file fails loudly rather than
+    being skipped. That is what makes the rule above safe to add: it narrows
+    only where a note says it should.
+
     Sorted, so a duplicate id names the same two files whatever order the
     filesystem hands them back in.
     """
-    if path.is_dir():
-        found = (p for pattern in ("*.md", "*.retired", "*.superseded") for p in path.rglob(pattern))
-        return sorted({p for p in found if p.is_file()})
-    return [path]
+    if not path.is_dir():
+        return [path]
+
+    found = (p for pattern in ("*.md", "*.retired", "*.superseded") for p in path.rglob(pattern))
+    documents = {p for p in found if p.is_file()}
+    notes = {p.parent for p in documents if p.name == REQUIREMENT_NOTE}
+    return sorted(p for p in documents if declares_requirements(p, notes, path))
 
 
 def rows_in_retirement_order(
     path: Path,
+    retired_by_name: bool,
 ) -> Iterator[tuple[bool, str, list[str]]]:
     """Every requirement row in one document, each with whether it has gone.
 
@@ -282,8 +360,12 @@ def rows_in_retirement_order(
     property of position in the file, and the caller only wants the answer. It
     yields `(gone, id, cells)` so `read_document` sorts rows into two
     dictionaries and does no parsing of its own.
+
+    `retired_by_name` arrives rather than being derived here, because it is now
+    a property of position in the TREE as well as in the name, and only a
+    caller holding the requirements root can bound the search for a retired
+    directory. See `is_retired_by_position`.
     """
-    retired_by_name = is_retired_by_name(path)
     in_retired = retired_by_name
 
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -301,16 +383,16 @@ def rows_in_retirement_order(
         yield in_retired, row.group(1), [cell for cell in cells if cell]
 
 
-def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+def read_document(path: Path, retired_by_name: bool) -> tuple[dict[str, str], dict[str, str]]:
     """Collect what one document declares live, and what it has retired.
 
     A live requirement carries its status marker: the row's last bracketed
     cell, or the empty string where the document has no marker column.
 
-    A requirement has gone if the document's NAME retires it, or if the row
-    sits under a `## Retired` heading. Either way it is kept out of the live
-    set so nothing holds it to coverage, and remembered so a test still citing
-    it can be told where it went.
+    A requirement has gone if the document's NAME retires it, if a DIRECTORY
+    holding it does, or if the row sits under a `## Retired` heading. All three
+    keep it out of the live set so nothing holds it to coverage, and remember
+    it so a test still citing it can be told where it went.
 
     THE TWO ARE NOT EQUAL AND THE NAME IS THE BETTER ONE. A heading is a state
     switch that runs to the end of the file, so appending a requirement and
@@ -335,7 +417,7 @@ def read_document(path: Path) -> tuple[dict[str, str], dict[str, str]]:
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
 
-    for gone, req_id, trailing in rows_in_retirement_order(path):
+    for gone, req_id, trailing in rows_in_retirement_order(path, retired_by_name):
         if gone:
             retired[req_id] = " ".join(trailing)
             continue
@@ -359,7 +441,7 @@ def read_requirements(
     sources: dict[str, list[Path]] = {}
 
     for document in requirement_documents(path):
-        document_declared, document_retired = read_document(document)
+        document_declared, document_retired = read_document(document, is_retired_by_position(document, path))
         for req in document_declared:
             sources.setdefault(req, []).append(document)
         declared.update(document_declared)

@@ -800,6 +800,153 @@ def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path)
     assert "FR-1.1" in out
 
 
+# ---- tier 3: a directory per requirement ------------------------------------
+#
+# The requirement is `<ID>-<slug>/requirement.md` and everything beside it is
+# supporting material: repro evidence, captured output, whatever has to travel
+# with the row. The note's name is FIXED rather than matching the directory
+# stem, because retiring is then a single directory rename with nothing inside
+# to touch. A stem-matching note would stop matching the moment the directory
+# was renamed, which is the one operation the shape exists to make cheap.
+
+
+# COVERS: FR-4.19 | positive
+def test_a_requirement_directory_declares_from_its_note_alone(checker, tmp_path):
+    """`requirement.md` is the requirement. What sits beside it is not.
+
+    The supporting file here carries a well-formed row for an id nothing else
+    mentions. Read, it would declare a phantom requirement that no test can
+    cover and that no author believes they wrote.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-thing/requirement.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-1.1-thing/evidence.md": requirements(("FR-8.8", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-8.8" not in out
+
+
+# COVERS: FR-4.19 | negative
+def test_a_directory_without_a_note_still_reads_every_document(checker, tmp_path):
+    """Tier 2 is unchanged, and that is what makes the tier 3 rule safe.
+
+    `requirement.md` is what marks a directory as holding one requirement. A
+    tree without it keeps the old behaviour, where every `.md` is read so a row
+    in an unexpected file fails loudly rather than being skipped.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+            "core/notes/stray.md": requirements(("FR-8.8", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "FR-8.8" in out
+
+
+# COVERS: FR-4.20 | positive
+def test_a_retired_directory_retires_the_note_inside_it(checker, tmp_path):
+    """Retiring tier 3 is renaming the directory, so the suffix lands there.
+
+    Both spellings, because a directory carries them exactly as a file does and
+    for the same reason: the state is visible in `ls` and there is no switch
+    inside the document for a later row to fall under.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-live/requirement.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-2.2-gone.retired/requirement.md": requirements(("FR-2.2", "[A]")),
+            "core/FR-3.3-gone.superseded/requirement.md": requirements(("FR-3.3", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-2.2" not in out
+    assert "FR-3.3" not in out
+
+
+# COVERS: FR-4.20 | regression
+def test_a_retired_directory_still_holds_its_id_against_reuse(checker, tmp_path):
+    """The tier 3 form of the inversion job 1 closed for filenames.
+
+    Unrecognised, the directory is descended into and its note read as live, so
+    the id is declared twice and reported as `declared more than once`. The
+    obvious remedy for a duplicate is to delete one of the two, and here that
+    deletes the retirement record.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-9.9-gone.retired/requirement.md": requirements(("FR-9.9", "[A]")),
+            "core/FR-9.9-again/requirement.md": requirements(("FR-9.9", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-9.9" in out
+
+
+# COVERS: FR-4.20 | edge
+def test_a_retired_directory_reaches_its_supporting_material(checker, tmp_path):
+    """A retired directory has gone entire, not down to its note.
+
+    Supporting material is not read while the directory is live, so the only
+    way it could declare anything is by being read once the directory is
+    retired. It must not become live by being retired.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-live/requirement.md": requirements(("FR-1.1", "[A]")),
+            "core/FR-2.2-gone.retired/requirement.md": requirements(("FR-2.2", "[A]")),
+            "core/FR-2.2-gone.retired/evidence/repro.md": requirements(("FR-8.8", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-8.8" not in out
+
+
+# COVERS: FR-4.20 | negative
+def test_a_retired_directory_above_the_root_retires_nothing(checker, tmp_path):
+    """The search for a retired ancestor stops at the requirements root.
+
+    Walking every parent instead reaches whatever happens to be above the
+    repository. A tree archived as `holder.retired/`, or a checkout under one,
+    would read as retired entire: nothing is held to coverage, the gate passes,
+    and the output says so in a line nobody reads twice.
+
+    This runs on an absolute `--requirements` path, because that is what puts
+    directories above the root into the document's own path at all.
+    """
+    holder = tmp_path / "holder.retired"
+    root = holder / "docs" / "REQUIREMENTS" / "core"
+    root.mkdir(parents=True)
+    (root / "FR-1.1-live.md").write_text(requirements(("FR-1.1", "[A]")), encoding="utf-8")
+
+    argv = ["--requirements", str(holder / "docs" / "REQUIREMENTS"), "."]
+    code, out = checker(traceability, argv, holder)
+    assert code == 1, out
+    assert "FR-1.1" in out
+    assert "1 settled requirement(s) have no test citing them" in out
+
+
 # COVERS: FR-4.17 | edge
 def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
     """Retired is not deleted. A test citing one is told, not left guessing."""
