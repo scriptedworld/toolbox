@@ -726,6 +726,80 @@ def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     assert "FR-1.1" in out
 
 
+# COVERS: FR-4.17 | positive
+def test_a_superseded_filename_retires_without_any_heading(checker, tmp_path):
+    """An id replaced by another is gone the same way one simply dropped is.
+
+    Both spellings, and nested, matching the `.retired` pair. The suffix says
+    why the id went, and the checker has no use for the difference: what it
+    needs from either is that the id stays held so it cannot be declared
+    again.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "api/v1/FR-1.1-live.md": requirements(("FR-1.1", "[A]")),
+            "api/v1/FR-2.2-gone.superseded": requirements(("FR-2.2", "[A]")),
+            "api/FR-3.3-gone.superseded.md": requirements(("FR-3.3", "[A]")),
+        },
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_t():\n    pass\n"},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+    assert "FR-2.2" not in out
+    assert "FR-3.3" not in out
+
+
+# COVERS: FR-4.17 | regression
+def test_a_superseded_md_document_does_not_read_as_live(checker, tmp_path):
+    """A suffix ending `.md` is one the ordinary glob already collects.
+
+    So a name the checker does not recognise is worse here than a file it
+    cannot see: the document is read, every row in it reads live, and the id
+    is declared a second time with nothing flagging it. That inverts the
+    never-reuse guarantee rather than merely failing to enforce it.
+
+    Measured against the unfixed checker: it reports `declared more than
+    once`, whose obvious remedy is to delete one of the two rows, and here
+    that would delete the record of where the id went.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-9.9-gone.superseded.md": requirements(("FR-9.9", "[A]")),
+            "core/FR-9.9-again.md": requirements(("FR-9.9", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-9.9" in out
+
+
+# COVERS: FR-4.18 | regression
+def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
+    """The bare suffix fails the other way: the glob does not collect it.
+
+    An invisible document holds no id, so nothing stops the id being declared
+    again. The same lost guarantee as the `.retired` case, reached by the
+    opposite route.
+    """
+    tree = split(
+        tmp_path,
+        {
+            "core/FR-1.1-gone.superseded": requirements(("FR-1.1", "[A]")),
+            "core/FR-1.1-again.md": requirements(("FR-1.1", "[A]")),
+        },
+        {},
+    )
+    code, out = checker(traceability, DIR_ARGV, tree)
+    assert code == 1
+    assert "both live and retired" in out
+    assert "FR-1.1" in out
+
+
 # COVERS: FR-4.17 | edge
 def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
     """Retired is not deleted. A test citing one is told, not left guessing."""

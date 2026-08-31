@@ -43,6 +43,11 @@ appending one are different gestures rather than the same gesture in different
 positions. It shows in `ls` without opening anything, and it leaves the row in
 the group it always sat in. `.retired.md` is read the same way.
 
+`.superseded` and `.superseded.md` say the id was replaced rather than simply
+dropped, and are read the same way again. The suffix is the record; the
+checker treats all four alike, because what it needs from any of them is that
+the id stays held.
+
 A `## Retired` HEADING, for a document that has nowhere else to put the record:
 
     ## Retired
@@ -225,8 +230,19 @@ def is_retired_by_name(path: Path) -> bool:
     Both spellings count. `.retired` is the shape a split repository uses, and
     `.retired.md` is the one that stays readable to anything expecting
     markdown.
+
+    `.superseded` and `.superseded.md` are read the same way, and record that
+    the id was replaced rather than simply dropped. The name carries the
+    difference for a reader; nothing downstream needs it, because either way
+    the id has gone and either way it must stay held so it cannot be declared
+    again.
+
+    A suffix ending `.md` is the one that has to be recognised here rather
+    than left to the glob, which collects it already. Unrecognised, such a
+    document is read and every row in it reads live, which inverts the
+    never-reuse guarantee instead of merely failing to enforce it.
     """
-    return path.name.endswith((".retired", ".retired.md"))
+    return path.name.endswith((".retired", ".retired.md", ".superseded", ".superseded.md"))
 
 
 def requirement_documents(path: Path) -> list[Path]:
@@ -239,16 +255,20 @@ def requirement_documents(path: Path) -> list[Path]:
     sitting in the wrong file. The cost is that a preamble must not contain a
     parseable requirement row.
 
-    `.retired` is read as well as `.md`. A retired document that the checker
-    cannot see is the quiet way to lose the never-reuse guarantee: nothing
-    holds the id, so declaring it again passes, and every existing reference to
-    it silently means something else.
+    `.retired` and `.superseded` are read as well as `.md`. A retired document
+    that the checker cannot see is the quiet way to lose the never-reuse
+    guarantee: nothing holds the id, so declaring it again passes, and every
+    existing reference to it silently means something else.
+
+    Their `.md` spellings need no pattern of their own, being `.md` files.
+    What they need is `is_retired_by_name`, or they are collected here and
+    read as live.
 
     Sorted, so a duplicate id names the same two files whatever order the
     filesystem hands them back in.
     """
     if path.is_dir():
-        found = (p for pattern in ("*.md", "*.retired") for p in path.rglob(pattern))
+        found = (p for pattern in ("*.md", "*.retired", "*.superseded") for p in path.rglob(pattern))
         return sorted({p for p in found if p.is_file()})
     return [path]
 
