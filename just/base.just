@@ -70,16 +70,13 @@ _verdict jig *flags:
 # biggest full gate this tree can run. The other nine exist so a piece can be
 # run alone during development; this is what runs before anything lands.
 #
-# It calls the secrets jig separately because common-quality does not reach it.
-# toolbox/jigs.yaml says so in as many words: "Every language set includes this
-# one; `secrets` deliberately does not". The decision to fold secrets into
-# common-quality is recorded and is not built, so this recipe does it by hand
-# and should lose the line when toolbox composes them.
+# The secrets scan arrives through common-quality, which composes it as a child
+# so `bolt.secrets.yaml` stays the one definition of what a scan is. Do not add
+# `leak-scan` here: it would run the same jig a second time.
 
 # everything: quality, tests, coverage, secrets
 checks:
     @just _verdict common-quality
-    @just leak-scan
     @just test
     @just coverage
 

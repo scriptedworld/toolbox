@@ -27,11 +27,17 @@ Read `result.yaml` rather than the exit status. bolt exits 0 when the run
 completed, whatever the tools concluded, and also when it refuses the jig
 outright.
 
-The Python suite runs on its own and needs none of the external tools:
+The Python suite needs none of the gate's external tools, but it does need
+`wrench` importable. That is a sibling checkout rather than a package:
 
 ```sh
 python3 -m pytest
 ```
+
+**Without wrench, collection is interrupted and none of the suite runs.** That
+reads as a broken repository rather than a missing sibling, so it is worth
+knowing before you conclude anything from a red first run. `README.md` says
+where wrench comes from.
 
 ## The mistake that costs the most
 
