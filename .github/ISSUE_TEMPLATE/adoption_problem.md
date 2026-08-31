@@ -25,7 +25,7 @@ names one of those files, say so.
 ## Your adoption
 
 ```sh
-python3 bin/link-jigs.py --check /path/to/your-project <sets>
+python3 bin/link-toolbox.py --check /path/to/your-project <sets>
 ```
 
 Whether any link was refused because a real file was in the way. A vendored copy

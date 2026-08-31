@@ -274,7 +274,7 @@ tasks:
 # radon. Its `cc` duplicates lizard and its maintainability index is a composite
 # of metrics already measured separately here, a composite being harder to act
 # on than its parts. `hal` and `raw` do report things nothing else here
-# measures: against bin/link-jigs.py, radon 6.0.1 gives Halstead volume 887,
+# measures: against bin/link-toolbox.py, radon 6.0.1 gives Halstead volume 887,
 # difficulty 6.45 and effort 5722, and separates LLOC 227 from SLOC 226 with
 # comment density.
 #

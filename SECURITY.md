@@ -29,7 +29,7 @@ The jigs are a quality gate, not a sandbox. They are built to tell you whether
 your code meets a standard, and they assume the code is yours.
 
 **Adoption is symlinks, not copies, so a change here takes effect immediately in
-every project that has adopted.** `bin/link-jigs.py` links this repository's
+every project that has adopted.** `bin/link-toolbox.py` links this repository's
 checkers and adapters into an adopting project, and those links resolve back
 here. There is no version pin between the two. An adopter tracking this
 repository gets a fix the moment it lands, and would get a defect the same way.

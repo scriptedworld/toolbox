@@ -48,7 +48,7 @@ elsewhere.
     bin/            checkers written here, because no tool does the job
       test-traceability.py     tests cite what they discharge; requirements have tests
       suppression-register.py  every pragma registered, every entry real
-      link-jigs.py             makes an adopter's symlinks, per jigs.yaml
+      link-toolbox.py          makes an adopter's symlinks, per jigs.yaml
     adapters/       record -> envelope, per task that needs one
       common/lizard.py         complexity, any language lizard reads
       go/{gofmt,govet,coverage}.py
@@ -111,7 +111,7 @@ extension, which is how one adopter's only source file went unread.
 Eleven requirements have no test citing them, and they split two ways.
 
 **A test can reach two of them.** `FR-7.14` refuses a link resolving outside the
-target project, through a `State.ESCAPES` in `link-jigs.py` that nothing
+target project, through a `State.ESCAPES` in `link-toolbox.py` that nothing
 exercises. `NFR-4` requires every adapter fixture to record the tool version and
 the capture date, which both fixtures under `tests/fixtures/` do and no test
 asserts.
@@ -129,12 +129,12 @@ right to fail on them.
 ## Adoption
 
 A project adopts a set by linking the files `jigs.yaml` names for it, which
-`bin/link-jigs.py` does. `--check` verifies an existing adoption and exits 1 on
+`bin/link-toolbox.py` does. `--check` verifies an existing adoption and exits 1 on
 drift.
 
 Two things about adoption are worth knowing before relying on it.
 
-**A vendored copy blocks a link, correctly.** `link-jigs` never overwrites a real
+**A vendored copy blocks a link, correctly.** `link-toolbox` never overwrites a real
 file. A project that carried its own fork of a checker before adopting keeps that
 fork, and the fork then runs instead of the shared one. That state looks adopted
 and is not, and the way it shows is the two exiting differently against the same

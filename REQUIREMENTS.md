@@ -115,7 +115,7 @@ recorded in `bin/suppression-register.py`.
 
 ## FR-7, Adoption by link
 
-*Derives from:* `bin/link-jigs.py` and `jigs.yaml`, and the reasoning in their
+*Derives from:* `bin/link-toolbox.py` and `jigs.yaml`, and the reasoning in their
 own headers. A jig names checkers, adapters and tool configuration that live
 beside it here, and `{config_dir}` resolves those against the jig's own directory,
 so a jig reached through a symlink resolves them back through that same link.

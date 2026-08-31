@@ -55,8 +55,8 @@ language set includes `common`, and `common` includes `secrets`, so naming one
 brings what it depends on. Run this from your clone of toolbox:
 
 ```sh
-python3 bin/link-jigs.py --plan ../your-project python
-python3 bin/link-jigs.py --yes  ../your-project python
+python3 bin/link-toolbox.py --plan ../your-project python
+python3 bin/link-toolbox.py --yes  ../your-project python
 ```
 
 That links seven files: three jigs, two checkers and two adapters. They are

@@ -35,7 +35,7 @@ git rev-parse --short HEAD
 Whether it adopted by symlink or holds real files, and which sets:
 
 ```sh
-python3 bin/link-jigs.py --check /path/to/your-project common
+python3 bin/link-toolbox.py --check /path/to/your-project common
 ```
 
 The language and the tool version, where the finding is about a specific tool.

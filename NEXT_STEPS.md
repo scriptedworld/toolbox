@@ -58,7 +58,7 @@ Wiring one before porting it produces an invalid envelope. Porting them buys
 back per-finding reasons and, for `lizard`, the complexity statistics that
 currently sit unread in captured stdout. It does not change any verdict.
 
-**Adoption records nothing about itself.** `link-jigs.py --check` needs the set
+**Adoption records nothing about itself.** `link-toolbox.py --check` needs the set
 list as an argument, and which sets a project adopted is written nowhere, so a
 wrong guess reports drift that does not exist. Fixing that is a precondition for
 `--check` becoming a gate task.
