@@ -19,6 +19,29 @@
 version: 1
 
 sets:
+  # The ten recipes every project supplies whatever it is written in, imported
+  # by an adopter's Justfile as `import 'just/base.just'`.
+  #
+  # A SET OF ITS OWN, INCLUDED BY NOTHING. Adopting the jigs and adopting the
+  # recipe set are different decisions: a project can run the checks without a
+  # Justfile, and can have a Justfile without adopting a jig. Folding this into
+  # `common` would make one imply the other and there is no reason it should.
+  #
+  # IT EXISTS BECAUSE THE COPIES ALREADY DID. Measured 2026-08-31: five
+  # byte-identical copies, sha256 81db942f738d, 198 lines, all tracked, and no
+  # shared source anywhere. Nothing detected that they agreed, so nothing would
+  # have detected that they had stopped.
+  #
+  # WRENCH CANNOT TAKE THIS SET AS IT STANDS. A file lands at the same relative
+  # path in the target, and wrench keeps its two copies per pack, at
+  # `rust/just/base.just` and `python/just/base.just`. A root-relative linker
+  # cannot produce those, so wrench needs either a per-pack adoption or a set
+  # that can land one file at a different path. That is unresolved and is not
+  # settled by adding this.
+  base:
+    files:
+      - just/base.just
+
   # Checks that do not care what language the project is written in. Every
   # language set includes this one.
   #
