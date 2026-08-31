@@ -70,6 +70,25 @@ Nothing is ever overwritten, so a project holding an older vendored copy looks
 adopted and is not. `--check` verifies an adoption without writing, and exits 1
 on drift.
 
+### A repository holding several projects
+
+**Adoption assumes one root.** A file lands at the same relative path it has
+here, so linking into a repository root gates that root. A repository holding
+several projects has two ways to use that and they are not interchangeable.
+
+**Adopt per subproject** when each is its own project in its own language. Run
+the linker once per directory. Each then gates itself and knows nothing about
+its siblings, and the root coordinates them: a `just` recipe that fans out, or a
+bolt task that runs bolt against each subdirectory and takes its verdict.
+`wrench/docs/runbook.md` is a worked example, three packs in three languages
+plus one check at the root that no pack could run because it reads all three.
+
+**Adopt at the root** when the subdirectories are parts of one project rather
+than projects in their own right.
+
+The question is who owns the verdict. If a subdirectory can fail on its own
+terms, it adopts on its own terms.
+
 ### What your project supplies
 
 | File | Read by | Absent means |
