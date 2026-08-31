@@ -65,6 +65,36 @@ Two things the `base` set does not solve yet, and a template would have to:
 - **Adoption is recorded nowhere**, so `--check` cannot run as a gate task
   without being told which sets a project took. That is the precondition below.
 
+### `just link-project <absolute path>`, and a subproject is a project
+
+The design, and the reason `link-jigs` was renamed rather than only moved:
+**adoption should be a recipe rather than a remembered command line**, and a
+subdirectory that is its own project should hold its own link to toolbox.
+
+    just link-project /abs/path/to/repo/rust
+    just link-project /abs/path/to/repo/python
+    just link-project /abs/path/to/repo/go
+
+Each subdirectory then carries its own jigs, checkers and adapters, and is a
+contained project rather than a directory the root happens to check. The root
+Justfile delegates and nothing more:
+
+    checks:  cd rust && just checks
+             cd python && just checks
+             cd go && just checks
+             then the checks that are genuinely wider
+
+**What stays at the root is what no subproject can answer**: that all three
+suites cover the same thing, and that the project-level requirements are
+discharged by the three together, whether by all of them individually or by the
+mixture. `wrench/bin/test-suite-parity.py` is the first of those and reads all
+three at once.
+
+This also dissolves the per-path problem above. A set landing at the same
+relative path is correct once the target is the subproject rather than the
+repository, and `base.just` then lands once per pack because each pack is where
+it belongs.
+
 **Per-file coverage for Python.** The Go jig judges coverage per file at 80% of
 statements and refuses an aggregate, because an aggregate lets a well-tested
 file carry an untested one. The Python `tests` task already produces
