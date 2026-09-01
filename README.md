@@ -22,10 +22,15 @@ here and installs exactly those.
 
 ## What is not ready
 
-**bolt is not published, and nothing here runs without it.** The test suite also
-imports wrench, likewise unpublished and currently resolved as a sibling
-checkout. So the jigs are readable from a clone, but neither running one nor
-running `pytest` works from a standalone one.
+**Nothing here runs without bolt, and the test suite also imports wrench.**
+Neither is on a package registry, so both are sibling checkouts rather than
+dependencies a resolver fetches:
+
+    git clone https://github.com/scriptedworld/bolt.git   ../bolt
+    git clone https://github.com/scriptedworld/wrench.git ../wrench
+
+The jigs are readable from a clone on their own. Running one, or running
+`pytest`, needs those two beside it.
 
 There are no releases and no version tags, so adoption tracks the default
 branch. Jigs exist for Go and Python only. Three adapters still speak a retired
