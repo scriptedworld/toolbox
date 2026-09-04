@@ -1,0 +1,136 @@
+# toolbox, suppressions
+
+Every `# nosec`, `noqa`, `type: ignore` or equivalent in this repository, with
+the question that was asked and the answer that was given. **A suppression that
+is not here is a defect**, because the register is the only thing standing
+between a silenced check and nobody remembering why.
+
+This file did not exist until 2026-09-04, and
+`docs/DECISIONS/no-suppressions-file-while-nothing-is-silenced.md` was correct
+until the same day: nothing was silenced, so a register would have been a
+document about an empty set. Two things were silenced within an hour of each
+other and the decision expired exactly as it said it would.
+
+## S-1, bandit's subprocess findings in the test tree
+
+**Thirteen marks, two rules, six files, and every one is a test.** `B404` for
+importing `subprocess`, `B603` for calling it without `shell=True`.
+
+    tests/conftest.py                         # nosec B404    import subprocess
+    tests/conftest.py                         # nosec B603    the flag-contract runner
+    tests/test_bolt_result_adapter.py         # nosec B404    import subprocess
+    tests/test_bolt_result_adapter.py         # nosec B603    running the adapter
+    tests/test_coverage_adapter.py            # nosec B404    import subprocess
+    tests/test_coverage_adapter.py       ×2   # nosec B603    the run helper, and the two-evidence case
+    tests/test_gofmt_adapter.py               # nosec B404    import subprocess
+    tests/test_gofmt_adapter.py               # nosec B603    the script-runs-as-a-script case
+    tests/test_suppression_register.py        # nosec B404    import subprocess
+    tests/test_suppression_register.py        # nosec B603    the script-runs-as-a-script case
+    tests/test_traceability.py                # nosec B404    import subprocess
+    tests/test_traceability.py                # nosec B603    the script-runs-as-a-script case
+
+**It was sixteen across seven files an hour earlier**, and the three that went
+are the useful part of this entry. The Rust and Python coverage adapter tests
+each carried their own eighteen-line runner, identical apart from the evidence
+filename, and pylint's R0801 said so. Extracting it to `conftest.py`'s
+`run_flag_adapter` removed a copy of the subprocess call along with the
+duplication, and this checker then failed until the register followed — which is
+what the register is for.
+
+**The rows carry the pragma as it is spelled in the source, and `×N` where a
+file holds more than one.** That is what makes this an index rather than a
+description of one: the checker reads these rows with the same patterns it scans
+the source with, so a row naming no recognised pragma is prose to it.
+
+**Why the marks rather than an exclusion.** The Python jig runs bandit twice:
+once over the tree without its tests, held to everything, and once over the test
+tree alone with `--skip B101`. Its comment says why B404 and B603 are not also
+skipped there — "deliberate subprocess use is a design choice worth seeing
+rather than noise to silence". Marking each site is what that sentence asks for.
+Excluding the test tree would have been one line and would have stopped anyone
+ever seeing a new one appear.
+
+**Why the subprocess calls exist at all**, which is the question the register is
+for. A checker or adapter is a script bolt spawns, so its shebang, its imports
+and where `main()` writes its envelope are part of the contract, and an
+in-process call proves none of them. Every `B603` above is a test running the
+real script the way bolt runs it. `tests/conftest.py`'s `script_argv` is where
+they all go through, and it also routes them under `coverage run
+--parallel-mode`, without which a spawned script reports 0% with a full suite
+behind it.
+
+Line numbers are deliberately not recorded. They go stale on the next edit and a
+stale line number is worse than none, because it sends a reader to the wrong
+call. `grep -rn nosec tests/ adapters/ bin/` is the current list and it is one
+command.
+
+## S-2, the standard XML parser in the Cobertura adapter
+
+**Two marks, one file.**
+
+    adapters/python/coverage.py    # nosec B405    import xml.etree.ElementTree
+    adapters/python/coverage.py    # nosec B314    ET.parse on the report
+
+`defusedxml` is not a dependency here, so the adapter uses the standard parser.
+That is defensible in exactly one circumstance and this is it: the document it
+parses was written by the `tests` task in the same jig, seconds earlier, in the
+same work directory. It is not a document arriving from anywhere.
+
+**What would retire this entry.** Either `defusedxml` becomes a declared
+dependency — which `requires:` cannot express today, since it names executables
+and not libraries, and which anvil's NEXT_STEPS carries as its first item — or
+the adapter stops parsing XML. Neither is close, so the marks stay and this
+paragraph is what a reader gets instead.
+
+The module docstring carries the same reasoning at the point of use, which is
+deliberate duplication: a reader of the adapter should not have to find this
+file to know why the parser is the standard one.
+
+## S-3, duplication between scripts that cannot import each other
+
+**Nine marks, one rule, every standalone script here.**
+
+    bin/test-traceability.py       # pylint: disable=duplicate-code
+    bin/suppression-register.py    # pylint: disable=duplicate-code
+    bin/link-toolbox.py            # pylint: disable=duplicate-code
+    adapters/common/bolt-result.py # pylint: disable=duplicate-code
+    adapters/go/coverage.py        # pylint: disable=duplicate-code
+    adapters/go/gofmt.py           # pylint: disable=duplicate-code
+    adapters/go/govet.py           # pylint: disable=duplicate-code
+    adapters/python/coverage.py    # pylint: disable=duplicate-code
+    adapters/rust/coverage.py      # pylint: disable=duplicate-code
+
+**This is structural rather than incidental, and it was met three times before
+being written down as one thing.** Every script here is spawned by path, from a
+directory that is not a package, and linked one file at a time into each
+adopter. None can import another. So anything two of them must both do is
+written twice, and R0801 reports a different pair each time one is dissolved:
+
+    the coverage adapters' judgement    the two thresholds, the per-file rule,
+                                        the statistics, the envelope, `main`
+    the checkers' SKIP_DIRS             the directories neither reads
+    the adapters' emit                  eight lines writing `output.yaml`
+
+Dissolving them one at a time is the wrong shape of work: three edits, three
+justifications, and a fourth pair surfacing behind them.
+
+**One of the three is already guarded by a test, which is the standard the
+others should reach.**
+`tests/test_suppression_register.py::test_both_checkers_skip_the_same_directories`
+compares the two skip lists and fails if they diverge. That answers R0801's real
+concern — silent divergence — with something that can fail, rather than with a
+comment.
+
+**What would retire this entry.** A shared module under `adapters/common/` and
+another under `bin/`, joined to the `common` set so every adopter links them,
+imported by path from scripts that currently import nothing but the standard
+library and PyYAML. That is a real change: it puts a module behind nine shipped
+scripts, adds a link every adopter takes whether or not it runs the task that
+needs it, and reaches the Go coverage adapter, which judges no branches and does
+not fit the same shape without thought. `NEXT_STEPS.md` carries it.
+
+**What must not happen is the third option**: raising `min-similarity-lines`
+until the findings stop. That is
+`docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md` exactly, and it would
+also silence the case R0801 got right this week — two test files that had copied
+a subprocess block, which was dissolved rather than marked.

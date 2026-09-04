@@ -8,7 +8,7 @@ the envelope everything.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 
 import yaml
 from conftest import ROOT, fixture_text, load, script_argv
@@ -68,7 +68,7 @@ def test_an_empty_record_succeeds_rather_than_raising(adapter):
 # COVERS: NFR-3 | positive
 def test_the_adapter_runs_as_a_script():
     """In-process tests cannot catch a broken shebang or a missing import."""
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603
         script_argv(ROOT / "adapters" / "go" / "gofmt.py"),
         input=yaml.safe_dump(record("main.go\n")),
         capture_output=True,

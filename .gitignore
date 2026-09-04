@@ -6,8 +6,18 @@ START_HERE.md
 .ephemera/
 
 .bolt*/
+# `.coverage` is the combined data file and `.coverage.*` are the per-process
+# ones `coverage run --parallel-mode` writes: one per test process and one per
+# spawned checker, so a run leaves dozens. The jig combines them before
+# reporting, but a run that fails before `coverage combine` leaves them behind,
+# and a pattern that matched only the combined name let 65 of them show up as
+# untracked. Measured 2026-09-04.
 .coverage
+.coverage.*
 coverage.xml
+
+# The uv environment the jig's `tests` task runs in.
+.venv/
 __pycache__/
 .mypy_cache/
 .ruff_cache/

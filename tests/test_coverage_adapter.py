@@ -17,7 +17,7 @@ a number beside it.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 
 import yaml
 from conftest import ROOT, script_argv
@@ -60,7 +60,7 @@ def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
         argv += ["--evidence", str(prof)]
     argv += ["--exitcode", str(status), *args]
 
-    subprocess.run(argv, check=True, capture_output=True)
+    subprocess.run(argv, check=True, capture_output=True)  # nosec B603
     return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
 
 
@@ -143,7 +143,7 @@ def test_two_profiles_merge_by_taking_the_higher_count(tmp_path):
     second = tmp_path / "cover-entry.out"
     second.write_text("mode: atomic\ngithub.com/x/p/m.go:1.1,2.2 4 1\n", "utf-8")
 
-    subprocess.run(
+    subprocess.run(  # nosec B603
         script_argv(
             ADAPTER,
             "--work-dir",

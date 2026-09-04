@@ -53,6 +53,15 @@ than returning an envelope: bolt's configuration never says what success means,
 and a tool whose exit code genuinely is the answer needs no adapter.
 """
 
+# pylint: disable=duplicate-code
+#
+# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# by path from a directory that is not a package, so none can import another,
+# so anything two of them must both do is written twice. R0801 finds a different
+# pair each time one is dissolved: the coverage adapters' judgement, the
+# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
+# with what would retire it.
+
 from __future__ import annotations
 
 import argparse

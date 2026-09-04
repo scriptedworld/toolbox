@@ -18,6 +18,20 @@
 version: "1.0.0"
 
 requires:
+  # uv, and not pytest or coverage directly. Those two are installed per-project
+  # rather than globally, because a suite needs its own dependencies importable
+  # and a shared tool installation cannot have them: skid's tests import kokoro
+  # and flask, wrench's import its own pack, and neither is on any global PATH.
+  #
+  # Measured 2026-09-04: with `coverage` and `pytest` installed as separate
+  # `uv tool` environments, `coverage run -m pytest` fails with `No module named
+  # pytest` in every repository here, and the task reported `evidence-missing`
+  # rather than a coverage figure. It had never run.
+  #
+  # An adopter therefore declares pytest and coverage in its own pyproject. A
+  # repository that ships no distribution can still have an environment; see
+  # toolbox's own `[tool.uv] package = false`.
+  - uv
   - ruff
   - mypy
   - pylint
@@ -320,9 +334,9 @@ tasks:
   - name: tests
     description: the suite, and coverage judged per file for lines and branches
     command: >-
-      coverage run --branch --parallel-mode -m pytest -q &&
-      coverage combine &&
-      coverage xml -o {work_dir}/coverage.xml
+      uv run coverage run --branch --parallel-mode -m pytest -q &&
+      uv run coverage combine &&
+      uv run coverage xml -o {work_dir}/coverage.xml
     evidence:
       - coverage.xml
     adapter: adapters/python/coverage.py

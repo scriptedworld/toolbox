@@ -21,10 +21,7 @@ nothing was measured rather than let a threshold pass on a zero denominator.
 
 from __future__ import annotations
 
-import subprocess
-
-import yaml
-from conftest import ROOT, script_argv
+from conftest import ROOT, run_flag_adapter
 
 ADAPTER = ROOT / "adapters" / "rust" / "coverage.py"
 
@@ -53,27 +50,9 @@ PROFILE = (
 COVERED = "SF:/repo/src/a.rs\nDA:1,5\nBRDA:1,0,0,3\nBRDA:1,0,1,2\nend_of_record\nSF:/repo/src/c.rs\nDA:1,4\nend_of_record\n"
 
 
-def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0", encoding="utf-8"):
-    """Invoke the adapter as bolt does and read the envelope it wrote.
-
-    AS A SUBPROCESS, because an in-process call cannot catch a broken shebang, a
-    missing import, or a `main()` that writes somewhere other than where it was
-    told. The envelope's location is part of the contract.
-    """
-    work = tmp_path / "work"
-    work.mkdir(exist_ok=True)
-    status = tmp_path / "exitcode"
-    status.write_text(exitcode, encoding="utf-8")
-
-    argv = [str(ADAPTER), "--work-dir", str(work)]
-    if profile is not None:
-        prof = tmp_path / "coverage.lcov"
-        prof.write_text(profile, encoding=encoding)
-        argv += ["--evidence", str(prof)]
-    argv += ["--exitcode", str(status), *args]
-
-    subprocess.run(script_argv(*argv), check=True, capture_output=True)
-    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
+    """The shared flag-contract runner, with this adapter's evidence name."""
+    return run_flag_adapter(ADAPTER, tmp_path, "coverage.lcov", profile, *args, exitcode=exitcode)
 
 
 def reasons_of(envelope, kind):
@@ -169,33 +148,26 @@ def test_a_branch_is_taken_if_any_record_took_it(tmp_path):
 
 # COVERS: FR-3.4 | edge
 def test_several_evidence_files_compose_as_one_document(tmp_path):
-    """Two profiles merge exactly as one profile's repeated records do."""
-    work = tmp_path / "work"
-    work.mkdir()
-    status = tmp_path / "exitcode"
-    status.write_text("0", encoding="utf-8")
-    first = tmp_path / "one.lcov"
-    first.write_text("SF:/repo/src/a.rs\nDA:1,0\nend_of_record\n", encoding="utf-8")
+    """Two profiles merge exactly as one profile's repeated records do.
+
+    Driven through `run` with an extra `--evidence` rather than by building the
+    argument list here, which is what the Go adapter's equivalent case does. Two
+    hand-built lists differing only in a filename are one block of duplication
+    that pylint's R0801 reads across files, and it is right to: the second copy
+    is where a change to the contract gets missed.
+    """
     second = tmp_path / "two.lcov"
     second.write_text("SF:/repo/src/a.rs\nDA:1,9\nend_of_record\n", encoding="utf-8")
-    subprocess.run(
-        script_argv(
-            str(ADAPTER),
-            "--work-dir",
-            str(work),
-            "--evidence",
-            str(first),
-            "--evidence",
-            str(second),
-            "--exitcode",
-            str(status),
-            "--min",
-            "100",
-        ),
-        check=True,
-        capture_output=True,
+    envelope = run(
+        tmp_path,
+        "--min",
+        "100",
+        "--min-branch",
+        "0",
+        "--evidence",
+        str(second),
+        profile="SF:/repo/src/a.rs\nDA:1,0\nend_of_record\n",
     )
-    envelope = yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
     assert envelope["success"] is True, envelope
 
 
@@ -213,24 +185,7 @@ def test_a_failed_suite_is_a_failure_even_with_a_clean_profile(tmp_path):
 # COVERS: FR-3.6 | negative
 def test_an_unreadable_exit_status_is_a_failure(tmp_path):
     """Not knowing whether the suite passed is not the same as it passing."""
-    work = tmp_path / "work"
-    work.mkdir()
-    prof = tmp_path / "coverage.lcov"
-    prof.write_text(COVERED, encoding="utf-8")
-    subprocess.run(
-        script_argv(
-            str(ADAPTER),
-            "--work-dir",
-            str(work),
-            "--evidence",
-            str(prof),
-            "--exitcode",
-            str(tmp_path / "absent"),
-        ),
-        check=True,
-        capture_output=True,
-    )
-    envelope = yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    envelope = run(tmp_path, "--min", "0", "--min-branch", "0", profile=COVERED, exitcode=None)
     assert envelope["success"] is False
     assert reasons_of(envelope, "exit-status-unreadable")
 

@@ -77,6 +77,15 @@ error. The jig's `tests` task therefore names `--cov-branch` explicitly, and
 `branch_measured` in the statistics below says whether any arrived.
 """
 
+# pylint: disable=duplicate-code
+#
+# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# by path from a directory that is not a package, so none can import another,
+# so anything two of them must both do is written twice. R0801 finds a different
+# pair each time one is dissolved: the coverage adapters' judgement, the
+# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
+# with what would retire it.
+
 import argparse
 import pathlib
 import re
@@ -222,6 +231,66 @@ def merged_report(paths):
     return counted(merged)
 
 
+# The two metrics differ only in what they are called and what the denominator
+# is named in the reason, so they are described rather than written twice. That
+# also keeps `judge` below the cognitive limit: inlining both arms took it to 22
+# against a limit of 15, which is the shape complexipy exists to catch.
+LINES = {
+    "kind": "coverage-below-minimum",
+    "unit": "lines covered",
+    "denominator": "lines",
+}
+BRANCHES = {
+    "kind": "branch-coverage-below-minimum",
+    "unit": "branches taken",
+    "denominator": "branches",
+}
+
+
+def below(name, covered, total, minimum, metric):
+    """One metric for one file: a reason, or None where it clears the minimum."""
+    pct = 100.0 * covered / total
+    if pct + 1e-9 >= minimum:
+        return None
+    return {
+        "kind": metric["kind"],
+        "checker": CHECKER,
+        "file": name,
+        "message": f"{name}: {pct:.1f}% of {metric['unit']}, below {minimum:.0f}%",
+        "covered": covered,
+        metric["denominator"]: total,
+        "percent": round(pct, 1),
+    }
+
+
+def kept_files(files, patterns):
+    """The files to judge, sorted, with the excluded ones dropped."""
+    excluded = [re.compile(pattern) for pattern in patterns]
+    return [name for name in sorted(files) if not any(p.search(name) for p in excluded)]
+
+
+def statistics_for(files, kept, reasons):
+    """The totals, summed over the kept set. Context only; nothing branches on them.
+
+    Index 0 and 1 of a record are covered lines and lines, 2 and 3 the same for
+    branches. `branch_measured` says whether any branch data arrived at all, so
+    a profile carrying none reads as unmeasured rather than as a threshold met
+    on an empty denominator.
+    """
+    covered = sum(files[name][0] for name in kept)
+    lines = sum(files[name][1] for name in kept)
+    branch_covered = sum(files[name][2] for name in kept)
+    branches = sum(files[name][3] for name in kept)
+    return {
+        "files": len(files),
+        "below_minimum": sum(1 for r in reasons if r["kind"] == LINES["kind"]),
+        "branch_below_minimum": sum(1 for r in reasons if r["kind"] == BRANCHES["kind"]),
+        "branch_measured": branches > 0,
+        "total_percent": round(100.0 * covered / lines, 1) if lines else 0.0,
+        "total_branch_percent": round(100.0 * branch_covered / branches, 1) if branches else 0.0,
+    }
+
+
 def judge(files, minimum, branch_minimum, patterns):
     """Per file against each minimum, with the totals for context.
 
@@ -235,61 +304,18 @@ def judge(files, minimum, branch_minimum, patterns):
     for lines. A whole report with no branch data anywhere is the same shape,
     which is why `branch_measured` is reported rather than inferred from a zero.
     """
-    excluded = [re.compile(p) for p in patterns]
+    kept = kept_files(files, patterns)
+
     reasons = []
-    covered_total = lines_total = 0
-    branch_covered_total = branch_total = 0
-
-    for name in sorted(files):
+    for name in kept:
         covered, total, branch_covered, branches = files[name]
-        if any(p.search(name) for p in excluded):
-            continue
         if total:
-            covered_total += covered
-            lines_total += total
-            pct = 100.0 * covered / total
-            if pct + 1e-9 < minimum:
-                reasons.append(
-                    {
-                        "kind": "coverage-below-minimum",
-                        "checker": CHECKER,
-                        "file": name,
-                        "message": f"{name}: {pct:.1f}% of lines covered, below {minimum:.0f}%",
-                        "covered": covered,
-                        "lines": total,
-                        "percent": round(pct, 1),
-                    }
-                )
+            reasons.append(below(name, covered, total, minimum, LINES))
         if branches:
-            branch_covered_total += branch_covered
-            branch_total += branches
-            branch_pct = 100.0 * branch_covered / branches
-            if branch_pct + 1e-9 < branch_minimum:
-                reasons.append(
-                    {
-                        "kind": "branch-coverage-below-minimum",
-                        "checker": CHECKER,
-                        "file": name,
-                        "message": f"{name}: {branch_pct:.1f}% of branches taken, below {branch_minimum:.0f}%",
-                        "covered": branch_covered,
-                        "branches": branches,
-                        "percent": round(branch_pct, 1),
-                    }
-                )
+            reasons.append(below(name, branch_covered, branches, branch_minimum, BRANCHES))
+    reasons = [reason for reason in reasons if reason]
 
-    total_pct = 100.0 * covered_total / lines_total if lines_total else 0.0
-    branch_pct = 100.0 * branch_covered_total / branch_total if branch_total else 0.0
-    return reasons, {
-        "files": len(files),
-        "below_minimum": sum(1 for r in reasons if r["kind"] == "coverage-below-minimum"),
-        "branch_below_minimum": sum(1 for r in reasons if r["kind"] == "branch-coverage-below-minimum"),
-        # Says whether the producer was asked for branch data at all, so a
-        # report with none reads as unmeasured rather than as fully missed.
-        "branch_measured": branch_total > 0,
-        # Context only. Nothing branches on either total, by design.
-        "total_percent": round(total_pct, 1),
-        "total_branch_percent": round(branch_pct, 1),
-    }
+    return reasons, statistics_for(files, kept, reasons)
 
 
 NO_EVIDENCE = {

@@ -15,7 +15,7 @@ That is the defect these tests exist to keep closed.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 
 import yaml
 from conftest import ROOT, script_argv
@@ -37,7 +37,7 @@ def run(tmp_path, stdout_text=None):
         captured = tmp_path / "stdout"
         captured.write_text(stdout_text, encoding="utf-8")
         argv += ["--stdout", str(captured)]
-    subprocess.run(argv, check=True, capture_output=True)
+    subprocess.run(argv, check=True, capture_output=True)  # nosec B603
     return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
 
 

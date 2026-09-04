@@ -17,10 +17,7 @@ file nobody has.
 
 from __future__ import annotations
 
-import subprocess
-
-import yaml
-from conftest import ROOT, script_argv
+from conftest import ROOT, run_flag_adapter
 
 ADAPTER = ROOT / "adapters" / "python" / "coverage.py"
 
@@ -58,31 +55,13 @@ COVERED = document(klass("a.py", line(1, 5) + line(2, 1, "100% (2/2)")) + klass(
 
 
 def run(tmp_path, *args, report=REPORT, exitcode="0", raw: bytes | None = None):
-    """Invoke the adapter as bolt does and read the envelope it wrote.
+    """The shared flag-contract runner, with this adapter's evidence name.
 
-    AS A SUBPROCESS, because an in-process call cannot catch a broken shebang, a
-    missing import, or a `main()` that writes somewhere other than where it was
-    told. `raw` writes bytes rather than text, which is how a document declaring
-    an encoding other than UTF-8 has to be produced.
+    `raw` wins over `report`, which is how a document declaring an encoding other
+    than UTF-8 is written: as bytes, rather than as text this would encode.
     """
-    work = tmp_path / "work"
-    work.mkdir(exist_ok=True)
-    status = tmp_path / "exitcode"
-    status.write_text(exitcode, encoding="utf-8")
-
-    argv = [str(ADAPTER), "--work-dir", str(work)]
-    if raw is not None:
-        path = tmp_path / "coverage.xml"
-        path.write_bytes(raw)
-        argv += ["--evidence", str(path)]
-    elif report is not None:
-        path = tmp_path / "coverage.xml"
-        path.write_text(report, encoding="utf-8")
-        argv += ["--evidence", str(path)]
-    argv += ["--exitcode", str(status), *args]
-
-    subprocess.run(script_argv(*argv), check=True, capture_output=True)
-    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    evidence = raw if raw is not None else report
+    return run_flag_adapter(ADAPTER, tmp_path, "coverage.xml", evidence, *args, exitcode=exitcode)
 
 
 def reasons_of(envelope, kind):
