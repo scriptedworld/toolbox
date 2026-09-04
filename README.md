@@ -41,9 +41,10 @@ gating on exit status with no per-finding detail.
 
 | Jig | Checks |
 |---|---|
-| `bolt.common-quality.yaml` | Whatever the language: requirement traceability, the suppression register, complexity limits, and a composed secret scan |
+| `bolt.common-quality.yaml` | Whatever the language: requirement traceability, the suppression register, and a composed secret scan |
 | `bolt.go-std-quality.yaml` | Go: `gofmt`, `go mod tidy`, build, `vet`, `golangci-lint`, race-and-shuffle tests, per-file coverage, `govulncheck` |
-| `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `vulture`, `interrogate`, `bandit`, `pytest` |
+| `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `ruff` complexity, `vulture`, `interrogate`, `bandit`, `pytest`, per-file line **and branch** coverage |
+| `bolt.rust-std-quality.yaml` | Rust: `cargo fmt`, `clippy`, build, tests, per-file coverage, `cargo-audit`, `cargo-deny` |
 | `bolt.secrets.yaml` | `gitleaks` and `detect-secrets` |
 
 `common-quality` runs the secrets jig as a child task, so adopting the common
@@ -143,7 +144,7 @@ markers and the reasoning.
 ## Checkers and adapters
 
 A **checker** is what a task runs: usually an off-the-shelf tool such as
-`gofmt`, `golangci-lint` or `lizard`, and where no such tool exists, a script in
+`gofmt`, `golangci-lint` or `ruff`, and where no such tool exists, a script in
 `bin/`. Its exit code is the verdict, which is why most tasks need nothing else.
 
 An **adapter**, in `adapters/`, is what a task names in its `adapter:` field. It

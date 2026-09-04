@@ -9,34 +9,20 @@
 # its own root, where the two are the same directory, and breaks for every
 # adopter.
 #
-# Composing this with a language jig is unsettled: a language jig either accepts
-# these numbers or declares its own task.  NEXT_STEPS.md has the question.
+# WHAT IS LANGUAGE-INDEPENDENT IS NARROWER THAN IT LOOKED. Traceability,
+# suppressions and secrets read text and do not care what language wrote it.
+# Complexity read source and had to parse it, so it only appeared to be common:
+# it lived here until 2026-09-03, and the note below the tasks says what
+# measuring it in one place actually produced.
 
 version: "1.0.0"
 
 requires:
   - python3
-  - lizard
 
 definitions:
   requirements: REQUIREMENTS.md
   suppressions: SUPPRESSIONS
-  # The directories adoption fills with this repository's own files, plus the
-  # gitignored scratch every repository here keeps. Measured in agent-support:
-  # `complexity` passed having read 23 functions across `bin/` and `adapters/`,
-  # every one of them toolbox's code and none of the adopter's.
-  #
-  # One directory per placeholder, because lizard takes one glob per flag and a
-  # placeholder cannot hold more than one argument: bolt quotes each
-  # substitution as a single shell word.
-  #
-  # toolbox holds the real files rather than links and overrides these with
-  # `--definitions toolbox`, which names `.ephemera` three times over.
-  # `**/x/*` rather than `./x/*`, quoted whole. Left unquoted the shell expands
-  # it into a file list before lizard sees it, and lizard then exits 2.
-  excluded_one_glob: '**/.ephemera/*'
-  excluded_two_glob: '**/bin/*'
-  excluded_three_glob: '**/adapters/*'
 
 tasks:
   # ---- documents held against the source ------------------------------------
@@ -58,25 +44,33 @@ tasks:
     description: every suppression is registered, and every entry is real
     command: python3 {config_dir}/bin/suppression-register.py --register {suppressions} .
 
-  # ---- properties of the source, whatever the language ----------------------
-
-  #   -C  cyclomatic complexity   -a  parameter count   -L  function length
+  # ---- complexity is a language jig's, and no longer here --------------------
   #
-  # RUN WITHOUT -w.  Warnings-only mode suppresses lizard's summary table, which
-  # is where nloc, function count and average complexity come from.
+  # `complexity` ran lizard at 15 CCN, 5 parameters and 60 lines for every
+  # language at once. It has gone, and so has lizard from `requires`, because
+  # every language jig here already runs a linter that measures the same things
+  # natively and measures them better. Measured 2026-09-03:
   #
-  # Those statistics reach nobody yet: reading them is the adapter's job and
-  # `adapters/common/lizard.py` speaks the retired contract, so this runs on the
-  # exit-code adapter and the numbers stay in captured stdout.  The verdict is
-  # unaffected; lizard exits 1 over threshold.
+  #     metric        lizard                  the language's own
+  #     cyclomatic    yes                     ruff C901 / golangci cyclop
+  #     cognitive     NO SUCH METRIC          complexipy / gocognit / clippy
+  #     nesting       Go yes, PYTHON ALWAYS 0 ruff PLR1702 / nestif / clippy
+  #     arguments     yes                     ruff PLR0913 / clippy
+  #     length        yes                     ruff PLR0915 / funlen / clippy
   #
-  # Test files are measured too.  A test is read when it has just failed and
-  # nobody knows why.
-  - name: complexity
-    description: no function over complexity 15, 5 parameters or 60 lines
-    command: >-
-      lizard -C 15 -a 5 -L 60
-      -x {excluded_one_glob} -x {excluded_two_glob} -x {excluded_three_glob} .
+  # TWO OF THOSE ROWS ARE WHY. lizard has no cognitive metric at all, and its
+  # nesting extension reports 0 for every Python function while working on Go,
+  # so the one jig that claimed to measure every language the same way was
+  # measuring them differently and saying otherwise.
+  #
+  # The header's open question — whether a language jig accepts these numbers or
+  # declares its own task — is answered: its own, because the numbers were never
+  # the same numbers.
+  #
+  # THE COST IS THAT A NEW LANGUAGE STARTS WITH NO COMPLEXITY GATE, where it
+  # used to inherit one. That is the honest trade: an inherited gate that cannot
+  # measure the language it was pointed at is worse than an absent one, since
+  # only the absent one is visible.
 
   # ---- secrets ---------------------------------------------------------------
 

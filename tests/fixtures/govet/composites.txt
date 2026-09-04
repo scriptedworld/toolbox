@@ -1,0 +1,6 @@
+# go vet, go1.26.6, captured 2026-09-04
+# github.com/scriptedworld/example/internal/cli
+internal/cli/cli.go:42:9: composite literal uses unkeyed fields
+internal/cli/cli.go:88:2: unreachable code
+# github.com/scriptedworld/example
+main.go:17:6: printf: Printf call has arguments but no formatting directives

@@ -9,10 +9,9 @@ an already-registered file is caught rather than hidden behind the first.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
-from conftest import ROOT, load
+from conftest import ROOT, load, script_argv
 
 register_checker = load("bin/suppression-register.py")
 
@@ -227,7 +226,7 @@ def test_the_script_runs_as_a_script(tmp_path):
     (tmp_path / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
     (tmp_path / "main.go").write_text("package main\n\nfunc read() { open(p) } //#nosec G304\n", encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(ROOT / "bin" / "suppression-register.py"), *ARGV],
+        script_argv(ROOT / "bin" / "suppression-register.py", *ARGV),
         cwd=tmp_path,
         capture_output=True,
         text=True,

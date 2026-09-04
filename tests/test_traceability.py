@@ -9,10 +9,9 @@ because a gate that exempts too much is indistinguishable from no gate at all.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
-from conftest import ROOT, load
+from conftest import ROOT, load, script_argv
 
 traceability = load("bin/test-traceability.py")
 
@@ -433,7 +432,7 @@ def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or an import that fails."""
     (tmp_path / "REQUIREMENTS.md").write_text(requirements(("FR-1.1", "[?]")), encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(ROOT / "bin" / "test-traceability.py"), *ARGV],
+        script_argv(ROOT / "bin" / "test-traceability.py", *ARGV),
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -1058,3 +1057,137 @@ def test_an_unreadable_document_reports_why_and_does_not_raise(checker, tmp_path
         (tree / "REQUIREMENTS.md").chmod(0o644)
     assert code == 1
     assert "cannot be read" in out
+
+
+# ---- holding one tree at a time ---------------------------------------------
+#
+# The document below is the shape a multi-pack repository has: one row every
+# tree must cover, one scoped to a single tree, and one scoping only KINDS.
+
+
+SCOPED = requirements(
+    ("FR-1.1", "[A]"),
+    ("FR-1.2", "[A/D python]"),
+    ("FR-1.3", "[A go,python:edge,negative]"),
+)
+
+
+# COVERS: FR-4.23 | positive
+def test_a_scoped_run_holds_only_the_rows_naming_it(checker, tmp_path):
+    """A tree covering the rows that are its own passes, whatever its siblings
+    hold. Without this, one tree covering a row passes the whole repository and
+    a tree holding none of it is invisible."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"test_it.py": "# COVERS: FR-1.1, FR-1.3 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, [*ARGV[:2], "--scope", "go", "."], tree)
+    assert code == 0, out
+    assert "2 of 2" in out
+    assert "1 scoped elsewhere" in out
+
+
+# COVERS: FR-4.23 | negative
+def test_a_scoped_run_still_fails_for_a_row_it_does_hold(checker, tmp_path):
+    """Scoping excuses the rows naming another tree and nothing else. A filter
+    that quietly excused everything would pass this."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, [*ARGV[:2], "--scope", "go", "."], tree)
+    assert code == 1
+    assert "FR-1.3" in out
+    assert "FR-1.2" not in out.split("settled requirement(s) have no test citing them")[1]
+
+
+# COVERS: FR-4.23 | edge
+def test_a_row_scoping_kinds_stays_in_scope_everywhere(checker, tmp_path):
+    """`[A go,python:edge,negative]` scopes two KINDS and leaves the rest of the
+    row expected in every tree. This checker never asks by which kind, so the
+    row is still every tree's to cover, and rust is not named in that clause."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, [*ARGV[:2], "--scope", "rust", "."], tree)
+    assert code == 1
+    assert "FR-1.3" in out
+
+
+# COVERS: FR-4.23 | edge
+def test_an_unscoped_run_holds_every_row(checker, tmp_path):
+    """The flag is opt-in. Absent, the checker holds the whole document as it
+    always did, so a repository with one tree is unaffected."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"test_it.py": "# COVERS: FR-1.1, FR-1.2, FR-1.3 | positive\ndef test_all():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "3 of 3" in out
+    assert "scoped elsewhere" not in out
+
+
+# COVERS: FR-4.24 | positive
+def test_the_tree_can_be_named_rather_than_positional(checker, tmp_path):
+    """`--scope go --dir ./go` says which rows and which tree separately, where
+    `--scope go go` reads as one word written twice."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"pack/test_it.py": "# COVERS: FR-1.1, FR-1.3 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, ["--requirements", "REQUIREMENTS.md", "--scope", "go", "--dir", "pack"], tree)
+    assert code == 0, out
+    assert "2 of 2" in out
+
+
+# COVERS: FR-4.24 | negative
+def test_naming_the_tree_twice_is_refused(checker, tmp_path):
+    """A caller who wrote two directories meant one of them, and picking one for
+    them reads whichever tree they did not mean."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {"pack/test_it.py": "# COVERS: FR-1.1 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, ["--requirements", "REQUIREMENTS.md", "--dir", "pack", "."], tree)
+    assert code == 2
+    assert "not both" in out
+
+
+# COVERS: FR-4.24 | edge
+def test_the_positional_tree_still_works(checker, tmp_path):
+    """`--dir` is added beside the positional rather than replacing it. This file
+    is symlinked into bolt and wrench, and three jigs plus a wrapper pass the
+    positional today."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]")),
+        {"test_it.py": "# COVERS: FR-1.1 | positive\ndef test_mine():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "1 of 1" in out
+
+
+# COVERS: FR-4.23 | edge
+def test_a_scoped_out_row_is_still_declared(checker, tmp_path):
+    """Exempt from coverage is not absent. A test citing a row scoped to another
+    tree is answered by the parity checker's `cited by X but scoped to Y`, and
+    would be answered here by `does not exist` if scoping dropped the id, which
+    points a reader at deleting real coverage."""
+    tree = project(
+        tmp_path,
+        SCOPED,
+        {"test_it.py": "# COVERS: FR-1.1, FR-1.2, FR-1.3 | positive\ndef test_all():\n    pass\n"},
+    )
+    code, out = checker(traceability, [*ARGV[:2], "--scope", "go", "."], tree)
+    assert code == 0, out
+    assert "does not exist" not in out
+    assert "not declared" not in out

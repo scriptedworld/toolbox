@@ -9,10 +9,9 @@ the envelope everything.
 from __future__ import annotations
 
 import subprocess
-import sys
 
 import yaml
-from conftest import ROOT, fixture_text, load
+from conftest import ROOT, fixture_text, load, script_argv
 
 gofmt = load("adapters/go/gofmt.py")
 
@@ -70,7 +69,7 @@ def test_an_empty_record_succeeds_rather_than_raising(adapter):
 def test_the_adapter_runs_as_a_script():
     """In-process tests cannot catch a broken shebang or a missing import."""
     result = subprocess.run(
-        [sys.executable, str(ROOT / "adapters" / "go" / "gofmt.py")],
+        script_argv(ROOT / "adapters" / "go" / "gofmt.py"),
         input=yaml.safe_dump(record("main.go\n")),
         capture_output=True,
         text=True,

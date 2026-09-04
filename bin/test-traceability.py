@@ -525,6 +525,43 @@ def is_open(marker: str) -> bool:
     return "?" in marker
 
 
+# The scope clause inside a status marker: `[A/D python]`, or with a kind half,
+# `[A go,python:edge,negative]`. One bracket and no `|` in it, because a row's
+# marker is its last bracketed cell and MARKER matches `^\[[^\]]*\]$`.
+SCOPE_CLAUSE = re.compile(
+    r"^\[\s*[^\s\]]*\s+"
+    r"(?P<suites>[a-z][a-z0-9_-]*(?:,[a-z][a-z0-9_-]*)*)"
+    r"(?P<kinds>:[a-z][a-z0-9_-]*(?:,[a-z][a-z0-9_-]*)*)?"
+    r"\s*\]$"
+)
+
+
+def out_of_scope(marker: str, scope: str) -> bool:
+    """Whether a row belongs to some other tree than the one being checked.
+
+    A scope names the trees expected to discharge a row, so a row naming none is
+    expected everywhere and a row naming others is not this run's to cover. It
+    is what lets one requirements document hold three packs to their own trees
+    rather than to the union of all of them, which passes whenever any one pack
+    covers a row.
+
+    **A KIND-SCOPED ROW STAYS IN SCOPE EVERYWHERE, and that is not an
+    approximation.** `[A go,python:edge,negative]` scopes two KINDS of a row and
+    leaves the rest of it expected in every tree, so the row is still this run's
+    to cover. This checker asks whether an id is cited at all and never asks by
+    which kind, so the row-level answer is the whole of the question here.
+    Which suite holds which kind is `test-suite-parity.py`'s to answer, and it
+    reads the same clause for it: this is a coarser reading of one grammar
+    rather than a second copy of the list.
+    """
+    if not scope:
+        return False
+    clause = SCOPE_CLAUSE.match(marker)
+    if not clause or clause.group("kinds"):
+        return False
+    return scope not in clause.group("suites").split(",")
+
+
 def comment_block_above(lines: list[str], index: int, language: Language) -> list[str]:
     """Return the comment lines above index, stepping over decorators.
 
@@ -632,22 +669,39 @@ def test_files(root: Path) -> list[tuple[Path, Language]]:
     return sorted(found.items())
 
 
-def report(failures: list[str], declared: dict[str, str], cited: set[str]) -> int:
-    """Print the findings and return the exit status."""
-    uncovered = sorted(set(declared) - cited, key=requirement_key)
-    unresolved = [req for req in uncovered if is_open(declared[req])]
-    untested = [req for req in uncovered if not is_open(declared[req])]
+def report(failures: list[str], declared: dict[str, str], cited: set[str], scope: str = "") -> int:
+    """Print the findings and return the exit status.
+
+    A scoped run holds this tree to the rows that name it and to the rows that
+    name no tree at all. The others are exempt exactly as an open row is: out of
+    the denominator, reported as context, and never a failure. They stay in
+    `declared` rather than being dropped, so a test in this tree citing one is
+    still told the id exists and is answered by parity's `cited by X but scoped
+    to Y` rather than by this checker claiming the requirement does not exist.
+    """
+    elsewhere = sorted((req for req in declared if out_of_scope(declared[req], scope)), key=requirement_key)
+    held_here = {req: marker for req, marker in declared.items() if req not in set(elsewhere)}
+
+    uncovered = sorted(set(held_here) - cited, key=requirement_key)
+    unresolved = [req for req in uncovered if is_open(held_here[req])]
+    untested = [req for req in uncovered if not is_open(held_here[req])]
+
+    if elsewhere:
+        print(f"context: {len(elsewhere)} requirement(s) are scoped to another tree, not this one:")
+        for req in elsewhere:
+            print(f"  {req} {declared[req]}")
+        print()
 
     if unresolved:
         print(f"context: {len(unresolved)} open requirement(s) have no test, which is not a failure:")
         for req in unresolved:
-            print(f"  {req} {declared[req]}")
+            print(f"  {req} {held_here[req]}")
         print()
 
     if untested:
         print(f"{len(untested)} settled requirement(s) have no test citing them:")
         for req in untested:
-            print(f"  {req} {declared[req] or '(no marker)'}")
+            print(f"  {req} {held_here[req] or '(no marker)'}")
         print()
 
     if failures:
@@ -658,20 +712,64 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str]) -> in
 
     # An open requirement that a test cites anyway is held to its coverage like
     # any other; only the ones actually excused come out of the denominator.
-    covered = len(declared) - len(uncovered)
-    held = len(declared) - len(unresolved)
+    covered = len(held_here) - len(uncovered)
+    held = len(held_here) - len(unresolved)
+    # The scoped-out count is stated whether the run passes or fails, so the
+    # arithmetic a wrapper checks — files on disk against denominator plus
+    # exemptions — reaches every number it needs from one line.
+    scoped_out = f"; {len(elsewhere)} scoped elsewhere" if elsewhere else ""
     if failures or untested:
-        print(f"{covered} of {held} requirements covered; {len(unresolved)} open and exempt")
+        print(f"{covered} of {held} requirements covered; {len(unresolved)} open and exempt{scoped_out}")
         return 1
-    print(f"all tests cite a declared requirement, and every requirement held to coverage has one ({covered} of {held})")
+    print(f"all tests cite a declared requirement, and every requirement held to coverage has one ({covered} of {held}){scoped_out}")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--requirements", required=True, type=Path)
-    parser.add_argument("root", type=Path, nargs="?", default=Path("."))
+    parser.add_argument(
+        "--scope",
+        default="",
+        metavar="NAME",
+        help=(
+            "hold this tree only to the rows that name it and the rows that name "
+            "no tree, so one requirements document can hold several trees to their "
+            "own coverage rather than to the union of all of them"
+        ),
+    )
+    parser.add_argument(
+        "--dir",
+        dest="directory",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "the tree to read, named rather than positional. `--scope go --dir ./go` "
+            "says which rows and which tree separately, where `--scope go go` reads "
+            "as one word written twice"
+        ),
+    )
+    # THE POSITIONAL STAYS, and `--dir` is added beside it rather than replacing
+    # it. This file is symlinked into bolt and wrench, and the positional is what
+    # `bolt.common-quality.yaml`, `bolt.rust-quality.yaml`,
+    # `bolt.wrench-quality.yaml` and wrench's `test-requirement-count.py` all
+    # pass today. Removing it would be a breaking change to a shared checker, and
+    # every consumer of one needs somebody.
+    parser.add_argument("root", type=Path, nargs="?", default=None)
     args = parser.parse_args()
+
+    # Both is a mistake worth naming rather than resolving by precedence: a
+    # caller who wrote two directories meant one of them, and picking one for
+    # them reads whichever tree they did not mean.
+    #
+    # Printed and returned rather than `parser.error`, which raises SystemExit.
+    # Every other failure here prints and returns, a traceback reads as a broken
+    # checker rather than as something the caller can fix, and the tests call
+    # main() directly and read a return code.
+    if args.directory is not None and args.root is not None:
+        print("give --dir or a positional directory, not both")
+        return 2
+    root = args.directory if args.directory is not None else (args.root or Path("."))
 
     # A missing document is a failure, not a traceback and not a pass. The task
     # is in the shared jig, so this is the first thing an adopter without a
@@ -722,11 +820,11 @@ def main() -> int:
 
     failures: list[str] = []
     cited: set[str] = set()
-    for path, language in test_files(args.root):
+    for path, language in test_files(root):
         file_failures, file_cited = scan_file(path, language, declared, retired, str(args.requirements))
         failures.extend(file_failures)
         cited.update(file_cited)
-    return report(failures, declared, cited)
+    return report(failures, declared, cited, args.scope)
 
 
 if __name__ == "__main__":

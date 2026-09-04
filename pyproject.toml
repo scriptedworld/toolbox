@@ -26,6 +26,16 @@ line-length = 150
 # that cannot bind, which is the same fault one step earlier.
 extend-select = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# N999 is "invalid module name", and this file's name is deliberate: the
+# adapters and checkers are scripts bolt invokes by path, never modules imported
+# by name, and the estate spells a script's name with hyphens throughout.
+#
+# It began firing on 2026-09-04, when these directories gained the `__init__.py`
+# that lets coverage see an adapter no test executed. The marker changed how ruff
+# classifies the file; it did not change what the file is or how it is reached.
+"adapters/common/bolt-result.py" = ["N999"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # bin/test-traceability.py is a checker, not a test file. It does not match
@@ -37,6 +47,23 @@ addopts = "-q --strict-markers"
 
 [tool.coverage.run]
 branch = true
+# THE ROOTS, AND THE REASON EACH ADAPTER DIRECTORY CARRIES AN `__init__.py`.
+# coverage adds a file that no test executed to the report only where it can
+# reach it as a package. The adapters are standalone scripts loaded by path, so
+# their directories had no marker, and the report therefore carried the adapters
+# that ran and silently omitted every one that did not — which is exactly the
+# file a per-file coverage gate exists to catch.
+#
+# Measured 2026-09-04: four files were reported where ten exist. The five
+# missing were bolt-result, govet, lizard and the Rust and Python coverage
+# adapters, all of them at nothing rather than at 0%.
+#
+# NAMING THE LEAF DIRECTORIES HERE ALSO WORKS AND IS WORSE. Each Cobertura
+# `filename` is relative to the source root that contains it, so with the leaves
+# named, `adapters/go/coverage.py`, `adapters/python/coverage.py` and
+# `adapters/rust/coverage.py` all report as `coverage.py` and the adapter merges
+# three different files into one entry. Two roots and a marker per subdirectory
+# keeps the paths distinct.
 source = ["bin", "adapters"]
 
 [tool.coverage.report]

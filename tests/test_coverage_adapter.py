@@ -18,10 +18,9 @@ a number beside it.
 from __future__ import annotations
 
 import subprocess
-import sys
 
 import yaml
-from conftest import ROOT
+from conftest import ROOT, script_argv
 
 ADAPTER = ROOT / "adapters" / "go" / "coverage.py"
 
@@ -54,7 +53,7 @@ def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
     status = tmp_path / "exitcode"
     status.write_text(exitcode, encoding="utf-8")
 
-    argv = [sys.executable, str(ADAPTER), "--work-dir", str(work)]
+    argv = script_argv(ADAPTER, "--work-dir", str(work))
     if profile is not None:
         prof = tmp_path / "cover.out"
         prof.write_text(profile, encoding="utf-8")
@@ -145,9 +144,8 @@ def test_two_profiles_merge_by_taking_the_higher_count(tmp_path):
     second.write_text("mode: atomic\ngithub.com/x/p/m.go:1.1,2.2 4 1\n", "utf-8")
 
     subprocess.run(
-        [
-            sys.executable,
-            str(ADAPTER),
+        script_argv(
+            ADAPTER,
             "--work-dir",
             str(work),
             "--evidence",
@@ -158,7 +156,7 @@ def test_two_profiles_merge_by_taking_the_higher_count(tmp_path):
             str(status),
             "--min",
             "80",
-        ],
+        ),
         check=True,
         capture_output=True,
     )

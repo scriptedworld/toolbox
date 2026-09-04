@@ -1,0 +1,28 @@
+# clippy's thresholds for the rust-std-quality jig, reached through
+# CLIPPY_CONF_DIR because clippy discovers this file by directory and by exact
+# name. It cannot be called rust-std-quality.clippy.toml, which is why it sits
+# in a directory of its own rather than beside the golangci config.
+#
+# NOT DISCOVERED FROM THE PROJECT TREE, for the same reason the golangci config
+# is passed explicitly: a project dropping its own clippy.toml would silently
+# relax the gate, and the jig carries the rule.
+#
+# The numbers are the ones the retired common `complexity` task used with
+# lizard, so a project moving between them is held to the same bar:
+#
+#     15  complexity      5  arguments      60  lines      4  nesting
+#
+# COGNITIVE RATHER THAN CYCLOMATIC, and it is the one metric Rust cannot match
+# to the others. clippy has no cyclomatic lint at all: `cognitive_complexity`
+# was named `cyclomatic_complexity` until 2019 and was renamed because it never
+# measured that, weighting nesting rather than counting paths. So Rust reports
+# cognitive complexity where Go reports both and Python reports both.
+#
+# What that costs: a flat function with a sixteen-arm match scores badly under
+# cyclomatic and fine under cognitive, so Rust will not catch that shape here.
+# `bolt.common-quality.yaml` carries why measuring every language with one tool
+# was worse than this.
+cognitive-complexity-threshold = 15
+too-many-arguments-threshold = 5
+too-many-lines-threshold = 60
+excessive-nesting-threshold = 4
