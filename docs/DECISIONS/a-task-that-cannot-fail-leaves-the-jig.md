@@ -50,14 +50,19 @@ retired bolt, which ran the adapter, and it was written into the jig, into
 
 ## Where the same question is still open
 
-`adapters/go/gofmt.py`, `adapters/go/govet.py` and `adapters/common/lizard.py`
-all still read an execution record on stdin, write their envelope to stdout, and
-emit no `kind`. Measured 2026-08-28. **None is wired to a jig**, so none can
-fail; wiring one before porting it produces `adapter-wrote-invalid`.
+`adapters/go/gofmt.py` and `adapters/go/govet.py` still read an execution record
+on stdin, write their envelope to stdout, and emit no `kind`. Measured
+2026-08-28. **Neither is wired to a jig**, so neither can fail; wiring one
+before porting it produces `adapter-wrote-invalid`.
+
+`adapters/common/lizard.py` was the third until 2026-09-04. It went with the
+`complexity` task it read for, having been unwired the whole time: the task ran
+on the exit-code adapter because this one spoke the retired contract, so every
+adopter linked a file nothing invoked.
 
 `format` gates on `test -z "$(gofmt -l .)"` and needs no adapter to be correct,
 so porting `gofmt.py` buys back the per-file reasons rather than the verdict.
-`vet` and `complexity` are the same shape. That is `port-the-jigs/10`.
+`vet` is the same shape. That is `port-the-jigs/10`.
 
 ## The same test applied elsewhere in the same change
 

@@ -95,7 +95,6 @@ record where it came from.
 tests/fixtures/
   gofmt/unformatted.txt      # gofmt 1.23.4, captured 2026-08-20
   govet/composites.txt
-  lizard/over-threshold.txt
   coverage/mixed-profile.out
 ```
 
@@ -166,9 +165,16 @@ because the more parsing an adapter performs the more there is to get wrong.
 | 1 | `bin/test-traceability.py` | **done** |
 | 2 | `bin/suppression-register.py` | **done** |
 | 3 | `adapters/go/gofmt.py` | **done**, the worked example for the rest |
-| 4 | `adapters/go/coverage.py` | queued: parses a profile, applies a threshold, excludes by regex; the most logic of any adapter |
-| 5 | `adapters/common/lizard.py` | queued: two parsers in one file, and the only adapter emitting `statistics` |
-| 6 | `adapters/go/govet.py` | queued: one regex over diagnostics |
+| 4 | `adapters/go/coverage.py` | **done** 2026-08-29 |
+| 5 | `adapters/rust/coverage.py` | **done** 2026-09-04, with the lcov branch records and the encoding cases |
+| 6 | `adapters/python/coverage.py` | **done** 2026-09-04, with the Cobertura branch data and the encoding cases |
+| 7 | `adapters/common/bolt-result.py` | **done** |
+| 8 | `adapters/go/govet.py` | **done** 2026-09-04 |
+
+Every script in `bin/` and `adapters/` now has tests. The queue is empty, and
+`bolt python-std-quality .` is what keeps it that way: it judges coverage per
+file at 80% of lines and 80% of branches, so a new script arriving without tests
+fails the gate rather than joining a list.
 
 Every adapter written for the Python jig (`NEXT_STEPS.md` item 1) arrives with
 its tests instead of joining this queue.

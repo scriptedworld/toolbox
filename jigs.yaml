@@ -50,7 +50,11 @@ sets:
       - bolt.common-quality.yaml
       - bin/test-traceability.py
       - bin/suppression-register.py
-      - adapters/common/lizard.py
+      # `adapters/common/lizard.py` was here until 2026-09-03 and has gone with
+      # the `complexity` task it read for. It was already unused before that:
+      # the task ran on the exit-code adapter because this one speaks the
+      # retired contract, so every adopter was linking a file nothing invoked.
+      #
       # The composition adapter, which turns the child secrets run's verdict
       # into this jig's. Without it the composed task cannot fail.
       - adapters/common/bolt-result.py
@@ -64,14 +68,27 @@ sets:
       - adapters/go/govet.py
       - config/go-std-quality.golangci.yml
 
-  # Every tool here is off the shelf and its exit code is the answer, so the
-  # definition is currently the whole set. A shared ruff or mypy configuration
-  # would be the first entry to join it, and would be invisible to anything
-  # that tried to infer this list from the definition's command lines.
+  # The definition was the whole set until 2026-09-04, when `tests` gained an
+  # adapter. Every other tool here is off the shelf and its exit code is the
+  # answer. A shared ruff or mypy configuration would be the next entry to join,
+  # and would be invisible to anything that tried to infer this list from the
+  # definition's command lines.
   python:
     includes: [common]
     files:
       - bolt.python-std-quality.yaml
+      - adapters/python/coverage.py
+
+  # Adopted from bolt on 2026-09-03, which carried it while nothing here shipped
+  # a Rust jig. The clippy config is listed for the same reason the golangci one
+  # is: it travels with the jig, and nothing could infer it from a command line
+  # because clippy finds it by directory through CLIPPY_CONF_DIR.
+  rust:
+    includes: [common]
+    files:
+      - bolt.rust-std-quality.yaml
+      - adapters/rust/coverage.py
+      - config/rust/clippy.toml
 
   secrets:
     files:

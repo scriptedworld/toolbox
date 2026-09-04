@@ -146,10 +146,30 @@ tasks:
   #
   #   pylint --ignore <three>              venv 5 findings, own 5
   #   pylint --ignore <three>,.venv,venv   venv 0 findings, own 5
+  # NARROWED TO THE ONE CHECK RUFF CANNOT DO. ruff implements a large part of
+  # pylint already, so a full pylint run re-reports what `lint` just said, and
+  # `duplicate-code` is what is left: finding the same code in two files needs
+  # to see both, which is the whole reason this task exists.
+  #
+  # IT ALSO STOPS THE TASK FAILING FOR THE WRONG REASON. Full pylint IMPORTS the
+  # code to reason about it, so it emits E0401 for every dependency missing from
+  # pylint's own environment and exits non-zero over nothing the adopter wrote.
+  # Measured 2026-09-03 against wrench's Python pack, pylint installed isolated:
+  #
+  #     full                    1.47s   exit 2   7 x E0401 import-error
+  #     duplicate-code only     0.66s   exit 0
+  #
+  # R0801 is token-based and imports nothing, so the same tree passes. That is
+  # also the likeliest reading of skid's 900s kill: an import-based analysis
+  # walking a virtualenv, rather than duplicate detection being slow.
+  # NESTING RIDES ALONG. ruff's nesting rule is preview-only, pylint's R1702 is
+  # stable, and a pylint run is already happening here, so the fourth complexity
+  # number costs one more `--enable` rather than a preview flag or a new tool.
   - name: analyse
-    description: pylint's cross-module analysis
+    description: the same code in two files, and blocks nested past 4
     command: >-
-      pylint --recursive=y
+      pylint --recursive=y --disable=all
+      --enable=duplicate-code,too-many-nested-blocks --max-nested-blocks=4
       --ignore {excluded_one},{excluded_two},{excluded_three},.venv,venv .
 
   # ---- properties of the source ---------------------------------------------
@@ -168,6 +188,44 @@ tasks:
   - name: cognitive
     description: no function over cognitive complexity 15
     command: complexipy --max-complexity-allowed 15 --exclude {excluded_one_glob},{excluded_two_glob},{excluded_three_glob} .
+
+  # CYCLOMATIC COMPLEXITY, NESTING, ARGUMENTS AND LENGTH, which the common jig
+  # measured with lizard until 2026-09-03 and which ruff measures natively.
+  # `bolt.common-quality.yaml` carries what was measured and why it moved; the
+  # short version is that lizard has no cognitive metric and reports a nesting
+  # depth of 0 for every Python function.
+  #
+  # A TASK OF ITS OWN RATHER THAN THE `lint` TASK'S BUSINESS. That one runs
+  # "whatever the project has enabled", which is the adopter's pyproject.toml
+  # and correctly so. These four are the jig's numbers, so the jig states them
+  # on the command line where an adopter can read them without opening a config,
+  # and they hold whether or not the project selects the rules itself.
+  #
+  #     C901      cyclomatic, from mccabe        PLR0913   arguments
+  #     PLR0915   statements
+  #
+  # The thresholds are the ones the retired lizard task used: 15 and 5. Ruff
+  # counts statements where lizard counted lines, so 60 lines becomes 60
+  # statements, which is the stricter reading of the same intent.
+  #
+  # NESTING IS NOT HERE, AND THE REASON IS A MEASUREMENT. ruff's PLR1702 is the
+  # nesting rule and it is preview-only: selecting it prints "has no effect
+  # because preview is not enabled" and reports nothing. Turning `--preview` on
+  # would opt the other three rules into unstable behaviour to gain the fourth,
+  # so nesting comes from pylint's stable R1702 in `analyse` instead, where a
+  # pylint run already happens.
+  #
+  # --isolated, so a project's own ruff config cannot switch these off. `lint`
+  # is where a project's choices apply; this is where the jig's do.
+  - name: complexity
+    description: no function over cyclomatic 15, 5 arguments or 60 statements
+    command: >-
+      ruff check --isolated --output-format=concise
+      --select C901,PLR0913,PLR0915
+      --config lint.mccabe.max-complexity=15
+      --config lint.pylint.max-args=5
+      --config lint.pylint.max-statements=60
+      --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # Dead code, found by looking for definitions nothing references. Vulture
   # guesses and says so with a confidence score: 100 means the name appears
@@ -241,11 +299,33 @@ tasks:
   # -p no:randomly is NOT set: where the project has pytest-randomly installed,
   # order randomisation is wanted. A suite that only passes in one order has a
   # bug in the suite.
+  # COVERAGE IS JUDGED HERE RATHER THAN BY A TASK OF ITS OWN, because a task's
+  # work directory is its own and the report is written into this one. The
+  # adapter answers for the run as well: it reads the captured exit status, so a
+  # suite that failed while leaving a report behind is a failure, and it judges
+  # the report PER FILE at 80% of lines and 80% of branches. No aggregate
+  # threshold, because an aggregate lets a well-tested file carry an untested one.
+  #
+  # `--branch` IS NAMED HERE RATHER THAN LEFT TO THE ADOPTER'S CONFIG. Without
+  # it coverage.py writes no `condition-coverage`, the report parses cleanly,
+  # and the branch threshold passes having judged nothing. The failure mode is a
+  # silent pass, so the flag belongs where the gate is rather than in a file the
+  # jig does not own. The adapter reports `branch_measured` for the same reason.
+  #
+  # `--parallel-mode` AND `coverage combine` ARE WHAT MEASURE A SPAWNED SCRIPT.
+  # A checker or adapter invoked as its own process is invisible to the parent's
+  # coverage, so a project whose tests exercise scripts that way reported them
+  # at 0% with a full suite behind them. Measured in toolbox 2026-09-04:
+  # `adapters/go/coverage.py` read 0 of 96 lines before this, and 94.8% after.
   - name: tests
-    description: the suite passes, and writes a coverage profile
-    command: coverage run -m pytest -q && coverage xml -o {work_dir}/coverage.xml
+    description: the suite, and coverage judged per file for lines and branches
+    command: >-
+      coverage run --branch --parallel-mode -m pytest -q &&
+      coverage combine &&
+      coverage xml -o {work_dir}/coverage.xml
     evidence:
       - coverage.xml
+    adapter: adapters/python/coverage.py
 
 # ---- NOT HERE, AND WHY -------------------------------------------------------
 #

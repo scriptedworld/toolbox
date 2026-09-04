@@ -16,10 +16,9 @@ That is the defect these tests exist to keep closed.
 from __future__ import annotations
 
 import subprocess
-import sys
 
 import yaml
-from conftest import ROOT
+from conftest import ROOT, script_argv
 
 ADAPTER = ROOT / "adapters" / "common" / "bolt-result.py"
 
@@ -33,7 +32,7 @@ def run(tmp_path, stdout_text=None):
     """
     work = tmp_path / "work"
     work.mkdir(exist_ok=True)
-    argv = [sys.executable, str(ADAPTER), "--work-dir", str(work)]
+    argv = script_argv(ADAPTER, "--work-dir", str(work))
     if stdout_text is not None:
         captured = tmp_path / "stdout"
         captured.write_text(stdout_text, encoding="utf-8")

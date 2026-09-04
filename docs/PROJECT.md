@@ -36,12 +36,18 @@ elsewhere.
 
 ## Layout
 
-    bolt.common-quality.yaml     language-agnostic: traceability, suppressions, complexity
-    bolt.go-std-quality.yaml     Go: format, tidy, build, vet, lint, tests, vuln.
-                                 No coverage; see docs/DECISIONS/
-                                 a-task-that-cannot-fail-leaves-the-jig.md
+    bolt.common-quality.yaml     language-agnostic: traceability, suppressions, secrets
+    bolt.go-std-quality.yaml     Go: format, tidy, build, vet, lint, tests with
+                                 per-file coverage, vuln. Statements, not
+                                 branches: Go's toolchain has no branch mode.
     bolt.python-std-quality.yaml Python: format, lint, types, analyse, cognitive,
-                                 dead-code, docstrings, security, tests
+                                 complexity, dead-code, docstrings, security,
+                                 security-tests, tests with per-file line AND
+                                 branch coverage
+    bolt.rust-std-quality.yaml   Rust: format, lint, build, tests with per-file
+                                 coverage, vuln, licences. Adopted from bolt on
+                                 2026-09-03. Lines, not branches: cargo-llvm-cov
+                                 needs nightly for those.
     bolt.secrets.yaml            gitleaks, detect-secrets
     jigs.yaml                    which files a project links to adopt a set
 
@@ -50,8 +56,13 @@ elsewhere.
       suppression-register.py  every pragma registered, every entry real
       link-toolbox.py          makes an adopter's symlinks, per jigs.yaml
     adapters/       record -> envelope, per task that needs one
-      common/lizard.py         complexity, any language lizard reads
+      common/bolt-result.py    a child bolt run's verdict becomes this task's
       go/{gofmt,govet,coverage}.py
+      python/coverage.py       Cobertura: lines and branches, per file
+      rust/coverage.py         lcov: lines per file, and branches where a
+                               toolchain emits them
+      */__init__.py            not packages in use; they are what lets coverage
+                               see an adapter no test executed
     config/         tool configuration that travels with a jig
     tests/          one file per script under test; see
                     docs/PATTERNS/testing-checkers-and-adapters.md

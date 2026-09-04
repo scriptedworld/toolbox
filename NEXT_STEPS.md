@@ -95,19 +95,27 @@ relative path is correct once the target is the subproject rather than the
 repository, and `base.just` then lands once per pack because each pack is where
 it belongs.
 
-**Per-file coverage for Python.** The Go jig judges coverage per file at 80% of
-statements and refuses an aggregate, because an aggregate lets a well-tested
-file carry an untested one. The Python `tests` task already produces
-`coverage.xml`, so the data is there. What is missing is an adapter that reads
-Cobertura XML and applies the threshold per file. Until it exists, coverage is
-measured for Python and not enforced.
+**Per-file coverage for Python and Rust — landed 2026-09-04.** Both jigs now
+judge their `tests` task's report per file at 80% of lines, and the Python one
+also at 80% of branches. Two things were learned doing it and are worth keeping:
 
-**Three adapters still speak a retired contract.** `adapters/go/gofmt.py`,
-`adapters/go/govet.py` and `adapters/common/lizard.py` each read a record and
-write an envelope, and none is wired to a task, so none can currently fail.
-Wiring one before porting it produces an invalid envelope. Porting them buys
-back per-finding reasons and, for `lizard`, the complexity statistics that
-currently sit unread in captured stdout. It does not change any verdict.
+- **Rust cannot gate branches on a stable toolchain.** cargo-llvm-cov writes
+  `BRF:0` and no `BRDA` records at all without its `--branch` flag, which is
+  unstable and needs nightly. The plan had assumed the data was already in the
+  file. The adapter reads branch records where they exist and reports
+  `branch_measured: false` where they do not, so nothing passes on an empty
+  denominator.
+- **A spawned script is invisible to the parent's coverage.** Every checker and
+  adapter tested only as a subprocess reported 0% with a full suite behind it.
+  `tests/conftest.py`'s `script_argv` routes them through
+  `coverage run --parallel-mode`, and the jig combines before reporting.
+
+**Two adapters still speak a retired contract.** `adapters/go/gofmt.py` and
+`adapters/go/govet.py` each read a record and write an envelope, and neither is
+wired to a task, so neither can currently fail. Wiring one before porting it
+produces an invalid envelope. Porting them buys back per-finding reasons. It
+does not change any verdict. `adapters/common/lizard.py` was a third until it
+was deleted on 2026-09-04 with the `complexity` task it read for.
 
 **Adoption records nothing about itself.** `link-toolbox.py --check` needs the set
 list as an argument, and which sets a project adopted is written nowhere, so a

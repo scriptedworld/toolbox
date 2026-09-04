@@ -43,6 +43,40 @@ def load(relative: str) -> ModuleType:
     return module
 
 
+def script_argv(path: Path, *args: str) -> list[str]:
+    """The command that runs a checker or adapter as its own process.
+
+    UNDER COVERAGE WHEN THE PARENT IS. These scripts are spawned rather than
+    called, because the shebang, the imports, and where `main()` writes its
+    envelope are all part of the contract and an in-process call proves none of
+    them. A spawned process is invisible to the parent's coverage, though, so
+    until 2026-09-04 every script tested only this way reported 0% with a full
+    suite behind it: `adapters/go/coverage.py` measured 0 of 96 lines, and
+    `adapters/common/bolt-result.py` 0 of 65.
+
+    That is worse than a gap, because the number was going to be gated. A
+    per-file threshold reading those figures would have failed two well-tested
+    adapters and pressed whoever fixed it to rewrite good subprocess tests as
+    weaker in-process ones to move a number that was measuring the wrong thing.
+
+    `--parallel-mode` makes each child write its own data file, and the jig's
+    `tests` task runs `coverage combine` before reporting, which folds them back
+    together. Detection is `"coverage" in sys.modules`, so a bare `pytest` run
+    spawns the plain interpreter and needs nothing installed.
+    """
+    if "coverage" in sys.modules:
+        return [
+            sys.executable,
+            "-m",
+            "coverage",
+            "run",
+            "--parallel-mode",
+            str(path),
+            *args,
+        ]
+    return [sys.executable, str(path), *args]
+
+
 @pytest.fixture
 def checker(
     monkeypatch: pytest.MonkeyPatch,
