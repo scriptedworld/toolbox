@@ -136,9 +136,19 @@ tasks:
   # for every adopter fails every adopter on day one, which teaches them to
   # delete the task rather than fix the code. Strictness is a project's decision,
   # made in its own pyproject.toml, and this task honours it.
+  # THROUGH `uv run`, FOR THE SAME REASON AS `tests`. mypy resolves the imports
+  # of the code it reads, so it needs the project's environment and not a global
+  # installation: measured 2026-09-04 against wrench's pack, where a PATH mypy
+  # reported six errors about `yaml`, `jsonschema` and `referencing` and none
+  # about wrench.
+  #
+  # These are the only two tasks here that need it. ruff, complexipy, vulture,
+  # interrogate and bandit read source without importing it, so a global
+  # installation answers the same question. pylint would need it too, which is
+  # part of why `analyse` is narrowed to the rules that do not.
   - name: types
     description: mypy is satisfied
-    command: mypy --exclude {excluded_regex} .
+    command: uv run mypy --exclude {excluded_regex} .
 
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
