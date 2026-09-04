@@ -31,7 +31,7 @@ package = false
 # schema wrench ships, rather than against a copy kept here. That is NFR-6
 # settled: a copy could only be a second description free to disagree with the
 # one being enforced, and it disagreed twice before it was deleted.
-dev = ["pytest", "coverage", "pyyaml", "wrench"]
+dev = ["pytest", "coverage", "pyyaml", "wrench", "mypy"]
 
 # wrench is not on a registry, so it is named by git URL, exactly as skid does.
 # A path source would tie this repository to a sibling checkout and break a
