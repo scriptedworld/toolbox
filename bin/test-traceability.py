@@ -84,6 +84,15 @@ than returning an envelope: bolt's configuration never says what success
 means, and a tool whose exit code genuinely is the answer needs no adapter.
 """
 
+# pylint: disable=duplicate-code
+#
+# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# by path from a directory that is not a package, so none can import another,
+# so anything two of them must both do is written twice. R0801 finds a different
+# pair each time one is dissolved: the coverage adapters' judgement, the
+# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
+# with what would retire it.
+
 from __future__ import annotations
 
 import argparse
@@ -669,6 +678,28 @@ def test_files(root: Path) -> list[tuple[Path, Language]]:
     return sorted(found.items())
 
 
+def print_block(heading: str, rows: list[str]) -> None:
+    """A heading, its indented rows, and a blank line. Nothing when there are none.
+
+    Four findings groups had this shape written out four times, which is most of
+    what took `report` to a cognitive complexity of 23 against a limit of 15.
+    """
+    if not rows:
+        return
+    print(heading)
+    for row in rows:
+        print(f"  {row}")
+    print()
+
+
+def print_rows(heading: str, rows: list[str]) -> int:
+    """The same, for a group that ends the run, and the failing status with it."""
+    print(heading)
+    for row in rows:
+        print(f"  {row}")
+    return 1
+
+
 def report(failures: list[str], declared: dict[str, str], cited: set[str], scope: str = "") -> int:
     """Print the findings and return the exit status.
 
@@ -686,29 +717,22 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str], scope
     unresolved = [req for req in uncovered if is_open(held_here[req])]
     untested = [req for req in uncovered if not is_open(held_here[req])]
 
-    if elsewhere:
-        print(f"context: {len(elsewhere)} requirement(s) are scoped to another tree, not this one:")
-        for req in elsewhere:
-            print(f"  {req} {declared[req]}")
-        print()
-
-    if unresolved:
-        print(f"context: {len(unresolved)} open requirement(s) have no test, which is not a failure:")
-        for req in unresolved:
-            print(f"  {req} {held_here[req]}")
-        print()
-
-    if untested:
-        print(f"{len(untested)} settled requirement(s) have no test citing them:")
-        for req in untested:
-            print(f"  {req} {held_here[req] or '(no marker)'}")
-        print()
-
-    if failures:
-        print(f"{len(failures)} test(s) do not say what they discharge:")
-        for failure in failures:
-            print(f"  {failure}")
-        print()
+    print_block(
+        f"context: {len(elsewhere)} requirement(s) are scoped to another tree, not this one:",
+        [f"{req} {declared[req]}" for req in elsewhere],
+    )
+    print_block(
+        f"context: {len(unresolved)} open requirement(s) have no test, which is not a failure:",
+        [f"{req} {held_here[req]}" for req in unresolved],
+    )
+    print_block(
+        f"{len(untested)} settled requirement(s) have no test citing them:",
+        [f"{req} {held_here[req] or '(no marker)'}" for req in untested],
+    )
+    print_block(
+        f"{len(failures)} test(s) do not say what they discharge:",
+        list(failures),
+    )
 
     # An open requirement that a test cites anyway is held to its coverage like
     # any other; only the ones actually excused come out of the denominator.
@@ -725,7 +749,8 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str], scope
     return 0
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The command line, built apart from `main` so `main` reads as its steps."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--requirements", required=True, type=Path)
     parser.add_argument(
@@ -756,7 +781,22 @@ def main() -> int:
     # pass today. Removing it would be a breaking change to a shared checker, and
     # every consumer of one needs somebody.
     parser.add_argument("root", type=Path, nargs="?", default=None)
-    args = parser.parse_args()
+    return parser
+
+
+def scan_tree(root: Path, declared: dict[str, str], retired: dict[str, str], requirements: str) -> tuple[list[str], set[str]]:
+    """Every test file under root, and what it cites."""
+    failures: list[str] = []
+    cited: set[str] = set()
+    for path, language in test_files(root):
+        file_failures, file_cited = scan_file(path, language, declared, retired, requirements)
+        failures.extend(file_failures)
+        cited.update(file_cited)
+    return failures, cited
+
+
+def main() -> int:
+    args = build_parser().parse_args()
 
     # Both is a mistake worth naming rather than resolving by precedence: a
     # caller who wrote two directories meant one of them, and picking one for
@@ -802,28 +842,22 @@ def main() -> int:
     # Two files declaring one id is the split's own failure mode, and it is
     # reported before coverage because the merged entry hides one of them.
     if duplicated:
-        print(f"{len(duplicated)} requirement id(s) are declared more than once:")
-        for req in sorted(duplicated, key=requirement_key):
-            where = ", ".join(str(p) for p in duplicated[req])
-            print(f"  {req} is declared in {where}")
-        return 1
+        return print_rows(
+            f"{len(duplicated)} requirement id(s) are declared more than once:",
+            [f"{req} is declared in {', '.join(str(p) for p in duplicated[req])}" for req in sorted(duplicated, key=requirement_key)],
+        )
 
     # A retired id is never reused. Declaring one again silently rewrites what
     # every existing reference to it meant, and nothing about the new row looks
     # wrong, so this is checked before anything else is reported.
     reused = sorted(set(declared) & set(retired), key=requirement_key)
     if reused:
-        print(f"{len(reused)} requirement id(s) are both live and retired:")
-        for req in reused:
-            print(f"  {req} is declared again after being retired: {retired[req]}")
-        return 1
+        return print_rows(
+            f"{len(reused)} requirement id(s) are both live and retired:",
+            [f"{req} is declared again after being retired: {retired[req]}" for req in reused],
+        )
 
-    failures: list[str] = []
-    cited: set[str] = set()
-    for path, language in test_files(root):
-        file_failures, file_cited = scan_file(path, language, declared, retired, str(args.requirements))
-        failures.extend(file_failures)
-        cited.update(file_cited)
+    failures, cited = scan_tree(root, declared, retired, str(args.requirements))
     return report(failures, declared, cited, args.scope)
 
 

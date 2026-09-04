@@ -1,6 +1,43 @@
-# Tool configuration only. This repository ships scripts that bolt invokes by
-# path, never a package anyone installs, so there is no [project] table and
-# nothing here builds a distribution.
+# This repository ships scripts that bolt invokes by path, never a package anyone
+# installs. It carries a [project] table anyway, and `package = false` is what
+# keeps both halves of that true: uv builds an environment and does not build a
+# distribution.
+#
+# WHY IT NEEDS ONE. The Python jig's `tests` task runs the suite under coverage,
+# and pytest and coverage are separate `uv tool` installations that cannot see
+# each other, so `coverage run -m pytest` fails with `No module named pytest` on
+# a machine where both are installed. Measured 2026-09-04: the task had never
+# run here, and reported `evidence-missing` rather than a coverage figure.
+#
+# The jig now runs it through `uv run`, which is what every Python adopter can
+# offer: skid already had one, wrench's pack has one, and this is toolbox's.
+# Declaring the test tools here rather than relying on what happens to be on
+# PATH is also the direction anvil needs — `requires:` names executables, and an
+# environment is what actually has to exist.
+[project]
+name = "toolbox"
+version = "0"
+requires-python = ">=3.12"
+
+[tool.uv]
+# No distribution is built. There is nothing here to install.
+package = false
+
+[dependency-groups]
+# The suite's tools, and PyYAML because the checkers and adapters import it and
+# `requires:` cannot yet declare a library. See anvil's NEXT_STEPS.
+#
+# wrench is here because `tests/test_jigs.py` validates every jig against the
+# schema wrench ships, rather than against a copy kept here. That is NFR-6
+# settled: a copy could only be a second description free to disagree with the
+# one being enforced, and it disagreed twice before it was deleted.
+dev = ["pytest", "coverage", "pyyaml", "wrench"]
+
+# wrench is not on a registry, so it is named by git URL, exactly as skid does.
+# A path source would tie this repository to a sibling checkout and break a
+# standalone clone.
+[tool.uv.sources]
+wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "python" }
 
 # ONE LINE LENGTH, DECLARED ONCE, AND BOTH TOOLS PINNED TO IT.
 #

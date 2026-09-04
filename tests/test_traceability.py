@@ -8,7 +8,7 @@ because a gate that exempts too much is indistinguishable from no gate at all.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 
 from conftest import ROOT, load, script_argv
@@ -431,7 +431,7 @@ def test_requirements_sort_numerically_not_lexically():
 def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or an import that fails."""
     (tmp_path / "REQUIREMENTS.md").write_text(requirements(("FR-1.1", "[?]")), encoding="utf-8")
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603
         script_argv(ROOT / "bin" / "test-traceability.py", *ARGV),
         cwd=tmp_path,
         capture_output=True,

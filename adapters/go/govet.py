@@ -9,6 +9,15 @@ actionable.
 Reads an execution record on stdin, writes an envelope on stdout.
 """
 
+# pylint: disable=duplicate-code
+#
+# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# by path from a directory that is not a package, so none can import another,
+# so anything two of them must both do is written twice. R0801 finds a different
+# pair each time one is dissolved: the coverage adapters' judgement, the
+# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
+# with what would retire it.
+
 import re
 import sys
 

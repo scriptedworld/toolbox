@@ -8,7 +8,7 @@ an already-registered file is caught rather than hidden behind the first.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 
 from conftest import ROOT, load, script_argv
@@ -225,7 +225,7 @@ def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or a missing import."""
     (tmp_path / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
     (tmp_path / "main.go").write_text("package main\n\nfunc read() { open(p) } //#nosec G304\n", encoding="utf-8")
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603
         script_argv(ROOT / "bin" / "suppression-register.py", *ARGV),
         cwd=tmp_path,
         capture_output=True,

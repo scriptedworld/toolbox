@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import subprocess  # nosec B404
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -43,7 +44,7 @@ def load(relative: str) -> ModuleType:
     return module
 
 
-def script_argv(path: Path, *args: str) -> list[str]:
+def script_argv(path: Path | str, *args: str) -> list[str]:
     """The command that runs a checker or adapter as its own process.
 
     UNDER COVERAGE WHEN THE PARENT IS. These scripts are spawned rather than
@@ -63,6 +64,10 @@ def script_argv(path: Path, *args: str) -> list[str]:
     `tests` task runs `coverage combine` before reporting, which folds them back
     together. Detection is `"coverage" in sys.modules`, so a bare `pytest` run
     spawns the plain interpreter and needs nothing installed.
+
+    The path is `Path | str` because a caller that has already built its whole
+    argument list spreads it in as `script_argv(*argv)`, and the first element of
+    a `list[str]` is a `str`.
     """
     if "coverage" in sys.modules:
         return [
@@ -75,6 +80,48 @@ def script_argv(path: Path, *args: str) -> list[str]:
             *args,
         ]
     return [sys.executable, str(path), *args]
+
+
+def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode="0"):
+    """Invoke a flag-contract adapter as bolt does and read the envelope it wrote.
+
+    The coverage adapters take `--evidence`, `--work-dir` and `--exitcode` and
+    write `output.yaml` into the work directory, where the stdin-contract
+    adapters the `adapter` fixture serves read a record and print an envelope.
+    This is that second shape, and it is here rather than in each test file
+    because it was written out twice, identically, and pylint's R0801 was right
+    about it.
+
+    AS A SUBPROCESS, because an in-process call cannot catch a broken shebang, a
+    missing import, or a `main()` that writes somewhere other than where it was
+    told. The envelope's location is part of the contract.
+
+    `evidence` may be `bytes`, which is how a document declaring an encoding
+    other than UTF-8 has to be written, or `None` to name no evidence at all.
+
+    `exitcode=None` names a status file that was never written, which is the
+    case where the adapter cannot tell whether the suite passed. It has to be
+    named-but-absent rather than omitted, because omitting the flag is a
+    different case: bolt always passes it.
+    """
+    work = tmp_path / "work"
+    work.mkdir(exist_ok=True)
+    status = tmp_path / "exitcode"
+    if exitcode is not None:
+        status.write_text(exitcode, encoding="utf-8")
+
+    argv = [str(adapter), "--work-dir", str(work)]
+    if evidence is not None:
+        path = tmp_path / evidence_name
+        if isinstance(evidence, bytes):
+            path.write_bytes(evidence)
+        else:
+            path.write_text(evidence, encoding="utf-8")
+        argv += ["--evidence", str(path)]
+    argv += ["--exitcode", str(status), *args]
+
+    subprocess.run(script_argv(*argv), check=True, capture_output=True)  # nosec B603
+    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
 
 
 @pytest.fixture

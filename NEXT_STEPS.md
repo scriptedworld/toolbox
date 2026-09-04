@@ -110,6 +110,24 @@ also at 80% of branches. Two things were learned doing it and are worth keeping:
   `tests/conftest.py`'s `script_argv` routes them through
   `coverage run --parallel-mode`, and the jig combines before reporting.
 
+**The standalone scripts cannot import each other, so they duplicate.** Every
+script in `bin/` and `adapters/` is spawned by path from a directory that is not
+a package, so anything two of them must both do is written twice: the coverage
+adapters' whole judgement, the checkers' `SKIP_DIRS`, the adapters' `emit`.
+pylint's R0801 reports a different pair each time one is dissolved, and all nine
+scripts now carry a registered mark (S-3) rather than three separate arguments.
+
+Deciding it means deciding one thing: whether `adapters/common/` and `bin/` gain
+shared modules, linked into every adopter through the `common` set and imported
+by path. The cost is a module behind nine shipped scripts and a link every
+adopter takes whether or not it runs the task needing it. The alternative that
+must not be taken is raising `min-similarity-lines` until the findings stop.
+
+**One of the three is already guarded properly** —
+`test_both_checkers_skip_the_same_directories` fails if the two skip lists
+diverge — and that is the standard the other two should reach whichever way the
+extraction goes.
+
 **Two adapters still speak a retired contract.** `adapters/go/gofmt.py` and
 `adapters/go/govet.py` each read a record and write an envelope, and neither is
 wired to a task, so neither can currently fail. Wiring one before porting it
