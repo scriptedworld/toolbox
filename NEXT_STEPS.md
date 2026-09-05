@@ -163,3 +163,94 @@ directory or a single file, and a retired requirement can be named without a
 `## Retired` heading. Splitting a copy of this document into one file per
 requirement produced byte-identical checker output, so the split is available
 and is a separate change nobody has made.
+
+---
+
+# Across the estate, 2026-09-04
+
+Written here rather than in a file at the root of the checkouts, because that
+file belongs to a machine and this belongs to the project.
+
+## The gate's invocation is part of its result, and nothing machine-readable says so
+
+Three variants, all of them load-bearing, and getting one wrong produces a wrong
+answer that looks like a real one:
+
+    toolbox    bolt --definitions toolbox <jig> .
+    skid       bolt --definitions skid <jig> .
+    infobot    bolt --definitions go-std-quality go-std-quality .
+    qwark      bolt --definitions go-std-quality go-std-quality .
+    bolt       bolt <jig> .                        (no definitions file)
+    wrench     bolt wrench-quality .               MUST NOT take --definitions
+
+**Each failure mode is silent in a different way.** Without `--definitions skid`,
+skid's `traceability` and `suppressions` fail on paths it does not use. Given
+`--definitions wrench` at the root, wrench's `requirements` resolves to
+`../docs/REQUIREMENTS`, which is outside the repository, and five tasks fail that
+otherwise pass — the flag is for the child runs its jig composes, which run at a
+pack's base where that path is right. And without
+`--definitions go-std-quality`, infobot's and qwark's `entrypoint` resolves to
+the jig's default of `true`, so the entry-point coverage step never runs and
+`cmd/*/main.go` reports 0.0%.
+
+That last one is the worst of the three, because a coverage figure of 0% for a
+file nothing tests is exactly what a correct run would also report.
+
+**A definitions file being named after the jig does not make it load.**
+`bolt.go-std-quality.definitions.yaml` looks like it would be found by name and
+is not. infobot's `just/lang.just` says so in capitals; nothing a machine reads
+says it anywhere.
+
+**This is the same gap as `--check` needing its set list.** Neither the sets a
+project adopted nor the command its gate is run with is recorded anywhere a
+program can read, so both are re-derived by whoever is looking, and both were got
+wrong here on 2026-09-04. One small file per adopter answers both:
+
+    sets: [rust]
+    gate: bolt --definitions toolbox
+
+`link-toolbox.py --check` could then take no set argument and become a task in
+`common-quality`, which is what turns adoption drift into a gate failure rather
+than something somebody notices.
+
+## What each language jig is missing, ranked
+
+Asked for on 2026-09-04. Present today:
+
+| dimension | go-std | python-std | rust-std |
+|---|---|---|---|
+| format | gofmt | ruff format | cargo fmt |
+| lint | golangci-lint, 42 analysers | ruff + pylint | clippy |
+| types | (compiler) | mypy | (compiler) |
+| build | go build | — | cargo build |
+| lockfile / tidy | go mod tidy | — | — |
+| tests + coverage | statements | lines **and branches** | lines |
+| vulnerabilities | govulncheck | **none** | cargo-audit |
+| licences | **none** | **none** | cargo-deny |
+| dead code | golangci `unused` | vulture | clippy `dead_code` |
+| docstrings | **none** | interrogate | **none** |
+| SAST | golangci `gosec` | bandit | **none** |
+| cognitive complexity | golangci `gocognit` | complexipy | clippy |
+| duplicate code | golangci `dupl` | pylint R0801 | **none** |
+
+1. **Python has no vulnerability check at all**, and is the only language that
+   does not. The jig's own footer already carries why it was deferred: Python
+   tools report every advisory touching an installed distribution, which is
+   noisier than `govulncheck`'s reachability. `pip-audit` against `uv.lock` is
+   the closest match. This is the largest real hole.
+2. **Licences for Go and Python.** Rust gates them through cargo-deny and the
+   other two do not, so the estate's licence position is one language's.
+   `go-licenses` and `pip-licenses` exist; the policy in bolt's `deny.toml` is
+   worth copying rather than reinventing.
+3. **Lockfile freshness for Python and Rust.** `go mod tidy` is gated and nothing
+   checks that `uv.lock` or `Cargo.lock` matches its manifest. `uv lock --check`
+   and `cargo update --locked` are the direct equivalents and both are cheap.
+4. **Docstrings for Go and Rust.** interrogate has no sibling, but the guarantee
+   does: `#![warn(missing_docs)]`, which bolt already sets per-project and could
+   be a jig-level lint, and revive's exported rule inside golangci.
+5. **SAST for Rust: leave the row empty and say so.** `cargo-geiger` counts
+   `unsafe` and answers a different question. An empty row with a reason is
+   honest; a weak tool wearing the name is not.
+
+Every addition lands with a threshold that can fail and an entry in `requires:`,
+because that list is what anvil builds an image from.
