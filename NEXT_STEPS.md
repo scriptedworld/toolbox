@@ -147,7 +147,7 @@ and fails every requirement at once.
 
 ## What blocks publication
 
-The gate is not green. `traceability` reports 11 settled requirements with no
+The gate is not green. `traceability` reports 9 settled requirements with no
 test citing them, `analyse` reports the duplicate code above, and
 `security-tests` reports 11 low-severity bandit findings in the test tree. Each
 is a known defect rather than an unknown, and none is silenced.
