@@ -353,13 +353,6 @@ tasks:
 
 # ---- NOT HERE, AND WHY -------------------------------------------------------
 #
-# COVERAGE THRESHOLD, judged per file as the Go jig does, refusing an aggregate
-# because an aggregate lets a well-tested file carry an untested one. It needs
-# an adapter reading Cobertura XML and applying the threshold per file, and that
-# adapter is not written. `tests` produces coverage.xml so the data is there the
-# moment it is. Until then coverage is measured and not enforced, and this file
-# says so rather than shipping a task that passes without reading a percentage.
-#
 # radon. Its `cc` duplicates lizard and its maintainability index is a composite
 # of metrics already measured separately here, a composite being harder to act
 # on than its parts. `hal` and `raw` do report things nothing else here
