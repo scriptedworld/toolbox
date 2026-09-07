@@ -1,0 +1,204 @@
+# Standard quality gate for a Ruby project.  Run it with bolt.common-quality,
+# which holds traceability, suppressions and secrets.
+#
+#     bolt ruby-std-quality .
+#
+# Ordered cheapest first, so a failure surfaces before the slow checks run.
+#
+# THE ENVELOPE IS THE VERDICT, NOT AN EXIT CODE. `docs/ARCHITECTURE.md` §23: a
+# child process's exit code is data, and the authoritative result is the
+# envelope at `{work_dir}/output.yaml`.
+#
+# THERE ARE TWO WAYS TO PRODUCE ONE AND THIS FILE USES BOTH.
+#
+#   A task naming no adapter gets bolt's generic exit-code adapter, which is
+#   the right answer wherever the tool's exit code already means what the task
+#   is asking. rubocop exits 1 on offences and reek exits 2 on findings, both
+#   measured, so those four tasks need nothing further.
+#
+#   A task whose tool reports without gating pipes into a filter that writes
+#   the envelope to `{work_dir}/output.yaml` itself. No `adapter:` key, no
+#   `--evidence` round trip: the command produces the verdict.
+#
+# WHY RUBY NEEDS THE SECOND FORM. Measured 2026-09-06 against planted
+# violations, ruby 4.0.6:
+#
+#     flay dup.rb          reports "mass = 40" on two identical methods   exit 0
+#     flog -s dup.rb       reports a score, has no threshold flag at all  exit 0
+#     rufo --check messy   prints "produced changes"                      exit 0
+#     bundle-audit check   no Gemfile.lock present, checked nothing       exit 0
+#
+# Four correct reports, four exit codes that only say the process ran.
+#
+# THE PATH RULE: a path resolves against {config_dir} if it travels with this
+# jig; it stays relative to the base if it belongs to the project being checked.
+
+version: "1.0.0"
+
+requires:
+  - rubocop
+  - reek
+  - flay
+  - bundler-audit
+  # The test-suite cops. They load through the `plugins:` key of a rubocop
+  # config and NOT through `--require`: rubocop 1.72 introduced the plugin
+  # system, and since then `rubocop --require rubocop-minitest` fails with
+  # `cannot load such file` while `ruby -e 'require "rubocop-minitest"'`
+  # succeeds on the same machine. The error names the file rather than the
+  # mechanism, so it reads as a missing gem.
+  - rubocop-minitest
+  - rubocop-rake
+  - rubocop-rspec
+  # The two filters this jig pipes into. They travel with toolbox and write an
+  # envelope validated against wrench's `envelope.schema.json`.
+  - flay-envelope
+  - bundle-audit-envelope
+
+# WHAT IS NOT THE PROJECT'S CODE. Adoption links this repository's checkers into
+# the adopter's `bin/` and its adapters into `adapters/`, and a tool reading
+# those links reports toolbox's findings as the adopter's. `.ephemera` is
+# gitignored working space by standing rule.
+definitions:
+  excluded_one: .ephemera
+  excluded_two: bin
+  excluded_three: adapters
+  test_dir: test
+
+tasks:
+  # ---- shape ----------------------------------------------------------------
+
+  # LAYOUT COPS ARE THE FORMATTER, and rufo is deliberately not used. Two
+  # formatters with different opinions on one tree is a disagreement the adopter
+  # has to arbitrate, and rubocop is here anyway for lint. rufo would also need
+  # `-x/--simple-exit` before its exit code meant anything, which is a second
+  # way to write a check that never fails.
+  - name: format
+    description: every file is rubocop-Layout clean
+    command: rubocop --only Layout --format simple .
+
+  # The project's own .rubocop.yml decides this one, which is where an adopter's
+  # choices belong. The jig's numbers are in `complexity`.
+  - name: lint
+    description: the rubocop rule set, whatever the project has enabled
+    command: rubocop --format simple .
+
+  # ---- properties of the source ---------------------------------------------
+
+  # THE JIG'S NUMBERS, in a config that travels with the jig, because rubocop
+  # takes `--config FILE` and has no equivalent of ruff's inline
+  # `--config lint.mccabe.max-complexity=15`. `--isolated` does not exist in
+  # rubocop 1.90; that flag is a ruff idiom. The config is authored complete
+  # with `DisabledByDefault: true`, so an adopter's own file cannot relax it.
+  #
+  # AbcSize IS FLOG'S METRIC, measured by a tool that can be held to a number.
+  # Thresholds match the other jigs: cyclomatic 15, 5 parameters, 60 lines,
+  # nesting 4. AbcSize 17 is rubocop's default and has no counterpart to match.
+  - name: complexity
+    description: no method over cyclomatic 15, ABC 17, 5 parameters, 60 lines or nesting 4
+    command: >-
+      rubocop --config {config_dir}/config/ruby-std-quality.rubocop.yml
+      --format simple .
+
+  # The analysis rubocop does not do: feature envy, uncommunicative names,
+  # duplicate method calls, nested iterators, too many statements.
+  #
+  # NO OTHER LANGUAGE HERE HAS THIS. Go, Python and Rust have no smell gate, so
+  # it is the one control Ruby carries alone rather than inherits.
+  - name: smells
+    description: no reek warning outside the excluded directories
+    command: >-
+      reek --no-progress --force-exclusion
+      {excluded_one} {excluded_two} {excluded_three} .
+
+  # DUPLICATION, which Go gets from golangci and Python from pylint's R0801.
+  #
+  # PIPED, BECAUSE FLAY CANNOT GATE. It has no structured output either, so the
+  # filter reads the text: a total score line, then one block per match carrying
+  # `(mass = N)` and the file:line pairs sharing the structure. `-m` sets what
+  # flay reports; the filter decides what fails, because a tool that reports at
+  # 16 and fails at nothing has left the decision to whoever reads the log.
+  - name: duplication
+    description: no duplicated structure above the mass threshold
+    command: flay -m 25 . | flay-envelope --out {work_dir}/output.yaml
+
+  # ---- security -------------------------------------------------------------
+
+  # A MISSING LOCKFILE IS A FINDING, NOT A SKIP. `bundle-audit check` exits 0
+  # when there is no Gemfile.lock, having audited nothing, which is
+  # indistinguishable from a clean run in every way except the output. The
+  # filter reads the output and fails when the project declares dependencies and
+  # ships no lockfile to check them against.
+  - name: advisories
+    description: no dependency carries a known advisory, and the lockfile exists to check
+    command: bundle-audit check 2>&1 | bundle-audit-envelope --out {work_dir}/output.yaml
+
+  # ---- tests ----------------------------------------------------------------
+
+  # COBERTURA XML because `adapters/python/coverage.py` already reads it and
+  # judges PER FILE at 80% of lines and branches. The same evidence shape as the
+  # Python and Rust tasks rather than a fourth format wanting a fourth parser.
+  #
+  # The adopter declares the formatter in its own test helper:
+  #
+  #     require "simplecov"
+  #     require "simplecov-cobertura"
+  #     SimpleCov.formatter = SimpleCov::Formatter::CoberturaFormatter
+  #     SimpleCov.start
+  #
+  # THE ADAPTER IS THE PYTHON ONE until a Ruby one is needed. Cobertura is
+  # language-agnostic and the judgement is a percentage per file, so nothing in
+  # it is Python-specific. If that proves wrong the answer is a ruby/ adapter
+  # beside it, not a fourth format.
+  - name: tests
+    description: the suite, and coverage judged per file for lines and branches
+    command: rake test
+    evidence:
+      - coverage/coverage.xml
+    adapter: adapters/python/coverage.py
+
+# ---- WHAT STILL HAS TO BE WRITTEN --------------------------------------------
+#
+#   bin/flay-envelope             reads flay's text on stdin, writes an envelope
+#                                 to --out. One reason per match above the mass
+#                                 threshold, listing every location sharing the
+#                                 structure. The only text-scraping filter here,
+#                                 because flay offers nothing else.
+#
+#   bin/bundle-audit-envelope     reads bundle-audit's text on stdin, writes an
+#                                 envelope to --out. One reason per advisory,
+#                                 and one for a missing lockfile where the
+#                                 project declares dependencies.
+#
+#   config/ruby-std-quality.rubocop.yml
+#                                 the complexity thresholds, DisabledByDefault
+#                                 so an adopter cannot relax them.
+#
+# Both filters go through wrench: `save_yaml_file(envelope, out, ENVELOPE_SCHEMA,
+# YAML, LOCAL_FILE)`, so neither hand-rolls YAML and neither can put down a
+# structure wrench would refuse to read back.
+#
+# ---- NOT HERE, AND WHY -------------------------------------------------------
+#
+# TYPES. Go and Rust get this from the compiler and Python from mypy. Ruby's
+# answer is RBS signatures plus steep, and writing signatures for an existing
+# codebase is a project commitment rather than a tool this jig can switch on.
+# Neither gem is declared. Named so the gap is visible rather than absent.
+#
+# brakeman. The Ruby security scanner is Rails-shaped: against plain Ruby it
+# reports almost nothing, which is a task that cannot fail. It belongs in a
+# Rails project's own jig, not the standard one.
+#
+# flog. Its ABC metric is measured by `complexity` above, through a tool that
+# can be held to a threshold. flog has no threshold flag at all, so a flog task
+# would need a filter and a number this estate has not argued for, to measure
+# what rubocop already fails the build on.
+#
+# rubycritic. It aggregates reek, flay and flog into one score. The Python jig
+# refused radon's maintainability index on the ground that a composite is harder
+# to act on than its parts, and the same holds here. Its inputs are gated
+# individually above.
+#
+# DOC COVERAGE. `yard stats --list-undoc` reports it and yard is declared, but
+# no threshold here has been argued for. The Python jig gates interrogate at
+# 80%; copying that number across without a reason is how a gate becomes
+# decoration.

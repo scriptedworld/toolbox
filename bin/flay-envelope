@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Turn flay's report into an envelope: one reason per duplicated structure.
+
+flay finds structural duplication and EXITS 0 WHETHER OR NOT IT FOUND ANY.
+Measured 2026-09-06 against two identical six-line methods: it printed
+`Total score = 40` and `Similar code found in :defn (mass = 40)`, and exited 0.
+The exit status answers "did flay run", never "is this duplicated". That is why
+this exists.
+
+    flay . | flay-envelope --out {work_dir}/output.yaml [--max-mass N]
+
+Reads flay's text on stdin, writes the envelope to --out. Nothing is returned on
+stdout, and this script's own exit code means nothing: the envelope is the
+verdict.
+
+DO NOT USE flay's `-m` AS THE FAILING THRESHOLD. Measured the same day, `-m`
+filters on the mass of a single node while the report prints the mass of the
+whole match, which is the sum across its occurrences:
+
+    flay -m 20 dup.rb   score 40, 1 match      two nodes of 20
+    flay -m 25 dup.rb   score 0,  0 matches    the same duplication, hidden
+
+So a jig setting `-m 25` would silently drop a match reporting `mass = 40`.
+flay runs at its default and reports wide; the threshold that fails a build is
+applied here, against the mass flay printed.
+
+THE FORMAT, which has no structured alternative:
+
+    Total score (lower is better) = 40
+
+    1) Similar code found in :defn (mass = 40)
+      dup.rb:4
+      dup.rb:10
+
+A match header carries its kind and mass; the indented lines beneath it are the
+locations sharing that structure. Text-scraping is a fragility, and it is stated
+rather than hidden: flay offers no JSON, YAML or XML output of any kind.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+
+import wrench
+
+CHECKER = "duplication"
+
+# `1) Similar code found in :defn (mass = 40)`
+MATCH = re.compile(r"^\s*\d+\)\s+(?P<kind>.+?)\s+\(mass\s*=\s*(?P<mass>\d+)\)\s*$")
+
+# `  dup.rb:4`, indented beneath its match.
+LOCATION = re.compile(r"^\s+(?P<location>\S+:\d+)\s*$")
+
+
+def parse(text):
+    """Every match flay reported, as {kind, mass, locations}.
+
+    A location line only counts while a match header is open, so the score line
+    and any blank space between blocks cannot be mistaken for one.
+    """
+    matches = []
+    current = None
+
+    for line in text.splitlines():
+        header = MATCH.match(line)
+        if header:
+            current = {
+                "kind": header.group("kind").strip(),
+                "mass": int(header.group("mass")),
+                "locations": [],
+            }
+            matches.append(current)
+            continue
+
+        location = LOCATION.match(line)
+        if location and current is not None:
+            current["locations"].append(location.group("location"))
+
+    return matches
+
+
+def reasons_for(matches, max_mass):
+    """One reason per match at or above the threshold."""
+    return [
+        {
+            "kind": "tool-findings",
+            "checker": CHECKER,
+            "message": (
+                f"duplicated {m['kind']} of mass {m['mass']} in "
+                f"{len(m['locations'])} places, over the limit of {max_mass}"
+            ),
+            "files": sorted({loc.rsplit(":", 1)[0] for loc in m["locations"]}),
+            "locations": m["locations"],
+        }
+        for m in matches
+        if m["mass"] > max_mass
+    ]
+
+
+def arguments():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--out", required=True, help="where the envelope is written")
+    # 40 is flay's own default reporting mass doubled, which is the smallest
+    # duplication worth a build failure here: two identical nodes of 20. Below
+    # that flay reports pairs of accessors and short literal lists.
+    ap.add_argument("--max-mass", dest="max_mass", type=int, default=40)
+    return ap.parse_args()
+
+
+def main():
+    args = arguments()
+    matches = parse(sys.stdin.read())
+    reasons = reasons_for(matches, args.max_mass)
+
+    envelope = {"success": not reasons}
+    if reasons:
+        envelope["reasons"] = reasons
+    envelope["metadata"] = {
+        "statistics": {
+            "matches": len(matches),
+            "over_limit": len(reasons),
+            "max_mass": args.max_mass,
+        }
+    }
+
+    # Validation is in the signature, so this cannot put down a structure
+    # wrench would refuse to read back.
+    wrench.save_yaml_file(
+        envelope, args.out, wrench.ENVELOPE_SCHEMA, wrench.LOCAL_FILE
+    )
+
+
+if __name__ == "__main__":
+    main()
