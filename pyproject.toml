@@ -98,7 +98,7 @@ branch = true
 # NAMING THE LEAF DIRECTORIES HERE ALSO WORKS AND IS WORSE. Each Cobertura
 # `filename` is relative to the source root that contains it, so with the leaves
 # named, `adapters/go/coverage.py`, `adapters/python/coverage.py` and
-# `adapters/rust/coverage.py` all report as `coverage.py` and the adapter merges
+# `adapters/lcov/coverage.py` all report as `coverage.py` and the adapter merges
 # three different files into one entry. Two roots and a marker per subdirectory
 # keeps the paths distinct.
 source = ["bin", "adapters"]

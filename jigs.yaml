@@ -87,8 +87,36 @@ sets:
     includes: [common]
     files:
       - bolt.rust-std-quality.yaml
-      - adapters/rust/coverage.py
+      - adapters/lcov/coverage.py
       - config/rust/clippy.toml
+
+  # THE ADAPTER IS SHARED WITH `cpp` AND IS NOT THIS SET'S. It moved out of
+  # `adapters/rust/` on 2026-09-09, because it reads lcov and lcov is what
+  # cargo-llvm-cov and gcovr both emit. Both sets list it, both symlink the same
+  # file, and a project adopting both gets one copy.
+  #
+  # The rename cost nothing because it happened while the count of adopters was
+  # zero: measured that day, only this repository referenced the path. Doing it
+  # later would have meant re-linking every adopter.
+
+  # C++. Alone among the language sets in requiring the adopter to produce a
+  # compilation database, because C++ has no `cargo` and no `go`: nothing on a
+  # command line knows what a C++ project builds. `bear -- <any build>` or
+  # cmake's CMAKE_EXPORT_COMPILE_COMMANDS both produce one, which is why this
+  # jig mandates neither build system.
+  #
+  # Six tools where Rust has two and Go has three. That is C++ rather than an
+  # accident of this jig: there is no multi-tool, and the header check has no
+  # counterpart in any other language here because no other language here has
+  # textual inclusion to get wrong.
+  cpp:
+    includes: [common]
+    files:
+      - bolt.cpp-std-quality.yaml
+      - adapters/lcov/coverage.py
+      - bin/clang-format-check.py
+      - config/cpp/clang-format.yaml
+      - config/cpp/clang-tidy.yaml
 
   secrets:
     files:

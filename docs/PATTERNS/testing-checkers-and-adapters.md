@@ -166,7 +166,7 @@ because the more parsing an adapter performs the more there is to get wrong.
 | 2 | `bin/suppression-register.py` | **done** |
 | 3 | `adapters/go/gofmt.py` | **done**, the worked example for the rest |
 | 4 | `adapters/go/coverage.py` | **done** 2026-08-29 |
-| 5 | `adapters/rust/coverage.py` | **done** 2026-09-04, with the lcov branch records and the encoding cases |
+| 5 | `adapters/lcov/coverage.py` | **done** 2026-09-04, with the lcov branch records and the encoding cases |
 | 6 | `adapters/python/coverage.py` | **done** 2026-09-04, with the Cobertura branch data and the encoding cases |
 | 7 | `adapters/common/bolt-result.py` | **done** |
 | 8 | `adapters/go/govet.py` | **done** 2026-09-04 |

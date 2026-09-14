@@ -1,4 +1,4 @@
-"""Tests for `adapters/rust/coverage.py`.
+"""Tests for `adapters/lcov/coverage.py`.
 
 IT SPEAKS THE FLAG CONTRACT, NOT THE STDIN ONE, exactly as `adapters/go/coverage.py`
 does: it is handed `--evidence`, `--work-dir` and `--exitcode` and writes
@@ -10,20 +10,26 @@ the tests, because that is the task whose work directory holds the profile, so a
 suite that failed while leaving a profile behind must not report as a pass with
 a number beside it.
 
-BRANCHES ARE READ BUT NOT GATED, AND THE CASES BELOW ARE WHY THAT IS SAFE. The
+BRANCHES ARE READ AND ARE GATED BY THE C++ JIG, NOT BY THE RUST ONE. The
 lcov format carries `BRDA` records and the adapter reads them, but cargo-llvm-cov
 emits none on a stable toolchain: its `--branch` flag is unstable and needs
-nightly. So these cases feed BRDA records the real producer does not currently
-write, which is deliberate — the parsing has to be correct and pinned before the
-toolchain makes it reachable, and `branch_measured` has to say plainly that
-nothing was measured rather than let a threshold pass on a zero denominator.
+nightly. gcovr emits them by default, so the same records these cases feed are
+what a real C++ run produces.
+
+THAT IS WHY THE FIXTURES WERE RIGHT BEFORE THEY WERE REACHABLE. They were
+written against a producer that emitted nothing, on the grounds that the parsing
+had to be correct and pinned before the toolchain made it reachable. It became
+reachable on 2026-09-09 from a direction nobody was watching: not a newer rustc,
+but a second language whose profile carries the records today. `branch_measured`
+still has to say plainly when nothing was measured, because the Rust side is
+unchanged.
 """
 
 from __future__ import annotations
 
 from conftest import ROOT, run_flag_adapter
 
-ADAPTER = ROOT / "adapters" / "rust" / "coverage.py"
+ADAPTER = ROOT / "adapters" / "lcov" / "coverage.py"
 
 # a.rs: 2 of 3 lines, 1 of 2 branches. b.rs: nothing at all. c.rs: everything.
 # `-` is lcov's spelling for a branch that was never taken.

@@ -120,7 +120,7 @@ tasks:
       --output-path {work_dir}/coverage.lcov
     evidence:
       - coverage.lcov
-    adapter: adapters/rust/coverage.py
+    adapter: adapters/lcov/coverage.py
 
   # ---- security -------------------------------------------------------------
 

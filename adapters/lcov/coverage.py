@@ -45,12 +45,25 @@ below reports false rather than letting a threshold pass quietly on a zero
 denominator. A check that cannot fail is not a check, and one that looks like it
 could is worse than one that is plainly absent.
 
-THE THREE LANGUAGES ARE NOT LEVEL ON THIS, AND SAYING SO IS THE POINT. Python's
+Re-measured 2026-09-09 on rustc 1.98.1, because the claim above is dated and it
+decides whether a gate exists: still no `BRDA` records, still `BRF:0` and
+`BRH:0`, and `cargo llvm-cov --branch` now fails outright with exit 101 rather
+than being quietly ignored.
+
+THIS FILE IS NAMED FOR A FORMAT AND NOT A LANGUAGE, and it moved out of
+`adapters/rust/` on 2026-09-09 to say so. lcov is what cargo-llvm-cov and gcovr
+both emit, so the Rust jig and the C++ jig read the same records with the same
+judgement, per file, and neither owns it.
+
+THE FOUR LANGUAGES ARE NOT LEVEL ON THIS, AND SAYING SO IS THE POINT. Python's
 coverage.py measures branches on the stable toolchain, so the Python jig gates
-them. Go has no branch mode at all. Rust could on nightly and does not, because
-the estate builds on stable. Holding all three to lines would discard a
-guarantee Python has for free; reporting all three as though they had it would
-claim one that nothing established.
+them. C++ does too: gcovr 7.2 emits `BRDA` by default with no flag, measured
+2026-09-09 against a fixture carrying one deliberately untaken branch, which
+reported `BRF:4 BRH:3` and reached this adapter as a per-file branch failure. Go
+has no branch mode at all. Rust could on nightly and does not, because the estate
+builds on stable. Holding all four to lines would discard a guarantee two of them
+have for free; reporting all four as though they had it would claim one that
+nothing established.
 """
 
 # pylint: disable=duplicate-code

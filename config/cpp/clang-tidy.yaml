@@ -1,0 +1,106 @@
+# The shared clang-tidy rule set.
+#
+# Named on the command line as `--config-file=`, for the reason the format
+# configuration gives: clang-tidy finds a `.clang-tidy` dotfile by walking up
+# from each source file, so a stray one in a subdirectory silently gates part of
+# a project differently from the rest.
+#
+# HeaderFilterRegex IS NOT OPTIONAL AND IS THE FIRST THING TO GET RIGHT.
+# Measured 2026-09-09 on a 76-line file: with no filter clang-tidy reported
+# 45,702 warnings, every one of them from a system or third-party header the
+# project cannot edit. A gate whose output is 45,702 lines is a gate nobody
+# reads.
+#
+# The value is set by the ADOPTER, not here, because only the adopter knows
+# which directory holds its own headers. `^$` below matches nothing, so the
+# default is to report on translation units alone and never on headers; an
+# adopter with headers of its own overrides it in its definitions file.
+
+# The complexity lints live here rather than in a task of their own, for the
+# reason the Rust jig gives for folding them into clippy: the tool is already
+# building an AST and a second pass pays for that twice.
+#
+# readability-function-cognitive-complexity is the analogue of clippy's
+# cognitive_complexity and of lizard's CCN, which the common jig used to measure
+# for every language at once and no longer does.
+Checks: >-
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -misc-include-cleaner,
+  -misc-no-recursion,
+  -llvmlibc-*
+
+# WHY THE THREE EXCLUSIONS, so they are not deleted by somebody who assumes they
+# were arbitrary.
+#
+#   modernize-use-trailing-return-type   rewrites every `int f()` as
+#                                        `auto f() -> int`. A whole-codebase
+#                                        style change wearing the name of a
+#                                        modernisation, and it is not one the
+#                                        estate has chosen.
+#   readability-identifier-length        refuses names under three characters.
+#                                        Measured on the same file: it fired on
+#                                        `a`, `b`, `c` and `n`, all of them
+#                                        loop and span locals whose scope is
+#                                        two lines. A rule that cannot see
+#                                        scope is not a readability rule.
+#   misc-include-cleaner                 it reports a missing include, which is
+#                                        the `headers` task's job. Measured on
+#                                        the same file: both it and
+#                                        include-what-you-use reported the same
+#                                        absent `<stdint.h>` for `uint32_t`. Two
+#                                        tools failing for one defect sends the
+#                                        author round twice, and iwyu does
+#                                        strictly more: it reports what to
+#                                        REMOVE and prints the full ordered
+#                                        include list, which this cannot.
+#   misc-no-recursion                    it flags any recursive call chain. A
+#                                        tree walker is recursive by design, and
+#                                        the first C++ in this estate is one, so
+#                                        this fires on correct code as a matter
+#                                        of course. Recursion is a design, not a
+#                                        defect; depth without a bound is the
+#                                        defect, and this check does not measure
+#                                        that.
+#   llvmlibc-*                           rules for building libc itself.
+#                                        Nothing here is libc.
+
+WarningsAsErrors: "*"
+
+HeaderFilterRegex: "^$"
+
+CheckOptions:
+  # 15, matching the cyclomatic threshold the Ruby jig gates and the value the
+  # retired lizard task used for every language. Cognitive and cyclomatic
+  # complexity are not the same measure, so this is the same NUMBER rather than
+  # the same threshold, and it is set here so the languages are argued about
+  # together rather than drifting apart quietly.
+  - key: readability-function-cognitive-complexity.Threshold
+    value: "15"
+
+  # Ignore macros when counting. A macro expanding to a conditional would
+  # otherwise charge its complexity to every call site.
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: "true"
+
+  # Five parameters, which is what the Ruby jig gates and what the retired
+  # lizard task used.
+  - key: readability-function-size.ParameterThreshold
+    value: "5"
+
+  # Sixty lines, the same.
+  - key: readability-function-size.LineThreshold
+    value: "60"
+
+  # Four levels of nesting.
+  - key: readability-function-size.NestingThreshold
+    value: "4"
