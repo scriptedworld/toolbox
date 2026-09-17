@@ -5,24 +5,23 @@
 # from each source file, so a stray one in a subdirectory silently gates part of
 # a project differently from the rest.
 #
-# HeaderFilterRegex IS NOT OPTIONAL AND IS THE FIRST THING TO GET RIGHT.
-# Measured 2026-09-09 on a 76-line file: with no filter clang-tidy reported
-# 45,702 warnings, every one of them from a system or third-party header the
-# project cannot edit. A gate whose output is 45,702 lines is a gate nobody
-# reads.
+# HeaderFilterRegex is not optional and is the first thing to get right. On a
+# 76-line file with no filter, clang-tidy reported 45,702 warnings, every one of
+# them from a system or third-party header the project cannot edit. A gate whose
+# output is 45,702 lines is a gate nobody reads.
 #
-# The value is set by the ADOPTER, not here, because only the adopter knows
+# The value is set by the adopter, not here, because only the adopter knows
 # which directory holds its own headers. `^$` below matches nothing, so the
 # default is to report on translation units alone and never on headers; an
 # adopter with headers of its own overrides it in its definitions file.
 
-# The complexity lints live here rather than in a task of their own, for the
+# The complexity lints live here and not in a task of their own, for the
 # reason the Rust jig gives for folding them into clippy: the tool is already
 # building an AST and a second pass pays for that twice.
 #
 # readability-function-cognitive-complexity is the analogue of clippy's
-# cognitive_complexity and of lizard's CCN, which the common jig used to measure
-# for every language at once and no longer does.
+# cognitive_complexity and of lizard's CCN. The common jig does not measure
+# complexity; `bolt.common-quality.yaml` says why.
 Checks: >-
   bugprone-*,
   cert-*,
@@ -39,8 +38,8 @@ Checks: >-
   -misc-no-recursion,
   -llvmlibc-*
 
-# WHY THE THREE EXCLUSIONS, so they are not deleted by somebody who assumes they
-# were arbitrary.
+# Why each exclusion is here, so none is deleted by somebody who assumes it was
+# arbitrary.
 #
 #   modernize-use-trailing-return-type   rewrites every `int f()` as
 #                                        `auto f() -> int`. A whole-codebase
@@ -48,20 +47,20 @@ Checks: >-
 #                                        modernisation, and it is not one the
 #                                        estate has chosen.
 #   readability-identifier-length        refuses names under three characters.
-#                                        Measured on the same file: it fired on
+#                                        On the same file it fired on
 #                                        `a`, `b`, `c` and `n`, all of them
 #                                        loop and span locals whose scope is
 #                                        two lines. A rule that cannot see
 #                                        scope is not a readability rule.
 #   misc-include-cleaner                 it reports a missing include, which is
-#                                        the `headers` task's job. Measured on
-#                                        the same file: both it and
+#                                        the `headers` task's job. On the same
+#                                        file, both it and
 #                                        include-what-you-use reported the same
 #                                        absent `<stdint.h>` for `uint32_t`. Two
 #                                        tools failing for one defect sends the
 #                                        author round twice, and iwyu does
 #                                        strictly more: it reports what to
-#                                        REMOVE and prints the full ordered
+#                                        remove and prints the full ordered
 #                                        include list, which this cannot.
 #   misc-no-recursion                    it flags any recursive call chain. A
 #                                        tree walker is recursive by design, and
@@ -79,11 +78,10 @@ WarningsAsErrors: "*"
 HeaderFilterRegex: "^$"
 
 CheckOptions:
-  # 15, matching the cyclomatic threshold the Ruby jig gates and the value the
-  # retired lizard task used for every language. Cognitive and cyclomatic
-  # complexity are not the same measure, so this is the same NUMBER rather than
-  # the same threshold, and it is set here so the languages are argued about
-  # together rather than drifting apart quietly.
+  # 15, matching the complexity threshold the Ruby, Python and Rust jigs gate.
+  # Cognitive and cyclomatic complexity are not the same measure, so this is
+  # the same number and not the same threshold, and it is set here so the
+  # languages are argued about together instead of drifting apart quietly.
   - key: readability-function-cognitive-complexity.Threshold
     value: "15"
 
@@ -92,8 +90,7 @@ CheckOptions:
   - key: readability-function-cognitive-complexity.IgnoreMacros
     value: "true"
 
-  # Five parameters, which is what the Ruby jig gates and what the retired
-  # lizard task used.
+  # Five parameters, which is what the Ruby, Python and Rust jigs gate.
   - key: readability-function-size.ParameterThreshold
     value: "5"
 

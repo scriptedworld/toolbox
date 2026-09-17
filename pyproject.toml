@@ -3,17 +3,17 @@
 # keeps both halves of that true: uv builds an environment and does not build a
 # distribution.
 #
-# WHY IT NEEDS ONE. The Python jig's `tests` task runs the suite under coverage,
-# and pytest and coverage are separate `uv tool` installations that cannot see
+# Why it needs one. The Python jig's `tests` task runs the suite under coverage.
+# Installed as separate `uv tool` environments, pytest and coverage cannot see
 # each other, so `coverage run -m pytest` fails with `No module named pytest` on
-# a machine where both are installed. Measured 2026-09-04: the task had never
-# run here, and reported `evidence-missing` rather than a coverage figure.
+# a machine where both are installed, and the task reports `evidence-missing`
+# instead of a coverage figure.
 #
-# The jig now runs it through `uv run`, which is what every Python adopter can
-# offer: skid already had one, wrench's pack has one, and this is toolbox's.
-# Declaring the test tools here rather than relying on what happens to be on
-# PATH is also the direction anvil needs — `requires:` names executables, and an
-# environment is what actually has to exist.
+# The jig runs it through `uv run`, which every Python adopter can offer: skid
+# has an environment, wrench's pack has one, and this is toolbox's. Declaring
+# the test tools here, instead of relying on what happens to be on PATH, is also
+# the direction anvil needs: `requires:` names executables, and an environment
+# is what actually has to exist.
 [project]
 name = "toolbox"
 version = "0"
@@ -28,9 +28,9 @@ package = false
 # `requires:` cannot yet declare a library. See anvil's NEXT_STEPS.
 #
 # wrench is here because `tests/test_jigs.py` validates every jig against the
-# schema wrench ships, rather than against a copy kept here. That is NFR-6
-# settled: a copy could only be a second description free to disagree with the
-# one being enforced, and it disagreed twice before it was deleted.
+# schema wrench ships, not against a copy kept here. That settles NFR-6: a copy
+# could only be a second description free to disagree with the one being
+# enforced, and a local copy did disagree, twice.
 dev = ["pytest", "coverage", "pyyaml", "wrench", "mypy"]
 
 # wrench is not on a registry, so it is named by git URL, exactly as skid does.
@@ -39,21 +39,18 @@ dev = ["pytest", "coverage", "pyyaml", "wrench", "mypy"]
 [tool.uv.sources]
 wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "python" }
 
-# ONE LINE LENGTH, DECLARED ONCE, AND BOTH TOOLS PINNED TO IT.
+# One line length, declared once, and both tools pinned to it.
 #
-# 150 is the estate's number. Before this, NEITHER tool enforced it: ruff's
-# default rule set does not include E501 at all, so ruff checked no length, and
-# pylint's default of 100 was the only limit in play. Three lines at 101 to 103
-# characters failed `analyse` against a limit nobody had chosen, while the
-# declared standard went unenforced.
+# 150 is the estate's number. Without this, neither tool enforces it: ruff's
+# default rule set does not include E501 at all, so ruff checks no length, and
+# pylint's default of 100 is the only limit in play. Lines at 101 to 103
+# characters then fail `analyse` against a limit nobody chose, while the
+# declared standard goes unenforced. That is the worst form of
+# `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`: two tools, neither
+# of which holds the number the project means.
 #
-# That is the shape `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`
-# describes, in its worst form: not two tools disagreeing about one property,
-# but two tools neither of which held the number the project meant.
-#
-# `line-length` drives ruff's formatter as well as its linter. Measured
-# 2026-08-29 before changing it: no file reflows at 150, because the formatter
-# does not expand code already wrapped shorter.
+# `line-length` drives ruff's formatter as well as its linter. No file reflows
+# at 150, because the formatter does not expand code already wrapped shorter.
 [tool.ruff]
 line-length = 150
 
@@ -68,9 +65,9 @@ extend-select = ["E501"]
 # adapters and checkers are scripts bolt invokes by path, never modules imported
 # by name, and the estate spells a script's name with hyphens throughout.
 #
-# It began firing on 2026-09-04, when these directories gained the `__init__.py`
-# that lets coverage see an adapter no test executed. The marker changed how ruff
-# classifies the file; it did not change what the file is or how it is reached.
+# It fires because these directories carry the `__init__.py` that lets coverage
+# see an adapter no test executed. The marker changes how ruff classifies the
+# file; it does not change what the file is or how it is reached.
 "adapters/common/bolt-result.py" = ["N999"]
 
 [tool.pytest.ini_options]
@@ -84,18 +81,16 @@ addopts = "-q --strict-markers"
 
 [tool.coverage.run]
 branch = true
-# THE ROOTS, AND THE REASON EACH ADAPTER DIRECTORY CARRIES AN `__init__.py`.
+# The roots, and the reason each adapter directory carries an `__init__.py`.
 # coverage adds a file that no test executed to the report only where it can
 # reach it as a package. The adapters are standalone scripts loaded by path, so
-# their directories had no marker, and the report therefore carried the adapters
-# that ran and silently omitted every one that did not — which is exactly the
-# file a per-file coverage gate exists to catch.
+# without a marker in their directories the report carries the adapters that
+# ran and silently omits every one that did not, which is exactly the file a
+# per-file coverage gate exists to catch. Without the markers, four files were
+# reported where ten existed, and the missing adapters were absent from the
+# report instead of at 0%.
 #
-# Measured 2026-09-04: four files were reported where ten exist. The five
-# missing were bolt-result, govet, lizard and the Rust and Python coverage
-# adapters, all of them at nothing rather than at 0%.
-#
-# NAMING THE LEAF DIRECTORIES HERE ALSO WORKS AND IS WORSE. Each Cobertura
+# Naming the leaf directories here also works and is worse. Each Cobertura
 # `filename` is relative to the source root that contains it, so with the leaves
 # named, `adapters/go/coverage.py`, `adapters/python/coverage.py` and
 # `adapters/lcov/coverage.py` all report as `coverage.py` and the adapter merges
@@ -117,41 +112,35 @@ exclude_also = ["if __name__ == .__main__.:"]
 # scripts by path against whatever interpreter anvil built. Revisit when anvil
 # carries the stub packages: see NEXT_STEPS.
 #
-# `wrench` joined the list 2026-08-29 when the local schema copies went and the
-# tests began importing the pack that ships them, which settles NFR-6. It is
-# resolvable at runtime by editable install and not by mypy's path.
-#
-# `jsonschema` and `referencing` left it the same day: the suite validated jigs
-# by assembling its own validator and now calls the one wrench ships, so neither
-# is imported here any more.
+# `wrench` is listed because the tests import the pack that ships the jig
+# schemas (NFR-6). It is resolvable at runtime by editable install and not by
+# mypy's path. `jsonschema` and `referencing` are not listed: the suite calls
+# the validator wrench ships and imports neither.
 [[tool.mypy.overrides]]
 module = ["yaml", "pytest", "wrench"]
 ignore_missing_imports = true
 
-# PYLINT RUNS ONLY WHAT RUFF CANNOT, which is what the shared jig's own header
-# has always claimed and what nothing configured. `analyse` runs a bare
-# `pylint --recursive=y`, so it ran pylint's ENTIRE default rule set here.
-# Measured 2026-08-29: 16 findings, of which ONE was cross-module analysis and
-# the rest were rules ruff already runs. toolbox was the only one of three
-# adopters of the Python jig with no pylint configuration at all.
+# pylint runs only what ruff cannot, which is what the shared jig's header
+# says. Without this table, a bare `pylint --recursive=y` runs pylint's entire
+# default rule set: 16 findings here, one of them cross-module analysis and the
+# rest rules ruff already runs.
 #
-# AN ALLOWLIST, NOT A DENYLIST. A denylist has to be remembered every time ruff
+# An allowlist, not a denylist. A denylist has to be remembered every time ruff
 # gains a rule and will not be; an allowlist is wrong in the safe direction, by
-# missing a new pylint check rather than by silently running a duplicate. The
-# shape is wrench's, arrived at independently there and adopted here on its
-# reasoning rather than by copying its list.
+# missing a new pylint check instead of silently running a duplicate. The shape
+# is wrench's, adopted here on its reasoning and not by copying its list.
 #
-# EVERY ENTRY NEEDS MORE THAN ONE FILE IN VIEW, OR TYPE INFERENCE. That is the
+# Every entry needs more than one file in view, or type inference. That is the
 # test each one is held to, and it is what pylint's slowness is being paid for.
 # `duplicate-code` is the clearest case: ruff has no equivalent and cannot have
 # one, because it is a whole-program question.
 #
-# What is deliberately NOT here, so it is not added back by habit:
+# What is deliberately not here, so it is not added back by habit:
 # `line-too-long` and `invalid-name` and `missing-function-docstring` are all
 # single-file judgements. ruff owns line length above, at the estate's 150.
-# The module names it objects to are hyphenated because these are EXECUTABLES
-# invoked by path rather than importable modules, which is deliberate and is
-# why a naming rule is the wrong instrument for them.
+# The module names it objects to are hyphenated because these are executables
+# invoked by path, not importable modules, which is deliberate and is why a
+# naming rule is the wrong instrument for them.
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["all"]
 enable = [

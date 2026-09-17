@@ -2,8 +2,8 @@
 #
 #     bolt cpp-std-quality .           flags before the positionals
 #
-# THE CONTRACT IS A COMPILATION DATABASE, AND IT IS DIFFERENT FROM EVERY OTHER
-# JIG HERE.
+# The contract is a compilation database, which sets this jig apart from every
+# other one here.
 #
 # Go has `go`, Rust has `cargo`, Python has tools that all take `.`. C++ has no
 # universal driver: nothing on a C++ project's command line knows what the
@@ -20,30 +20,30 @@
 # records what was compiled, so a Makefile, a shell script or a hand-written
 # g++ line all produce the same database.
 #
-# THE JIG DOES NOT BUILD AND DOES NOT RUN TESTS. Those are the adopter's
+# The jig does not build and does not run tests. Those are the adopter's
 # commands and no fixed command line can express them. `tests` below reads a
 # profile the adopter's own test run produced, declared as evidence.
 #
-# WHAT THE STANDARD IS, taken from the Python jig, which is the written
-# statement of what should be validated for every language:
+# The standard, taken from the Python jig, which is the written statement of
+# what should be validated for every language:
 #
 #     shape         a formatter that reports without writing, and a linter
 #     correctness   types, and a test suite with coverage
 #     security      known vulnerabilities, and the licences of what is linked
 #     hygiene       dead code, documentation, complexity
 #
-# WHERE C++ DIFFERS, and absence is stated rather than left to look like an
+# Where C++ differs, with each absence stated so it does not look like an
 # oversight:
 #
 #   types          the compiler does it, as in Rust. There is no mypy-shaped
 #                  task because there is no mypy-shaped gap.
-#   vulnerabilities  THIS IS A REAL GAP AND NOT A DECISION. There is no
+#   vulnerabilities  a real gap, not a decision. There is no
 #                  `cargo audit` counterpart because there is no manifest to
 #                  audit: C++ has no estate-wide dependency declaration, so
 #                  nothing here can enumerate what is linked. An adopter using
 #                  Conan or vcpkg has a manifest and could gate it; one
-#                  vendoring sources has nothing. Tracked rather than pretended
-#                  away.
+#                  vendoring sources has nothing. The gap is tracked, not
+#                  hidden.
 #   licences       absent for the same reason and it is the same gap.
 #   dead code      -Wunused-* is a compiler warning, and a build with
 #                  -Werror is where it fails. Not a task here, as in Rust.
@@ -52,7 +52,7 @@
 #                  the wrong thing.
 #   complexity     folded into `lint`, as Rust folds it into clippy, because
 #                  clang-tidy is already building an AST.
-#   headers        a task NO OTHER LANGUAGE HERE HAS. include-what-you-use
+#   headers        a task no other language here has. include-what-you-use
 #                  reports every header a file uses without including and every
 #                  one it includes without using. Neither Go nor Rust has a
 #                  counterpart, because neither has textual inclusion to get
@@ -77,7 +77,7 @@ requires:
 
 definitions:
   # The compilation database, relative to the base. An adopter that writes it
-  # into a build directory overrides this rather than moving the file.
+  # into a build directory overrides this instead of moving the file.
   database: compile_commands.json
 
   # Which headers clang-tidy reports on. `^$` matches nothing, so the default is
@@ -86,22 +86,24 @@ definitions:
   header_filter: ^$
 
   # Per-file coverage minima. Lines and branches both, which C++ can do and Rust
-  # cannot: measured 2026-09-09, gcovr emits BRDA records by default while
-  # cargo-llvm-cov on stable 1.98.1 emits none and its --branch flag fails
-  # outright. See the note on the `tests` task.
+  # cannot: gcovr emits BRDA records by default, while cargo-llvm-cov on stable
+  # 1.98.1 emits none and its --branch flag fails outright. See the note on the
+  # `tests` task.
   min_line: "80"
   min_branch: "80"
 
-  # TWO SPELLINGS OF ONE EXCLUSION, because the three tools that take one each
-  # want a different shape and no single value satisfies them. This is the same
-  # composition the Python and Go jigs do, and the reason is in
-  # `bolt.toolbox.definitions.yaml`: a slot cannot be left empty without
-  # changing the command's shape.
+  # The same three exclusions as the Python jig, in the two shapes these tools
+  # take. `bin` and `adapters` are where an adopter's links into toolbox land,
+  # and a slot cannot be left empty without changing a command's shape; see
+  # `bolt.toolbox.definitions.yaml`.
   #
-  #   excluded_one     a path prefix. cppcheck's -i.
-  #   excluded_regex   a regex over the path. clang-format-check and gcovr.
+  #   excluded_one/two/three   path prefixes, for cppcheck's -i
+  #   excluded_regex           one regex over all three, for clang-format-check
+  #                            and gcovr
   excluded_one: .ephemera
-  excluded_regex: (^|/)\.ephemera/
+  excluded_two: bin
+  excluded_three: adapters
+  excluded_regex: (^|/)(\.ephemera|bin|adapters)/
 
 tasks:
   # ---- shape ----------------------------------------------------------------
@@ -127,8 +129,8 @@ tasks:
   # the complexity thresholds and WarningsAsErrors, so nothing about the
   # standard is on this command line.
   #
-  # -quiet is passed THROUGH to clang-tidy and does not quieten run-clang-tidy
-  # itself. Measured 2026-09-09 on run-clang-tidy 19: it still prints the
+  # -quiet is passed through to clang-tidy and does not quieten run-clang-tidy
+  # itself. run-clang-tidy 19 still prints the
   # `[1/2][0.0s] clang-tidy-19 …` banner per translation unit, and there is no
   # flag that stops it. The flag is kept because it suppresses clang-tidy's own
   # per-file `N warnings generated` line, which is the noisier of the two on a
@@ -141,23 +143,22 @@ tasks:
       -config-file={config_dir}/config/cpp/clang-tidy.yaml
       -header-filter={header_filter}
 
-  # A SECOND ANALYSER ON PURPOSE, and this is the one place the C++ jig has more
-  # than Go or Rust rather than less. cppcheck and clang-tidy are built on
-  # different engines and find different things: measured 2026-09-09 on the same
-  # 76-line file, cppcheck alone reported a useless substr call and a
-  # pass-by-value that clang-tidy's full check set did not.
+  # A second analyser on purpose, and the one place the C++ jig has more than Go
+  # or Rust. cppcheck and clang-tidy are built on different engines and find
+  # different things: on the same 76-line file, cppcheck alone reported a
+  # useless substr call and a pass-by-value that clang-tidy's full check set did
+  # not.
   #
   # --error-exitcode=1 is required. cppcheck exits 0 on findings by default, so
   # without it this task passes while printing its own failures.
   #
-  # --suppress=unmatchedSuppression IS NOT BELT AND BRACES AND THE TASK FAILS
-  # WITHOUT IT. `--enable=all` turns on `unmatchedSuppression`, which reports a
-  # suppression that matched nothing, and that report is itself an error under
-  # `--error-exitcode=1`. The three suppressions above are for INFORMATIONAL
+  # --suppress=unmatchedSuppression is required too; the task fails without it.
+  # `--enable=all` turns on `unmatchedSuppression`, which reports a suppression
+  # that matched nothing, and that report is itself an error under
+  # `--error-exitcode=1`. The three suppressions above are for informational
   # messages cppcheck emits conditionally: `normalCheckLevelMaxBranches` only on
-  # a function with enough branches. Measured 2026-09-09: a two-file fixture
-  # too small to trigger it failed the task with
-  # `Unmatched suppression: normalCheckLevelMaxBranches`.
+  # a function with enough branches. A two-file fixture too small to trigger it
+  # failed the task with `Unmatched suppression: normalCheckLevelMaxBranches`.
   #
   # So a conditional suppression makes the check fail on exactly the small,
   # simple trees it should pass. Suppressing the unmatched report is what makes
@@ -174,15 +175,17 @@ tasks:
       --suppress=normalCheckLevelMaxBranches
       --suppress=unmatchedSuppression
       -i{excluded_one}
+      -i{excluded_two}
+      -i{excluded_three}
 
   # ---- hygiene --------------------------------------------------------------
 
-  # NO OTHER LANGUAGE JIG HERE HAS THIS TASK, because no other language here has
+  # No other language jig here has this task, because no other language here has
   # textual inclusion. iwyu reports both directions: a header used without being
   # included, and a header included without being used.
   #
   # It is the only tool that reports the second, which is why clang-tidy's
-  # misc-include-cleaner is disabled in the shared configuration rather than run
+  # misc-include-cleaner is disabled in the shared configuration instead of run
   # beside it. Two tools failing for one defect sends the author round twice.
   - name: headers
     description: every file includes what it uses and uses what it includes
@@ -190,13 +193,12 @@ tasks:
 
   # ---- correctness ----------------------------------------------------------
 
-  # COVERAGE IS JUDGED FROM A PROFILE THE ADOPTER'S OWN TEST RUN PRODUCED. This
+  # Coverage is judged from a profile the adopter's own test run produced. This
   # jig does not run the suite: no fixed command line can, because C++ has no
   # universal test driver. The adopter builds with --coverage, runs its tests,
   # and this reads what gcov left behind.
   #
-  # LINES AND BRANCHES BOTH, AND C++ IS ONE OF TWO LANGUAGES HERE THAT CAN.
-  # Measured 2026-09-09 on this machine:
+  # Lines and branches both, and C++ is one of two languages here that can:
   #
   #   gcovr 7.2                emits BRDA by default. A fixture with one
   #                            untaken branch reported BRF:4 BRH:3.
@@ -206,11 +208,11 @@ tasks:
   #
   # So the Rust jig sets no branch minimum and this one does. Python gates
   # branches too; Go has no branch mode at all. The four languages are not level
-  # on this and the jigs say so rather than reporting a guarantee nothing
+  # on this, and the jigs say so instead of reporting a guarantee nothing
   # established.
   #
-  # THE ADAPTER IS SHARED WITH RUST AND IS NOT RUST'S. It reads lcov, which is
-  # what gcovr and cargo-llvm-cov both emit, and it judges PER FILE at the
+  # The adapter is shared with Rust and is not specific to it. It reads lcov,
+  # which gcovr and cargo-llvm-cov both emit, and it judges per file at the
   # minima above. An aggregate threshold is what lets a well-tested file carry
   # an untested one.
   - name: tests

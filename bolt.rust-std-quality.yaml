@@ -7,30 +7,30 @@
 # belonged to a shared rust-std jig and which to the common one, "so a later
 # port knows what to delete from here rather than guessing". This is that port.
 #
-# THE PATH RULE. A path resolves against {config_dir} if it travels with this
+# The path rule. A path resolves against {config_dir} if it travels with this
 # file: a checker, a linter's config. It stays relative to the base if it
 # belongs to the project being checked. Getting this backwards works in a
 # repository whose jig sits at its own root, where the two are the same
 # directory, and breaks for every adopter.
 #
-# WHAT THE STANDARD IS, taken from the Python jig, which is the written
-# statement of what should be validated for every language:
+# The standard, taken from the Python jig, which is the written statement of
+# what should be validated for every language:
 #
 #     shape         a formatter that reports without writing, and a linter
 #     correctness   types, and a test suite with coverage
 #     security      known vulnerabilities, and the licences of what is linked
 #     hygiene       dead code, documentation, complexity
 #
-# WHERE RUST DIFFERS FROM PYTHON, and it is not laziness where a task is absent:
+# Where Rust differs from Python, and why each absent task is absent:
 #
 #   types        the compiler does it. There is no mypy-shaped task because
-#                there is no mypy-shaped gap; `cargo build` failing IS the
+#                there is no mypy-shaped gap; `cargo build` failing is the
 #                type check.
 #   dead code    `dead_code` is a rustc warning and the lint task turns
 #                warnings into failures, so there is no vulture counterpart.
 #   docstrings   `missing_docs` is a lint a project sets in its own Cargo.toml
-#                rather than a tool, so interrogate has no counterpart. What is
-#                lost is the NUMBER: interrogate reports a percentage and this
+#                and is not a tool, so interrogate has no counterpart. What is
+#                lost is the number: interrogate reports a percentage and this
 #                reports pass or fail.
 #   unused deps  cargo-udeps would be the task. It is not in `requires` because
 #                a run naming a tool that is not installed is refused, and it is
@@ -43,12 +43,12 @@ version: "1.0.0"
 requires:
   - cargo
   # cargo-clippy is a separate binary, and `cargo` being present says nothing
-  # about it. It was invoked by the lint task and named nowhere while this jig
-  # lived in bolt, which is the failure `requires` exists to prevent: a run that
-  # gets three tasks in before discovering the fourth cannot start.
+  # about it. Leaving it out of `requires` while the lint task invokes it is the
+  # failure `requires` exists to prevent: a run that gets three tasks in before
+  # discovering the fourth cannot start.
   - cargo-clippy
   - rustfmt
-  # A cargo subcommand is a separate binary too. Naming only `cargo` let three
+  # A cargo subcommand is a separate binary too. Naming only `cargo` lets three
   # tasks fail halfway through a run on a machine missing them.
   - cargo-llvm-cov
   - cargo-audit
@@ -56,7 +56,7 @@ requires:
 
 definitions:
   # Not the compiler's default of 0. A gate that fails on the first warning is
-  # what makes `dead_code` and `missing_docs` load-bearing rather than advisory.
+  # what makes `dead_code` and `missing_docs` load-bearing and not advisory.
   deny: warnings
 
 tasks:
@@ -72,15 +72,15 @@ tasks:
   # --all-targets reaches tests and benches, not only the binary. Without it a
   # test file can carry anything and the gate stays green.
   #
-  # THE FOUR COMPLEXITY LINTS ARE ENABLED HERE rather than in a task of their
-  # own, because clippy is already parsing the crate and a second pass would pay
-  # for that twice. `-D {deny}` promotes them from warnings to failures like
-  # every other lint.
+  # The four complexity lints are enabled here and not in a task of their own,
+  # because clippy is already parsing the crate and a second pass would pay for
+  # that twice. `-D {deny}` promotes them from warnings to failures like every
+  # other lint.
   #
-  # They replace the common jig's `complexity` task, which ran lizard over every
-  # language at once and has gone; `bolt.common-quality.yaml` carries what was
-  # measured and why. Their thresholds live in {config_dir}/config/rust, which
-  # clippy finds by directory rather than by path, hence CLIPPY_CONF_DIR.
+  # Complexity belongs to each language jig and not the common one;
+  # `bolt.common-quality.yaml` says why. The thresholds live in
+  # {config_dir}/config/rust, which clippy finds by directory and not by path,
+  # hence CLIPPY_CONF_DIR.
   - name: lint
     description: clippy including complexity, with warnings refused
     command: >-
@@ -100,16 +100,16 @@ tasks:
     description: every target compiles
     command: cargo build --all-targets
 
-  # COVERAGE IS JUDGED HERE RATHER THAN BY A TASK OF ITS OWN, because a task's
+  # Coverage is judged here and not by a task of its own, because a task's
   # work directory is its own and the profile is written into this one. A
   # separate task would have no path to it that did not hardcode a sibling's
   # directory. The adapter therefore answers for both: it reads the captured
   # exit status, so a suite that failed while leaving a profile behind is a
-  # failure, and it judges the profile PER FILE at 80% of lines. No aggregate
+  # failure, and it judges the profile per file at 80% of lines. No aggregate
   # threshold, because an aggregate is what lets a well-tested file carry an
   # untested one; the total is reported in statistics as context.
   #
-  # LINES, NOT STATEMENTS. lcov's `DA` records count executable lines where Go's
+  # Lines, not statements. lcov's `DA` records count executable lines where Go's
   # profile counts statements per block. The threshold is the same number
   # against a slightly different denominator, and the two should not be read as
   # one measurement.

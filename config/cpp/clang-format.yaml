@@ -1,7 +1,7 @@
 # The shared C++ formatting rules.
 #
 # Named on the command line as `--style=file:{config_dir}/config/cpp/clang-format.yaml`
-# rather than dropped at a project root as `.clang-format`. clang-format finds a
+# and not dropped at a project root as `.clang-format`. clang-format finds a
 # dotfile by walking up from each source file, which means the file a check uses
 # depends on where the source sits, and an adopter with a stray `.clang-format`
 # in a subdirectory would be gated by a different style than the one it adopted.
@@ -21,15 +21,15 @@ IndentWidth: 4
 
 # 88 rather than Google's 80.
 #
-# IT DOES NOT MATCH ANY OTHER LANGUAGE HERE AND CANNOT, so the number is chosen
-# on its own merits rather than for alignment. rustfmt uses 100, gofmt does not
+# It does not match any other language here and cannot, so the number is chosen
+# on its own merits and not for alignment. rustfmt uses 100, gofmt does not
 # wrap at all, and this repository sets ruff to 150 deliberately, on the ground
-# that a limit is for reviewability rather than for terminals.
+# that a limit is for reviewability, not for terminals.
 #
 # C++ is the language here whose lines grow without the author choosing it: a
 # qualified template type is long before any identifier is. 88 is tight enough
 # to push a long expression onto its own line, which is where a diff can name
-# it, and clang-format WILL reflow existing code to reach it, unlike ruff's
+# it, and clang-format will reflow existing code to reach it, unlike ruff's
 # formatter, which leaves already-wrapped code alone. That asymmetry is why this
 # number is a commitment and 150 was free.
 ColumnLimit: 88
@@ -47,9 +47,9 @@ InsertBraces: true
 
 # A trailing comma keeps a one-line diff to one line when an entry is added.
 #
-# IT DOES NOT WORK ALONE, and clang-format refuses the file rather than warning:
+# It does not work alone, and clang-format refuses the file instead of warning:
 # `trailing comma insertion cannot be used with bin packing`. Google style bin
-# packs, so both must be turned off, and that is a style decision rather than a
+# packs, so both must be turned off, and that is a style decision, not a
 # workaround. Bin packing fills a wrapped line with as many arguments as fit, so
 # adding one argument reflows the others and the diff names lines nobody
 # touched. One argument per wrapped line costs vertical space and makes a diff
@@ -61,5 +61,5 @@ InsertTrailingCommas: Wrapped
 # Includes sorted and grouped. Left to Google's grouping, which puts the
 # matching header first: that is the ordering include-what-you-use assumes when
 # it reports, so a different grouping here would produce churn between the two
-# tools rather than agreement.
+# tools instead of agreement.
 SortIncludes: CaseSensitive

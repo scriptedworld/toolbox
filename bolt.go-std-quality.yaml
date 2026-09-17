@@ -1,14 +1,14 @@
 # Standard quality gate for a Go project.  Run it with bolt.common-quality,
-# which holds traceability, suppressions and complexity.
+# which holds traceability, suppressions and secrets.
 #
 #     bolt go-std-quality .
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
-# THE PATH RULE: a path resolves against {config_dir} if it travels with this
+# The path rule: a path resolves against {config_dir} if it travels with this
 # file; it stays relative to the base if it belongs to the project being checked.
 #
-# EVERY TASK GATES ON ITS EXIT CODE, and two only do so because their commands
+# Every task gates on its exit code, and two only do so because their commands
 # were written to.  `gofmt -l` and `test -f` exit 0 whatever they find, so a
 # task running them bare passes forever.  If a command's exit status does not
 # answer the question the task asks, rewrite the command or drop the task.
@@ -21,28 +21,28 @@ requires:
   - golangci-lint
   - govulncheck
 
-# THE ENTRYPOINT STEP, defaulted so a project without a binary is unaffected.
+# The entrypoint step, defaulted so a project without a binary is unaffected.
 #
 # main() holds statements no test process can reach, because nothing in a test
-# calls main(). Hard rule 5 says measure it rather than exclude it, so the
+# calls main(). Hard rule 5 says measure it and never exclude it, so the
 # binary is built with -cover, run once, and its profile merged with the test
 # one. Both are declared evidence of the `tests` task and both reach the
 # adapter, which is what keeps this inside FR-4.6: one script, one exit code,
 # one work directory.
 #
-# A PLACEHOLDER IS ONE ARGUMENT, so this names a program and never a command
+# A placeholder is one argument, so this names a program and never a command
 # line. FR-4.16c holds a defined value to a scalar and substitute.go shell-
 # quotes it, which makes "a definition meaning several arguments" inexpressible
-# by design. An earlier attempt here supplied the whole build-and-run chain and
-# died at `sh: 1: go build ...: not found`, exit 127, with {work_dir} inside the
-# value never expanded because substitution does not recurse.
+# by design. Supplying the whole build-and-run chain as the value fails with
+# `sh: 1: go build ...: not found`, exit 127, and {work_dir} inside the value is
+# never expanded because substitution does not recurse.
 #
 # So the task writes the empty profile itself, then hands the work directory to
 # one program. The default is `true`, which ignores its argument and leaves the
 # empty profile standing, so a project with no binary needs no definitions file
 # and is unaffected. A project with a binary names a script that overwrites it.
 #
-# A DEFINITIONS FILE IS A FLAT MAPPING of name to scalar, and carries no
+# A definitions file is a flat mapping of name to scalar, and carries no
 # `definitions:` wrapper. The block below has one because it sits inside a
 # larger document; `bolt.go-std-quality.definitions.yaml` is nothing else, so it
 # is the mapping alone:
@@ -50,11 +50,11 @@ requires:
 #     entrypoint: scripts/cover-entrypoint.sh
 #
 # wrench's definitions schema refuses the wrapped guess, and reports the value's
-# type at `/definitions` rather than the shape of the file.
+# type at `/definitions` instead of the shape of the file.
 #
 # The evidence is declared unconditionally because it must be: declaring it
 # conditionally is not expressible either, and bolt refuses a task that does not
-# produce evidence it declared. Hence the empty profile rather than an absent
+# produce evidence it declared. Hence an empty profile and never an absent
 # one. It merges as a no-op, being a mode line and nothing else.
 definitions:
   entrypoint: 'true'
@@ -91,7 +91,7 @@ tasks:
   # ---- the aggregator -------------------------------------------------------
 
   # golangci-lint bundles 42 analysers behind one AST parse, which is why it is
-  # one task rather than forty-two.
+  # one task and not forty-two.
   #
   # The config is named explicitly. `golangci-lint run` with no --config
   # searches for one and, finding none, silently runs its five default linters:
@@ -114,12 +114,12 @@ tasks:
   # producing one did not measure anything, and declaring the file is what turns
   # that from a silent gap into a failure.
   #
-  # COVERAGE IS JUDGED HERE RATHER THAN BY A TASK OF ITS OWN, because a task's
+  # Coverage is judged here and not by a task of its own, because a task's
   # work directory is its own and the profile is written into this one. A
   # separate task would have no path to it that did not hardcode a sibling's
   # directory. The adapter therefore answers for both: it reads the captured
   # exit status, so a suite that failed while leaving a profile behind is a
-  # failure, and it judges the profile PER FILE at 80% of statements. No
+  # failure, and it judges the profile per file at 80% of statements. No
   # aggregate threshold, because an aggregate is what lets a well-tested file
   # carry an untested one; the total is reported in statistics as context and
   # nothing branches on it.
@@ -142,13 +142,13 @@ tasks:
 
   # ---- supply chain ---------------------------------------------------------
 
-  # Reachability-based: only reports vulnerabilities actually called, rather
-  # than every advisory touching a module in go.sum.
+  # Reachability-based: reports only vulnerabilities actually called, not every
+  # advisory touching a module in go.sum.
   - name: vuln
     description: vulnerabilities in code that is actually reached
     command: govulncheck ./...
 
-# ---- WHY THERE IS NO BRANCH COVERAGE HERE -------------------------------------
+# ---- why there is no branch coverage here -------------------------------------
 #
 # Go does not measure it. `-covermode` offers set, count and atomic, and all
 # three count statements. The unit is the basic block, so an `if` body is its

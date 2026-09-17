@@ -3,16 +3,16 @@
 #     bolt --definitions toolbox common-quality .
 #     bolt --definitions toolbox python-std-quality .
 #
-# THIS REPOSITORY IS ITS OWN ADOPTER AND UNIQUELY SO. It holds the real
-# checkers and adapters where every other adopter holds symlinks to them, so
-# the shared jigs' default exclusion of `bin/` and `adapters/` would stop
-# toolbox gating its own code. That is silencing a gate rather than scoping
-# one, and the failures it would hide are tracked as `own-gate/20`.
+# This repository is its own adopter, and the only one holding the real
+# checkers and adapters where every other adopter holds symlinks to them. The
+# shared jigs' default exclusion of `bin/` and `adapters/` would stop toolbox
+# gating its own code, which silences the gate instead of scoping it. The
+# failures that exclusion would hide are tracked as `own-gate/20`.
 #
 # `.ephemera` stays excluded. It is gitignored working space by standing rule
 # and holds scratch, so no jig should read it here either.
 #
-# NAMING `.ephemera` THREE TIMES IS DELIBERATE. The jigs compose three
+# Naming `.ephemera` three times is deliberate. The jigs compose three
 # placeholders into whatever spelling each tool wants, so a slot cannot be left
 # empty without changing the command's shape. Repeating a directory excludes it
 # once and costs nothing.
@@ -25,5 +25,5 @@ excluded_one_glob: '**/.ephemera/*'
 excluded_two_glob: '**/.ephemera/*'
 excluded_three_glob: '**/.ephemera/*'
 
-# mypy takes a regex rather than the slots above.
+# mypy takes a regex instead of the slots above.
 excluded_regex: (^|/)\.ephemera/

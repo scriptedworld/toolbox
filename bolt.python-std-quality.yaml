@@ -1,5 +1,5 @@
 # Standard quality gate for a Python project.  Run it with bolt.common-quality,
-# which holds traceability, suppressions and complexity.
+# which holds traceability, suppressions and secrets.
 #
 #     bolt python-std-quality .
 #
@@ -9,24 +9,24 @@
 # ruff covers most of the traditional stack.  The rest are here because each
 # sees something a single-file linter cannot: pylint cross-module inference,
 # mypy types, bandit security patterns, vulture unreferenced definitions,
-# interrogate docstring coverage, complexipy COGNITIVE complexity, which is not
+# interrogate docstring coverage, complexipy cognitive complexity, which is not
 # what lizard measures.
 #
-# THE PATH RULE: a path resolves against {config_dir} if it travels with this
+# The path rule: a path resolves against {config_dir} if it travels with this
 # jig; it stays relative to the base if it belongs to the project being checked.
 
 version: "1.0.0"
 
 requires:
-  # uv, and not pytest or coverage directly. Those two are installed per-project
-  # rather than globally, because a suite needs its own dependencies importable
-  # and a shared tool installation cannot have them: skid's tests import kokoro
-  # and flask, wrench's import its own pack, and neither is on any global PATH.
+  # uv, and not pytest or coverage directly. Those two are installed per project,
+  # because a suite needs its own dependencies importable and a shared tool
+  # installation cannot have them: skid's tests import kokoro and flask,
+  # wrench's import its own pack, and neither is on any global PATH.
   #
-  # Measured 2026-09-04: with `coverage` and `pytest` installed as separate
-  # `uv tool` environments, `coverage run -m pytest` fails with `No module named
-  # pytest` in every repository here, and the task reported `evidence-missing`
-  # rather than a coverage figure. It had never run.
+  # With `coverage` and `pytest` installed as separate `uv tool` environments,
+  # `coverage run -m pytest` fails with `No module named pytest`, and the task
+  # reports `evidence-missing` instead of a coverage figure because the suite
+  # never ran.
   #
   # An adopter therefore declares pytest and coverage in its own pyproject. A
   # repository that ships no distribution can still have an environment; see
@@ -42,33 +42,33 @@ requires:
   - coverage
   - pytest
 
-# WHAT IS NOT THE PROJECT'S CODE.
+# What is not the project's code.
 #
 # Adoption links this repository's checkers into the adopter's `bin/` and its
 # adapters into `adapters/`, because the jig resolves them against
 # {config_dir}, which is the adopter's directory. The tools below then read
 # those links as the adopter's own source, so the adopter's gate fails on
-# toolbox's code. Measured in skid, whose own source is one empty file: `types`
-# and `analyse` both failed, every finding in `bin/suppression-register.py`.
+# toolbox's code. In skid, whose own source is one empty file, `types` and
+# `analyse` both failed with every finding in `bin/suppression-register.py`.
 #
 # `.ephemera` is gitignored working space by standing rule and holds scratch,
 # so no jig should read it. bandit found six issues in this repository's own.
 #
-# ONE DIRECTORY PER PLACEHOLDER, composed per tool below, because these six
+# One directory per placeholder, composed per tool below, because these six
 # tools spell exclusion six ways and a placeholder cannot hold more than one
 # argument: bolt quotes each substitution as a single shell word, so a
 # placeholder holding `-e a -e b` arrives as one path named `-e a -e b`.
 #
-# EVERY SPELLING WAS MEASURED AGAINST A PLANTED VIOLATION, because three of the
+# Every spelling was tested against a planted violation, because three of the
 # obvious forms are accepted and silently exclude nothing: vulture ignores a
 # `./`-prefixed list, interrogate ignores a comma-separated one, and complexipy
-# wants globs rather than names. `tests/test_jigs.py` holds every task here to
-# naming all three.
+# wants globs, not names. `tests/test_jigs.py` holds every task here to naming
+# all three.
 #
-# TOOLBOX OVERRIDES THESE. Its `bin/` and `adapters/` are real files rather
-# than links, so excluding them would stop it gating its own checkers, which is
-# silencing a gate rather than scoping one. It runs with
-# `--definitions toolbox`, which names `.ephemera` three times over.
+# Toolbox overrides these. Its `bin/` and `adapters/` are real files, not
+# links, so excluding them would stop it gating its own checkers: that silences
+# the gate instead of scoping it. It runs with `--definitions toolbox`, which
+# names `.ephemera` three times over.
 definitions:
   excluded_one: .ephemera
   excluded_two: bin
@@ -95,22 +95,19 @@ tasks:
   # is a check with a side effect, and in CI it produces a green run against a
   # tree nobody has seen.
   #
-  # --extend-exclude AND NOT --exclude, IN BOTH RUFF TASKS. `--exclude` REPLACES
+  # Both ruff tasks use --extend-exclude, not --exclude. `--exclude` replaces
   # ruff's built-in default list, which already holds `.venv`, `venv`, `build`,
-  # `dist` and the caches. So naming three directories to scope the task also
-  # un-excluded every directory ruff was excluding for us, and the flag added
-  # to narrow the run widened it. `--extend-exclude` adds to the defaults.
-  #
-  # Measured 2026-08-28 against a planted violation in a fake `.venv`:
+  # `dist` and the caches, so naming three directories to scope the task would
+  # un-exclude everything ruff excludes by default. `--extend-exclude` adds to
+  # the defaults. Against a planted violation in a fake `.venv`:
   #
   #   ruff check, no flag              venv 0 findings, own 2
   #   ruff check --exclude <three>     venv 2 findings, own 2
   #   ruff check --extend-exclude      venv 0 findings, own 2
   #
-  # ruff format behaves identically. This is the reverse of the failure in
-  # docs/LESSONS/a-tool-can-accept-an-exclusion-and-exclude-nothing.md: there a
-  # flag was accepted and excluded nothing, here it was accepted, excluded what
-  # it named, and silently stopped excluding everything else.
+  # ruff format behaves identically.
+  # docs/LESSONS/an-exclusion-flag-can-replace-the-defaults-it-should-have-joined.md
+  # has the detail.
   - name: format
     description: every file is ruff-format clean
     command: ruff format --check --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
@@ -118,29 +115,29 @@ tasks:
   # --output-format=concise keeps the artifact readable; the default emits
   # several lines and a source excerpt per finding.
   #
-  # DECLARE known-first-party IN YOUR pyproject.toml. Measured in skid with
-  # ruff 0.16.3, 2026-08-28: passing --extend-exclude on the command line at all
-  # flips ruff's first-party inference, even when it names exactly what
-  # pyproject already names, and three I001 import-order findings appear that a
-  # bare `ruff check .` does not report. The findings were CORRECT and the bare
-  # run was the wrong one, so this is not a defect to fix here; but a gate and a
-  # local run disagreeing about the same tree is worth one line of config to
-  # remove. Inference is what varies. A declaration does not.
+  # Declare known-first-party in your pyproject.toml. With ruff 0.16.3, passing
+  # --extend-exclude on the command line at all flips ruff's first-party
+  # inference, even when it names exactly what pyproject already names, and
+  # three I001 import-order findings appear that a bare `ruff check .` does not
+  # report. Those findings are correct and the bare run is the wrong one, so
+  # there is no defect to fix here, but one line of config stops a gate and a
+  # local run disagreeing about the same tree. Inference varies; a declaration
+  # does not.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
     command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # ---- correctness ----------------------------------------------------------
 
-  # --strict is deliberately NOT set here. A shared jig turning strict mode on
+  # --strict is deliberately not set here. A shared jig turning strict mode on
   # for every adopter fails every adopter on day one, which teaches them to
-  # delete the task rather than fix the code. Strictness is a project's decision,
-  # made in its own pyproject.toml, and this task honours it.
-  # THROUGH `uv run`, FOR THE SAME REASON AS `tests`. mypy resolves the imports
-  # of the code it reads, so it needs the project's environment and not a global
-  # installation: measured 2026-09-04 against wrench's pack, where a PATH mypy
-  # reported six errors about `yaml`, `jsonschema` and `referencing` and none
-  # about wrench.
+  # delete the task instead of fixing the code. Strictness is a project's
+  # decision, made in its own pyproject.toml, and this task honours it.
+  #
+  # mypy runs through `uv run`, for the same reason as `tests`. It resolves the
+  # imports of the code it reads, so it needs the project's environment and not
+  # a global installation: against wrench's pack, a PATH mypy reported six
+  # errors about `yaml`, `jsonschema` and `referencing` and none about wrench.
   #
   # These are the only two tasks here that need it. ruff, complexipy, vulture,
   # interrogate and bandit read source without importing it, so a global
@@ -153,42 +150,43 @@ tasks:
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
   #
-  # `.venv,venv` IS NAMED HERE AND NOT LEFT TO A SLOT, because a virtualenv is
-  # never an adopter's own source in any project, so it is a constant of the
-  # language rather than a value an adopter chooses. The three slots stay for
-  # what an adopter does choose.
+  # `.venv,venv` is named here and not left to a slot, because a virtualenv is
+  # never an adopter's own source, so it is a constant of the language and not
+  # a value an adopter chooses. The three slots stay for what an adopter does
+  # choose.
   #
-  # WITHOUT IT THIS TASK DOES NOT FAIL, IT HANGS, which is the expensive part.
-  # Measured in skid 2026-08-28: `.venv` held 11,795 files including torch and
-  # transformers, the task was killed at 900s having produced no result.yaml,
-  # and a gate that never returns reads as a slow gate, so the natural response
-  # is to wait longer.
+  # Without it this task hangs instead of failing. In skid, `.venv` held 11,795
+  # files including torch and transformers, and the task was killed at 900s
+  # having produced no result.yaml. A gate that never returns reads as a slow
+  # gate, so the natural response is to wait longer.
   #
-  # --ignore AND NOT --ignore-paths. skid measured three spellings of
-  # --ignore-paths, two flags and a pyproject table, and all three still walked
-  # the virtualenv. --ignore takes basenames and works:
+  # Use --ignore, not --ignore-paths. Three spellings of --ignore-paths (two
+  # flags and a pyproject table) all still walked the virtualenv. --ignore takes
+  # basenames and works:
   #
   #   pylint --ignore <three>              venv 5 findings, own 5
   #   pylint --ignore <three>,.venv,venv   venv 0 findings, own 5
-  # NARROWED TO THE ONE CHECK RUFF CANNOT DO. ruff implements a large part of
+  #
+  # Narrowed to the one check ruff cannot do. ruff implements a large part of
   # pylint already, so a full pylint run re-reports what `lint` just said, and
   # `duplicate-code` is what is left: finding the same code in two files needs
-  # to see both, which is the whole reason this task exists.
+  # to see both, which is why this task exists.
   #
-  # IT ALSO STOPS THE TASK FAILING FOR THE WRONG REASON. Full pylint IMPORTS the
-  # code to reason about it, so it emits E0401 for every dependency missing from
-  # pylint's own environment and exits non-zero over nothing the adopter wrote.
-  # Measured 2026-09-03 against wrench's Python pack, pylint installed isolated:
+  # Narrowing also stops the task failing for the wrong reason. Full pylint
+  # imports the code to reason about it, so it emits E0401 for every dependency
+  # missing from pylint's own environment and exits non-zero over nothing the
+  # adopter wrote. Against wrench's Python pack, with pylint installed isolated:
   #
   #     full                    1.47s   exit 2   7 x E0401 import-error
   #     duplicate-code only     0.66s   exit 0
   #
   # R0801 is token-based and imports nothing, so the same tree passes. That is
-  # also the likeliest reading of skid's 900s kill: an import-based analysis
-  # walking a virtualenv, rather than duplicate detection being slow.
-  # NESTING RIDES ALONG. ruff's nesting rule is preview-only, pylint's R1702 is
+  # also the likeliest explanation of skid's 900s kill: an import-based analysis
+  # walking a virtualenv, and not duplicate detection being slow.
+  #
+  # Nesting rides along. ruff's nesting rule is preview-only, pylint's R1702 is
   # stable, and a pylint run is already happening here, so the fourth complexity
-  # number costs one more `--enable` rather than a preview flag or a new tool.
+  # number costs one more `--enable` instead of a preview flag or a new tool.
   - name: analyse
     description: the same code in two files, and blocks nested past 4
     command: >-
@@ -198,32 +196,31 @@ tasks:
 
   # ---- properties of the source ---------------------------------------------
 
-  # COGNITIVE complexity, and not a duplicate of the common jig's `complexity`.
-  # lizard measures CYCLOMATIC complexity, how many independent paths run
+  # Cognitive complexity, which does not duplicate the common jig's `complexity`.
+  # lizard measures cyclomatic complexity, how many independent paths run
   # through a function. complexipy measures how hard the function is to hold in
   # your head, weighting nesting depth far more heavily. A flat function with a
   # ten-branch match scores badly on the first and fine on the second; three
   # nested loops score the reverse. Neither substitutes for the other.
   #
   # The flag is --max-complexity-allowed, not --max-complexity. Against
-  # complexipy 7.0.1 the short form exits with a usage error rather than a
+  # complexipy 7.0.1 the short form exits with a usage error instead of a
   # verdict, so the task fails for every adopter in a way that looks like their
   # code.
   - name: cognitive
     description: no function over cognitive complexity 15
     command: complexipy --max-complexity-allowed 15 --exclude {excluded_one_glob},{excluded_two_glob},{excluded_three_glob} .
 
-  # CYCLOMATIC COMPLEXITY, NESTING, ARGUMENTS AND LENGTH, which the common jig
-  # measured with lizard until 2026-09-03 and which ruff measures natively.
-  # `bolt.common-quality.yaml` carries what was measured and why it moved; the
-  # short version is that lizard has no cognitive metric and reports a nesting
-  # depth of 0 for every Python function.
+  # Cyclomatic complexity, arguments and length, which ruff measures natively.
+  # Complexity belongs to the language jig and not the common one, because
+  # lizard has no cognitive metric and reports a nesting depth of 0 for every
+  # Python function; `bolt.common-quality.yaml` carries the comparison.
   #
-  # A TASK OF ITS OWN RATHER THAN THE `lint` TASK'S BUSINESS. That one runs
-  # "whatever the project has enabled", which is the adopter's pyproject.toml
-  # and correctly so. These four are the jig's numbers, so the jig states them
-  # on the command line where an adopter can read them without opening a config,
-  # and they hold whether or not the project selects the rules itself.
+  # A task of its own, separate from `lint`. That one runs "whatever the
+  # project has enabled", which is the adopter's pyproject.toml, and correctly
+  # so. These are the jig's numbers, so the jig states them on the command line
+  # where an adopter can read them without opening a config, and they hold
+  # whether or not the project selects the rules itself.
   #
   #     C901      cyclomatic, from mccabe        PLR0913   arguments
   #     PLR0915   statements
@@ -232,7 +229,7 @@ tasks:
   # counts statements where lizard counted lines, so 60 lines becomes 60
   # statements, which is the stricter reading of the same intent.
   #
-  # NESTING IS NOT HERE, AND THE REASON IS A MEASUREMENT. ruff's PLR1702 is the
+  # Nesting is not here. ruff's PLR1702 is the
   # nesting rule and it is preview-only: selecting it prints "has no effect
   # because preview is not enabled" and reports nothing. Turning `--preview` on
   # would opt the other three rules into unstable behaviour to gain the fourth,
@@ -279,14 +276,14 @@ tasks:
 
   # ---- security -------------------------------------------------------------
 
-  # TWO TASKS BECAUSE A TEST IS ENTITLED TO ONE RULE AND NOT THE REST.
+  # Two tasks, because a test is entitled to break one rule and not the rest.
   #
-  # `B101 assert_used` fires on every `assert`, and an assert in a test IS the
-  # test. Measured 2026-08-27: 175 of toolbox's 181 findings and 44 of wrench's
-  # 48 were that rule in the suite, so one task over the whole tree fails any
-  # project with tests, on its own design rather than on a defect.
+  # `B101 assert_used` fires on every `assert`, and an assert in a test is the
+  # test. 175 of toolbox's 181 findings and 44 of wrench's 48 were that rule in
+  # the suite, so one task over the whole tree fails any project with tests, on
+  # its own design and not on a defect.
   #
-  # WHAT WAS REFUSED, so it is not proposed again. `--severity-level medium`
+  # Refused alternatives, so they are not proposed again. `--severity-level medium`
   # reports nothing at all, because every bandit finding here is Low including
   # the subprocess ones, and it leaves a task that cannot fail. `-x ./tests`
   # stops reading the test tree entirely. `--skip B101` everywhere gives up the
@@ -295,7 +292,7 @@ tasks:
   #
   # So the tree without its tests is held to everything, and the tests are held
   # to everything except the rule they exist to break. The limit is on the
-  # command line rather than in a config file, so a reader of the jig sees it.
+  # command line, not in a config file, so a reader of the jig sees it.
   #
   # `./.venv,./venv` for the same reason as `analyse`, and it matters more here
   # than anywhere: bandit over a dependency tree reports other people's
@@ -308,7 +305,7 @@ tasks:
       -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir},./.venv,./venv .
 
   # B101 only. A test that shells out still answers for B404 and B603, because
-  # deliberate subprocess use is a design choice worth seeing rather than noise
+  # deliberate subprocess use is a design choice a reader should see, not noise
   # to silence.
   - name: security-tests
     description: the test tree, held to everything except assert_used
@@ -320,27 +317,28 @@ tasks:
   # producing one measured nothing, and declaring the file turns that from a
   # silent gap into a failure.
   #
-  # -p no:randomly is NOT set: where the project has pytest-randomly installed,
+  # -p no:randomly is not set: where the project has pytest-randomly installed,
   # order randomisation is wanted. A suite that only passes in one order has a
   # bug in the suite.
-  # COVERAGE IS JUDGED HERE RATHER THAN BY A TASK OF ITS OWN, because a task's
-  # work directory is its own and the report is written into this one. The
-  # adapter answers for the run as well: it reads the captured exit status, so a
-  # suite that failed while leaving a report behind is a failure, and it judges
-  # the report PER FILE at 80% of lines and 80% of branches. No aggregate
+  #
+  # Coverage is judged here and not by a task of its own, because a task's work
+  # directory is its own and the report is written into this one. The adapter
+  # answers for the run as well: it reads the captured exit status, so a suite
+  # that failed while leaving a report behind is a failure, and it judges the
+  # report per file at 80% of lines and 80% of branches. There is no aggregate
   # threshold, because an aggregate lets a well-tested file carry an untested one.
   #
-  # `--branch` IS NAMED HERE RATHER THAN LEFT TO THE ADOPTER'S CONFIG. Without
-  # it coverage.py writes no `condition-coverage`, the report parses cleanly,
-  # and the branch threshold passes having judged nothing. The failure mode is a
-  # silent pass, so the flag belongs where the gate is rather than in a file the
-  # jig does not own. The adapter reports `branch_measured` for the same reason.
+  # `--branch` is named here and not left to the adopter's config. Without it
+  # coverage.py writes no `condition-coverage`, the report parses cleanly, and
+  # the branch threshold passes having judged nothing. The failure is a silent
+  # pass, so the flag belongs where the gate is, not in a file the jig does not
+  # own. The adapter reports `branch_measured` for the same reason.
   #
-  # `--parallel-mode` AND `coverage combine` ARE WHAT MEASURE A SPAWNED SCRIPT.
+  # `--parallel-mode` and `coverage combine` are what measure a spawned script.
   # A checker or adapter invoked as its own process is invisible to the parent's
-  # coverage, so a project whose tests exercise scripts that way reported them
-  # at 0% with a full suite behind them. Measured in toolbox 2026-09-04:
-  # `adapters/go/coverage.py` read 0 of 96 lines before this, and 94.8% after.
+  # coverage, so a project whose tests exercise scripts that way sees them at 0%
+  # with a full suite behind them. In toolbox, `adapters/go/coverage.py` read 0
+  # of 96 lines without them and 94.8% with them.
   - name: tests
     description: the suite, and coverage judged per file for lines and branches
     command: >-
@@ -351,7 +349,7 @@ tasks:
       - coverage.xml
     adapter: adapters/python/coverage.py
 
-# ---- NOT HERE, AND WHY -------------------------------------------------------
+# ---- not here, and why -------------------------------------------------------
 #
 # radon. Its `cc` duplicates lizard and its maintainability index is a composite
 # of metrics already measured separately here, a composite being harder to act
@@ -361,14 +359,14 @@ tasks:
 # comment density.
 #
 # None of it is gated, because a gate needs a threshold that fails a build and
-# none of these has one worth defending. Halstead effort has no conventional
+# none of these has one anybody can defend. Halstead effort has no conventional
 # limit, and the comment density floor is a number nobody here has argued for.
-# The case for adding it is a named metric with a named threshold and a reason
-# that threshold is the right one.
+# Adding it needs a named metric, a named threshold and a reason that threshold
+# is the right one.
 #
 # safety / pip-audit, the counterpart to the Go jig's `govulncheck`. The two
-# differ in a way that matters: govulncheck is REACHABILITY-based, reporting
+# differ in a way that matters: govulncheck is reachability-based, reporting
 # only advisories whose affected functions the code actually calls, while the
 # Python tools report every advisory touching an installed distribution. That is
 # a much noisier signal, and choosing which tool and how to handle the noise is
-# a decision rather than a default.
+# a decision, not a default.

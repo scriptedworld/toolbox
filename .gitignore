@@ -1,8 +1,8 @@
-# Session entry point: ephemeral by design, rewritten each session.
+# The working handoff note: ephemeral by design and rewritten each time.
 START_HERE.md
 
-# Session scratch. Working files live here rather than in /tmp, so they are
-# beside the work and go when the repository does.
+# Scratch space. Working files live here and not in /tmp, so they are beside
+# the work and go when the repository does.
 .ephemera/
 
 .bolt*/
@@ -10,8 +10,8 @@ START_HERE.md
 # ones `coverage run --parallel-mode` writes: one per test process and one per
 # spawned checker, so a run leaves dozens. The jig combines them before
 # reporting, but a run that fails before `coverage combine` leaves them behind,
-# and a pattern that matched only the combined name let 65 of them show up as
-# untracked. Measured 2026-09-04.
+# and a pattern matching only the combined name left 65 of them showing as
+# untracked after one such run.
 .coverage
 .coverage.*
 coverage.xml

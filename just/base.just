@@ -1,29 +1,29 @@
 # The ten recipes, supplied for every project whatever it is written in.
 #
-# A recipe that does not apply EXISTS AND SUCCEEDS rather than being absent, so
+# A recipe that does not apply exists and succeeds instead of being absent, so
 # `just build` never fails for the wrong reason. A language layer overrides
 # whichever of these it can really implement, by writing just/lang.just; a
 # project overrides further in just/project.just. Both beat this file.
 #
 # `checks` invokes the others through `just`, which re-enters the import chain,
-# so it reaches the language layer's real recipe rather than the no-op below.
-# Verified: with a lang.just defining `test`, `just checks` runs that one.
+# so it reaches the language layer's real recipe and not the no-op below. With
+# a lang.just defining `test`, `just checks` runs that one.
 
-# THREE THINGS EVERY BOLT CALL HERE DOES, AND WHY.
+# Three things every bolt call here does, and why.
 #
 # 1. It reads the verdict out of result.yaml and never bolt's exit status.
-#    bolt exits 0 whenever it carried a run out, whatever the tools concluded.
-#    Measured: a jig with one passing and one failing task printed
-#    "success": false into result.yaml and exited 0.
-#    Reading the artifact rather than the exit status is a standing rule here.
+#    bolt exits 0 whenever it carried a run out, whatever the tools concluded:
+#    a jig with one passing and one failing task writes "success": false into
+#    result.yaml and exits 0. Reading the artifact and not the exit status is
+#    a standing rule here.
 #
 #    bolt's own --result-to-exitcode does make the status carry the verdict,
-#    and is still not used: it collapses a REFUSAL, where no result was
+#    and is still not used: it collapses a refusal, where no result was
 #    written at all, into the same exit 1 as a failed run. Those are different
 #    answers and a recipe that cannot tell them apart reports the wrong one.
 #
 # 2. It takes bolt's default output directory and names no --output-dir at
-#    all. A FIXED directory is what is forbidden, because bolt refuses one that
+#    all. A fixed directory is what is forbidden, because bolt refuses one that
 #    already holds a run, so naming one works exactly once. The default is
 #    unique per run and `clean` removes them.
 #    Every project answering to the same two words is a settled decision.
@@ -31,24 +31,24 @@
 # 3. It quotes the path it read. A verdict with no artifact beside it cannot be
 #    checked by whoever reads the output.
 
-# VARIADIC, BECAUSE AN ADOPTER THAT FILLS A PLACEHOLDER HAS TO PASS ITS OWN
-# DEFINITIONS AND A RECIPE CANNOT ADD AN ARGUMENT TO ANOTHER RECIPE'S COMMAND.
+# Variadic, because an adopter that fills a placeholder has to pass its own
+# definitions, and a recipe cannot add an argument to another recipe's command.
 #
 #     just _verdict go-std-quality --definitions go-std-quality
 #     just _verdict common-quality --definitions skid
 #     just _verdict common-quality --config-dir ..        jigs one level up
 #
-# WITHOUT IT THE FAILURE DOES NOT LOOK LIKE A MISSING FLAG. The placeholder
-# keeps its default and the jig reports a problem in the adopter's own tree:
-# qwark's `entrypoint` stayed `true`, so cover-entrypoint.sh never ran and
-# main.go read 0.0% against an 80% floor. Skid's `requirements` stayed the
-# retired single-file path, so traceability and suppressions both failed.
-# Measured on a fixture: with the flag the task passes, without it the same
-# task fails, and nothing in either message says "definitions".
+# Without the flag, the failure does not look like a missing flag. The
+# placeholder keeps its default and the jig reports a problem in the adopter's
+# own tree: qwark's `entrypoint` stayed `true`, so cover-entrypoint.sh never ran
+# and main.go read 0.0% against an 80% floor. Skid's `requirements` stayed the
+# retired single-file path, so traceability and suppressions both failed. On a
+# fixture, the task passes with the flag and fails without it, and nothing in
+# either message says "definitions".
 #
-# So the next adopter would go and change their coverage or requirements
-# configuration rather than suspect this file. Found by qwark and skid
-# independently, two of two adopters, different languages, same cause.
+# So an adopter hitting this goes and changes their coverage or requirements
+# configuration instead of suspecting this file. qwark and skid both hit it,
+# in different languages, from the same cause.
 _verdict jig *flags:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -66,7 +66,7 @@ _verdict jig *flags:
         exit 1
     fi
 
-# EVERYTHING. Quality, tests, coverage, secrets and requirements coverage: the
+# Everything. Quality, tests, coverage, secrets and requirements coverage: the
 # biggest full gate this tree can run. The other nine exist so a piece can be
 # run alone during development; this is what runs before anything lands.
 #
@@ -108,78 +108,68 @@ dist:
 install:
     @echo "install: nothing to install"
 
-# A CLEAN RECIPE MUST NOT REMOVE ANYTHING ANOTHER PROCESS EXECUTES.
+# A clean recipe must not remove anything another process executes.
 #
-# Not "do not delete bin/", and NOT "do not delete anything on PATH". The rule
-# is about who RUNS the file, because in this estate a project's build output
+# The rule is neither "do not delete bin/" nor "do not delete anything on PATH".
+# It is about who runs the file, because in this estate a project's build output
 # and its deployed artefact are routinely the same file, and the ways a file
 # gets reached are not limited to PATH.
 #
-# THE PATH DIRECTORY ITSELF CAN BE A SYMLINK INTO A PROJECT TREE:
+# The PATH directory itself can be a symlink into a project tree:
 #
 #     ~/bin -> <some project>/bin
 #
-# So a clean in that project removing bin/ does not remove one command, it
-# removes the entire PATH directory, and every other project reachable through
-# it goes at the same time. Two of the commands behind such a link were a build
-# gate and a pre-execution hook: removing the second changes what every process
-# is permitted to do rather than degrading one program.
+# So a clean in that project removing bin/ removes the entire PATH directory,
+# not one command, and every other project reachable through it goes at the
+# same time. Two of the commands behind such a link are a build gate and a
+# pre-execution hook, and removing the hook changes what every process is
+# permitted to do.
 #
-# BEING REACHABLE IS NOT THE SAME AS BEING ON PATH, and the case that actually
-# caused the outage was not on PATH at all: a link in one project pointing into
-# another, invoked by absolute path from a configuration file.
+# Being reachable is not the same as being on PATH. A link in one project
+# pointing into another, invoked by absolute path from a configuration file, is
+# not on PATH at all, and a check that swept PATH would miss it. So the question
+# to ask of a path before deleting it is "does anything execute this", which
+# includes hooks, service units and configuration.
 #
-# A check that swept PATH would have missed it. So the question to ask of a
-# path before deleting it is not "is it on PATH" but "does anything execute
-# this", which includes hooks, service units and configuration.
-#
-# THIS IS NOT HYPOTHETICAL. infobot's clean carried `rm -f bin/statusline
-# bin/forget` under the heading "remove build output". Those were deployed
-# artefacts that Claude Code executes on every event in every session, and
-# running `just clean` took the whole estate's telemetry down for 25 minutes:
-# fifteen status files stopped being written at 20:31:11, and every instrument
-# reading them kept printing the last values as current.
-#
-# WHY IT WILL HAPPEN AGAIN WITHOUT THIS NOTE, in infobot's own words: the next
-# person to write a clean recipe from this template will assume build output is
-# disposable, because in most projects it is.
+# infobot's clean once carried `rm -f bin/statusline bin/forget` under the
+# heading "remove build output". Those were deployed artefacts that Claude Code
+# executes on every event, and running `just clean` stopped fifteen status files
+# being written for 25 minutes while every instrument reading them kept printing
+# the last values as current. Anyone writing a clean recipe from this template
+# will assume build output is disposable, because in most projects it is.
 #
 # So a language layer overriding this removes run directories, coverage output
-# and intermediate build trees, and LEAVES the installed artefact alone. `just
-# install` is what refreshes that, and it already compares bytes rather than
+# and intermediate build trees, and leaves the installed artefact alone. `just
+# install` is what refreshes that, and it already compares bytes, not
 # timestamps.
 
 # remove run directories and build output
 clean:
     rm -rf .bolt-*
 
-# NAMED leak-scan AND NOT secrets, BECAUSE THAT NAME TRIPS ITS OWN SCANNER.
+# Named leak-scan and not secrets, because that name trips its own scanner.
 #
 # detect-secrets reads a recipe name as a key and the following line as its
 # value, so `secrets:` with an ordinary body is reported as a Secret Keyword
 # and a project fails its own leak check on the recipe that runs it.
 #
-# WHAT MAKES THIS WORTH A PARAGRAPH IS THAT TWO SESSIONS MEASURED IT AND BOTH
-# GOT THE WRONG ANSWER. Every fixture either of them wrote used just's `@`
-# quiet marker, because that is how recipes are written here, and the `@`
-# happens to break the pairing:
+# A fixture testing this is easy to get wrong. just's `@` quiet marker, which
+# is how recipes are written here, happens to break the pairing:
 #
 #     secrets:  +  just _verdict secrets    FLAGGED
 #     secrets:  +  @just _verdict secrets   clean
 #
-# So both concluded the name was safe from a fixture that was clean by
-# accident. The fixture had inherited the habit of the thing it was testing.
+# so a fixture written in the house style reports the name as safe by accident.
 #
-# AND THE VERDICT ALSO DEPENDS ON PROSE. This file stays clean with the `@`
+# The verdict also depends on prose. This file stays clean with the `@`
 # removed, while the same three lines cut out of it flag, because the word
-# appears eight times in the comments above. **The check cleared a file whose
-# name was genuinely hazardous, and would equally condemn a file that had done
-# nothing but lose a comment.** Wrong in both directions, from an edit nobody
-# would think to check.
+# appears eight times in the comments above. The check clears a file whose name
+# is genuinely hazardous, and would equally condemn one that had done nothing
+# but lose a comment.
 #
 # `leak-scan` is clean with no `@`, in isolation, and with a body that itself
-# invokes `bolt secrets`. The JIG keeps its name: `bolt.secrets.yaml` is
-# toolbox's and is untouched. Only the recipe moved.
+# invokes `bolt secrets`. The jig keeps its name: `bolt.secrets.yaml` is
+# toolbox's and is untouched. Only the recipe is renamed.
 #
 # Every project answering to the same two words is a settled decision.
 
