@@ -21,9 +21,9 @@ The index is the indented block at the end of the register, one row per file:
 
 `×N` says how many pragmas that file carries; absent means one. The count is
 part of the comparison, so a second suppression added to an already-registered
-file is caught rather than hidden behind the first.
+file is caught instead of hidden behind the first.
 
-A ROW IS ONE PRAGMA'S CODE SET, NOT A FILE'S. `×2  #nosec B404, B603` says the
+A row is one pragma's code set, not a file's. `×2  #nosec B404, B603` says the
 file carries two pragmas, each silencing both codes. Two pragmas of one code
 each are two rows:
 
@@ -34,28 +34,27 @@ Both readings are defensible and the example above does not distinguish them, so
 this says which one the checker uses. Raised by wrench, who wrote the first and
 meant the second.
 
-PATHS IN A ROW ARE RELATIVE TO THE REPOSITORY, found by walking up for `.git`,
+Paths in a row are relative to the repository, found by walking up for `.git`,
 and never to the register's own directory or to the directory being scanned.
-That is what lets ONE register serve a repository whose packs are checked at
+That is what lets one register serve a repository whose packs are checked at
 their own bases: a scan at `python/` and a row saying `python/tests/x.py` both
 resolve to the same absolute path.
 
-    UPGRADING FROM A VERSION THAT KEYED ON THE SCAN ROOT HAS TWO STEPS.
+Upgrading from a version that keyed on the scan root has two steps. An adopter
+that worked around the old behaviour has to put the register itself back into
+the repository frame, and also remove any wrapper that rewrote rows between
+frames before calling this. With both sides resolved, such a translation doubles
+the prefix, and the symptom is the root spelling failing a root-based run after
+the upgrade. wrench hit exactly that and had two things to undo.
 
-An adopter that worked around the old behaviour has the register itself to put
-back into the repository frame, AND any wrapper that rewrote rows between frames
-before calling this. With both sides resolved, such a translation doubles the
-prefix, and the symptom is the ROOT spelling failing a root-based run after the
-upgrade. Reported by wrench, who hit exactly that and had two things to undo.
-
-Exiting 0 is this task's contract, which is why it prints its findings rather
-than returning an envelope: bolt's configuration never says what success means,
+Exiting 0 is this task's contract, which is why it prints its findings instead
+of returning an envelope: bolt's configuration never says what success means,
 and a tool whose exit code genuinely is the answer needs no adapter.
 """
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the
@@ -71,37 +70,35 @@ from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 
-# EVERY SPELLING THAT SILENCES A CHECKER, in the languages this estate writes.
+# Every spelling that silences a checker, in the languages this estate writes.
 #
-# ONE TABLE, READ BY BOTH SIDES. The source scan and the register scan run the
+# One table, read by both sides. The source scan and the register scan run the
 # same patterns, so "what counts as a pragma" cannot mean two different things
-# in one program. The previous version spelled it twice, once for each side,
-# and the two were free to drift; a drift there is a silent pass, because a
-# pragma the source scan sees and the register scan cannot parse reads as
-# unregistered forever.
+# in one program. Spelled once per side, the two would be free to drift, and a
+# drift there is a silent pass: a pragma the source scan sees and the register
+# scan cannot parse reads as unregistered forever.
 #
-# WHY ALL OF THEM AND NOT ONLY THE SECURITY ONES. Decided 2026-08-28. Hard rule
-# 4 says never insert a suppression pragma without asking first, and a noqa is
-# one. A rule covering nosec and not noqa would be enforced against whichever
-# tool the author happened to be silencing.
+# All of them are covered, not only the security ones. Hard rule 4 says never
+# insert a suppression pragma without asking first, and a noqa is one. A rule
+# covering nosec and not noqa would be enforced against whichever tool the
+# author happened to be silencing.
 #
 # Each pattern captures its rule ids in `rules`, which may be empty: a bare
-# directive naming no ids silences everything and names nothing, and that is
-# worth registering more than a narrow one, not less.
+# directive naming no ids silences everything and names nothing, so it needs
+# registering more than a narrow one, not less.
 #
-# THE SPELLINGS ARE NAMED WITHOUT THEIR LEADING HASH IN THIS COMMENT. Written
-# in full, ruff reads the prose as a malformed suppression directive and warns,
-# which is this file's own subject arriving one level out: a mention of a
-# pragma taken for one, by a different tool, in the file that exists to tell
-# the two apart.
+# The spellings are named without their leading hash in this comment. Written
+# in full, ruff reads the prose as a malformed suppression directive and warns:
+# a mention of a pragma taken for one, by a different tool, in the file that
+# exists to tell the two apart.
 SPELLINGS = (
-    # A BARE SPELLING NAMING NO CODES MUST END THE LINE. `# nosec` alone is a
+    # A bare spelling naming no codes must end the line. `# nosec` alone is a
     # real pragma; `#  nosec marks in one file they do not own.` is a sentence
     # that begins with the word. Both open their comment, so position cannot
     # separate them and the trailing text is what does.
     #
-    # Found in silo 2026-08-29, in a lesson document about this checker, which
-    # is the only false positive the estate holds. Requiring code before the
+    # Found in silo, in a lesson document about this checker, which is the only
+    # false positive the estate holds. Requiring code before the
     # comment would have been the other obvious rule and is wrong: palette-print
     # writes all twelve of its on their own line above the statement.
     (
@@ -109,12 +106,11 @@ SPELLINGS = (
         r"#\s*nosec\b[:=]?[ \t]*(?:(?P<rules>[A-Z]+\d+(?:[ \t,]+[A-Z]+\d+)*)|[ \t]*$)",
     ),
     ("nolint", r"//\s*nolint:(?P<rules>[\w,]+)"),
-    # THE CODES END THE PRAGMA, AND PROSE MAY FOLLOW. An earlier spelling ran
-    # the rule list to end-of-line, so a noqa directive followed by a dash and a
-    # reason matched nothing at all and the pragma was invisible. A false
-    # negative here turns a gate green, and it hid one this checker's own author
-    # had just written. Spelled without the leading hash for the reason the
-    # table's own note gives.
+    # The codes end the pragma, and prose may follow. Running the rule list to
+    # end-of-line means a noqa directive followed by a dash and a reason matches
+    # nothing at all and the pragma is invisible. A false negative here turns a
+    # gate green. Spelled without the leading hash for the reason the table's
+    # own note gives.
     (
         "noqa",
         r"#\s*noqa\b(?::[ \t]*(?P<rules>[A-Z]+\d+(?:[ \t,]+[A-Z]+\d+)*)|[ \t]*$)",
@@ -129,7 +125,7 @@ SPELLINGS = (
 PRAGMAS = tuple((kind, re.compile(pattern)) for kind, pattern in SPELLINGS)
 
 # In the register: an indented row naming a file, an optional count, and then
-# the pragma it carries, which is read with the SAME patterns as the source.
+# the pragma it carries, which is read with the same patterns as the source.
 # Anything after the rule ids is prose and is ignored.
 INDEX_ROW = re.compile(r"^\s{2,}(?P<path>\S+)\s+(?:×(?P<count>\d+)\s+)?(?P<pragma>.+)$")
 
@@ -143,16 +139,17 @@ def rules_of(found: re.Match) -> frozenset[str]:
 def in_a_string(line: str, column: int) -> bool:
     """Whether a position on a line sits inside a quoted string.
 
-    A PRAGMA IS IN A COMMENT. THIS IS THE TOOL SAYING IT IS NOT A USE OF THE
-    TOOL. Without it this checker fails on its own source, because the table
-    above quotes every spelling it hunts for, and on its own tests, whose
-    fixtures are pragmas by construction. Measured 2026-08-28 before the guard:
-    28 findings in toolbox, 22 in `tests/test_suppression_register.py` and 6
-    here, and not one of them a suppression of anything.
+    A pragma is in a comment, so a spelling inside a string is the tool talking
+    about a pragma and not using one. Without this check the checker fails on
+    its own source, because the table above quotes every spelling it hunts for,
+    and on its own tests, whose fixtures are pragmas by construction. Without
+    the guard toolbox reported 28 findings, 22 in
+    `tests/test_suppression_register.py` and 6 here, and not one of them a
+    suppression of anything.
 
     That is the shape wrench filed as `a-project-cannot-test-its-own-tooling`,
-    and the answer here is a property of the text rather than a list of
-    exempted filenames: a filename list would have to name every adopter's
+    and the answer here is a property of the text, not a list of exempted
+    filenames: a filename list would have to name every adopter's
     copy, and would exempt a real pragma written in the same file.
 
     A single-line scanner and not a parser. It is right for the case that
@@ -166,11 +163,11 @@ def in_a_string(line: str, column: int) -> bool:
 def _scan(line: str, stop: int) -> tuple[str | None, int]:
     """Walk a line to `stop`, returning the open quote and the comment opener.
 
-    TRACKS THE DELIMITER, NOT THE PARITY. Counting quotes was measured wrong on
-    a real line: a test fixture spelling `'\"\"\"prose\"\"\"'` has four quotes
-    before its `#`, an even count, so parity called it code and the checker
-    matched its own fixture. Remembering WHICH quote opened the string gets it
-    right, and it is the same amount of work.
+    Tracks the delimiter, not the parity. Counting quotes fails on a real line:
+    a test fixture spelling `'\"\"\"prose\"\"\"'` has four quotes before its
+    `#`, an even count, so parity called it code and the checker matched its own
+    fixture. Remembering which quote opened the string gets it right, and it is
+    the same amount of work.
     """
     delim: str | None = None
     opener = -1
@@ -205,14 +202,14 @@ def comment_opens_at(line: str) -> int:
 def pragma_may_start_at(line: str, opens_at: int) -> frozenset[int]:
     """The positions on a line where a real pragma may begin.
 
-    THE COMMENT OPENER, OR THE FIRST THING INSIDE IT. Requiring the opener
-    alone was measured wrong: palette-print writes `// #nosec G304 -- reason`,
-    where the marker is `//` and the pragma starts three characters later, and
-    three genuine Go suppressions went silently unseen. A false negative here
-    is the one direction that matters, since it turns a gate green.
+    The comment opener, or the first thing inside it. Requiring the opener
+    alone is wrong: palette-print writes `// #nosec G304 -- reason`, where the
+    marker is `//` and the pragma starts three characters later, and three
+    genuine Go suppressions went silently unseen. A false negative here is the
+    one direction that matters, since it turns a gate green.
 
     Prose about a pragma is still excluded, because it mentions the spelling
-    mid-sentence rather than at either position.
+    mid-sentence and not at either position.
     """
     if opens_at < 0 or in_a_string(line, opens_at):
         return frozenset()
@@ -226,7 +223,7 @@ def pragma_may_start_at(line: str, opens_at: int) -> frozenset[int]:
 def code_lines(text: str) -> Iterator[str]:
     """Every line outside a triple-quoted block.
 
-    A TRIPLE-QUOTED BLOCK IS PROSE, and prose about pragmas is where a
+    A triple-quoted block is prose, and prose about pragmas is where a
     checker's own documentation lives. This file's module docstring shows two
     example register rows; without this they count as suppressions of toolbox's
     own, which is the tool graded as a use of itself, one level up from the
@@ -243,15 +240,15 @@ def code_lines(text: str) -> Iterator[str]:
                 fence = None
             continue
         opener = re.search(r'"""|\'\'\'', line)
-        # A TRIPLE QUOTE INSIDE A STRING LITERAL DOES NOT OPEN A DOCSTRING, and
+        # A triple quote inside a string literal does not open a docstring, and
         # this function's own source is the case that proves it: the line above
         # spells both delimiters inside a raw string, so counting it as a fence
         # toggled the state and every docstring after it in this file read as
-        # code. Measured 2026-08-29, when the checker reported a suppression
-        # that was a sentence in its own documentation.
+        # code. The checker then reported a suppression that was a sentence in
+        # its own documentation.
         #
-        # Third instance in this one file of the tool being read as a use of
-        # itself, after the pattern table and the test fixtures.
+        # This is the third place in this one file where the tool could be read
+        # as a use of itself, after the pattern table and the test fixtures.
         if opener and not in_a_string(line, opener.start()) and line.count(opener.group()) == 1:
             fence = opener.group()
             continue
@@ -270,23 +267,22 @@ def pragmas_in(text: str) -> list[tuple[str, frozenset[str]]]:
         starts = pragma_may_start_at(line, comment_opens_at(line))
         for kind, pattern in PRAGMAS:
             for match in pattern.finditer(line):
-                # A PRAGMA STARTS THE COMMENT IT IS IN. Prose ABOUT a pragma
-                # mentions it mid-sentence, and a pragma IS a comment, so no
-                # rule about strings can separate them. The one that does is
+                # A pragma starts the comment it is in. Prose about a pragma
+                # mentions it mid-sentence, and a pragma is itself a comment, so
+                # no rule about strings can separate them. The one that does is
                 # position: a trailing `noqa: E402` comment starts at the
                 # opener, where a sentence mentioning one mid-clause does not.
                 #
-                # The spellings are named without their `#` here ON PURPOSE.
+                # The spellings are named without their `#` here on purpose.
                 # Written in full, ruff reads this comment as a malformed
-                # suppression directive and warns, which is this function's own
-                # subject arriving one level out: prose about a pragma being
-                # taken for one, by a different tool, in the file that exists to
-                # tell them apart.
+                # suppression directive and warns: prose about a pragma taken
+                # for one, by a different tool, in the file that exists to tell
+                # them apart.
                 #
-                # This is the answer to `shared-checkers/20` question 4, and it
-                # is a property of the text rather than a list of exempt
-                # filenames, so it holds in every adopter and for a real pragma
-                # written in this file.
+                # This is the answer to `shared-checkers/20` question 4. It is a
+                # property of the text and not a list of exempt filenames, so it
+                # holds in every adopter and for a real pragma written in this
+                # file.
                 if match.start() in starts:
                     found.append((kind, rules_of(match)))
     return found
@@ -298,7 +294,7 @@ def pragmas_in(text: str) -> list[tuple[str, frozenset[str]]]:
 # a scratch file in `.ephemera` would do the same for a file that is not part of
 # the project at all.
 #
-# KEPT IN STEP WITH `test-traceability.py` BY A TEST, because the two checkers
+# A test keeps this in step with `test-traceability.py`, because the two checkers
 # are loaded by path and share no module, so this list is a second copy free to
 # drift from the first.
 SKIP_DIRS = frozenset(
@@ -323,18 +319,18 @@ SUFFIXES = frozenset({".go", ".py", ".sh", ".bash", ".zsh", ".rs", ".rb"})
 def is_source(path: Path) -> bool:
     """Whether a file is source this checker should read.
 
-    BY SUFFIX, AND THEN BY SHEBANG. Selecting on the extension alone is the
+    By suffix, and then by shebang. Selecting on the extension alone is the
     defect this checker exists beside. A statusline written as a shell script
     with no suffix, and a 170-line bash git hook enforcing a project rule, are
     both invisible to any extension match, and both were real files in the tree
     this was written against. A file with no suffix whose first line is a
     shebang is source.
 
-    RESOLVED, NOT TESTED FOR A LINK. Adoption puts symlinks to this
+    Resolved, not tested for a link. Adoption puts symlinks to this
     repository's own checkers in every adopter's `bin/`, and this file quotes
     the pragma spellings it hunts for, so an adopter reading it would be failed
     for toolbox's patterns. `is_symlink()` answers only for the last component,
-    so a file reached through a symlinked PARENT reports False; comparing
+    so a file reached through a symlinked parent reports False; comparing
     resolved parents catches both.
     """
     if not path.is_file() or not SKIP_DIRS.isdisjoint(path.parts):
@@ -355,11 +351,11 @@ def is_source(path: Path) -> bool:
 def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], int]:
     """Count the pragmas in the tree, and how many files were read.
 
-    THE FILE COUNT IS RETURNED BECAUSE A ZERO IS NOT A PASS. "No pragmas
-    found" and "no pragmas exist" are different results, and this checker
-    conflated them: reading `*.go` only, it reported `no suppression pragmas
-    anywhere` over a Python tree holding five registered ones and exited 0.
-    A reader takes that as a clean bill. Callers can now tell the two apart.
+    The file count is returned because a zero is not a pass. "No pragmas
+    found" and "no pragmas exist" are different results. A version reading
+    `*.go` only reported `no suppression pragmas anywhere` over a Python tree
+    holding five registered ones and exited 0, and a reader takes that as a
+    clean bill. The count lets callers tell the two apart.
     """
     found: Counter[tuple[Path, str, frozenset[str]]] = Counter()
     read = 0
@@ -369,7 +365,7 @@ def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], 
         except OSError:
             continue
         read += 1
-        # RESOLVED, NOT RELATIVE TO THE SCAN ROOT. The register is one document
+        # Resolved, not relative to the scan root. The register is one document
         # at the repository root and the shared jig runs at each pack's base, so
         # the two speak different frames: a scan at `python/` calls a file
         # `tests/x.py` where the register at the root calls it
@@ -378,7 +374,7 @@ def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], 
         # and there is no spelling a two-base repository can choose.
         #
         # Both sides resolve to an absolute path, and the frame question stops
-        # existing. Filed by wrench, who declined a task over it.
+        # existing. wrench filed this after declining a task over it.
         key = path.resolve()
         for kind, rules in pragmas_in(text):
             found[(key, kind, rules)] += 1
@@ -390,7 +386,7 @@ def register_documents(path: Path) -> list[Path]:
 
     The same split `--requirements` takes, for the same reason: one file per
     suppression means adding one creates a file instead of reopening a shared
-    document, and two sessions do not collide in it.
+    document, and two people working at once do not collide in it.
     """
     if path.is_dir():
         return sorted(p for p in path.rglob("*.md") if p.is_file())
@@ -406,9 +402,9 @@ def repository_of(document: Path, fallback: Path) -> Path:
     the repository and not to `docs/`, so resolving against the document's own
     directory would break an adopter that works today.
 
-    THE FALLBACK IS THE SCAN ROOT, which is what this checker always used, so a
-    register outside any repository behaves exactly as it did before the frame
-    existed. A fixture in a scratch directory is that case.
+    The fallback is the scan root, which is the frame this checker used before
+    it walked up for `.git`, so a register outside any repository behaves
+    exactly as it always has. A fixture in a scratch directory is that case.
     """
     here = document.resolve().parent
     for candidate in (here, *here.parents):
@@ -423,9 +419,9 @@ def scan_register(path: Path, root: Path) -> Counter[tuple[Path, str, frozenset[
     Counts add across documents, so one file per suppression totals the same as
     one document listing them all, and a file carrying `×2` still says two.
 
-    A ROW'S PATH IS RESOLVED AGAINST THE REPOSITORY, not against the document
-    and not against the scan root. That is the frame people actually write in,
-    measured rather than assumed: skid's register sits at `docs/SUPPRESSIONS.md`
+    A row's path is resolved against the repository, not against the document
+    and not against the scan root. That is the frame people actually write in:
+    skid's register sits at `docs/SUPPRESSIONS.md`
     and names `src/skid/install.py`, so resolving against the document's own
     directory would look for `docs/src/skid/install.py` and break an adopter
     that works today.
@@ -442,7 +438,7 @@ def scan_register(path: Path, root: Path) -> Counter[tuple[Path, str, frozenset[
             row = INDEX_ROW.match(line)
             if not row:
                 continue
-            # The row's pragma is read with the SAME patterns as the source, so
+            # The row's pragma is read with the same patterns as the source, so
             # a spelling the source can see is always one the register can
             # express. A row naming no recognised pragma is prose.
             for kind, rules in pragmas_in(row.group("pragma")):
@@ -471,7 +467,7 @@ def compare(
 ) -> list[str]:
     """Every way the two can disagree, said in the register's own terms.
 
-    A REGISTER ROW OUTSIDE THE SCAN ROOT BELONGS TO ANOTHER SCAN. Resolving both
+    A register row outside the scan root belongs to another scan. Resolving both
     sides is necessary and not sufficient: one register serving two bases is
     read whole by each scan, so every row for the other base would report as a
     pragma that has gone. Those are held to existing rather than to being found,
@@ -523,13 +519,13 @@ def main() -> int:
 
     source, files = scan_source(args.root)
 
-    # A CHECKER THAT READ NOTHING HAS NOT PASSED. Reading no files at all is
-    # indistinguishable, in the old output, from reading the whole tree and
-    # finding it clean, and the second is what a reader takes it for. Measured
-    # 2026-08-28: over skid, which is Python, this printed `no suppression
-    # pragmas anywhere` and exited 0 while five registered pragmas sat in the
-    # source. It is a failure rather than a warning because a task that cannot
-    # fail is worse than an absent one, which is this repository's own decision.
+    # A checker that read nothing has not passed. Reading no files at all
+    # prints the same as reading the whole tree and finding it clean, and the
+    # second is what a reader takes it for: over skid, which is Python, a
+    # Go-only scan printed `no suppression pragmas anywhere` and exited 0 while
+    # five registered pragmas sat in the source. It is a failure and not a
+    # warning because a task that cannot fail is worse than an absent one, which
+    # is this repository's own decision.
     if files == 0:
         print(f"no source files found under {args.root}; this checker read nothing and cannot report on what it did not read")
         return 1

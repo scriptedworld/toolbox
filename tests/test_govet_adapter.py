@@ -4,10 +4,10 @@
 what or where. The adapter is what turns its stderr into reasons carrying a
 location, so a merged result stays actionable.
 
-IT STILL SPEAKS THE RETIRED STDIN CONTRACT and is wired to no task, which is
+It still speaks the retired stdin contract and is wired to no task, which is
 recorded in `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md`. These
-tests pin what it does today so that porting it is a change with a before and an
-after, rather than a rewrite of something nobody had measured.
+tests pin what it does so that porting it is a change with a before and an
+after, not a rewrite of something nobody had measured.
 """
 
 from __future__ import annotations

@@ -14,9 +14,9 @@ which makes `{config_dir}` the target's root, so `bin/x.py` has to be at
 `bin/x.py` for the definition to find it. There is no destination to configure
 and so no mapping to keep in step.
 
-NOTHING IS EVER OVERWRITTEN. A real file where a link belongs is reported and
+Nothing is ever overwritten. A real file where a link belongs is reported and
 left alone. It is usually a vendored copy that predates adoption, and deleting
-someone's file is their decision rather than this script's.
+someone's file is their decision, not this script's.
 
 The default is to enumerate, ask, then act: the shape `bolt plan` and `bolt`
 already have. A run with no terminal to ask at refuses rather than assuming
@@ -25,7 +25,7 @@ consent; `--yes` is how a script says it meant to.
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the

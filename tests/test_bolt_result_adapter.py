@@ -5,7 +5,7 @@ command is `bolt` and names this adapter. Without it the task gets the generic
 exit-code adapter, and bolt exits 0 whenever it carried a run out, so the
 composed task passes however badly the child failed.
 
-MEASURED 2026-08-29 on a real composed run, one failing child judged twice:
+On a real composed run, one failing child judged twice:
 
     composed                   success=False, carrying the child's reason
     composed-without-adapter   success=True

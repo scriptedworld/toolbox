@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adapter for a Go coverage profile: one reason per file below the minimum.
 
-Judged PER FILE, never in aggregate. An aggregate threshold is precisely what
+Judged per file, never in aggregate. An aggregate threshold is precisely what
 lets a well-tested file carry an untested one, so the total is reported as
 context in statistics and nothing branches on it.
 
@@ -24,7 +24,7 @@ profile arrives as its `evidence-missing` verdict and never reaches here.
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the
@@ -54,7 +54,7 @@ def parse_profile(text):
     while the numerator only counted the binaries that reached it, reporting
     a well-tested file at a fraction of its real coverage.
 
-    A block is covered if ANY binary reached it, which is what merging profiles
+    A block is covered if any binary reached it, which is what merging profiles
     means.
     """
     blocks = {}
@@ -159,7 +159,7 @@ def merged_profile(paths):
 def judge(files, minimum, patterns):
     """Per file against the minimum, with the totals for context.
 
-    PER FILE AND NOT IN AGGREGATE, which is hard rule 5's reason: an aggregate
+    Per file and not in aggregate, which is hard rule 5's reason: an aggregate
     lets a well-tested file carry an untested one, and the exclusion that would
     settle a failure drops the guarantee quietly.
     """
@@ -208,7 +208,7 @@ def main():
     args = arguments()
     work_dir = pathlib.Path(args.work_dir)
 
-    # This adapter is attached to the task that RUNS the tests, because that is
+    # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the profile. So it answers for the
     # test run as well: a suite that failed while leaving a profile behind would
     # otherwise be reported as a pass with a coverage number beside it.

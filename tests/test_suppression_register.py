@@ -46,11 +46,11 @@ def test_a_run_that_read_no_source_at_all_fails(checker, tmp_path):
     """Read nothing and found nothing are different results.
 
     The old output said `no suppression pragmas anywhere` for both, and a
-    reader takes that as a clean bill. Measured 2026-08-28 over skid, which is
-    Python: the Go-only scan printed exactly that and exited 0 while five
-    registered pragmas sat in the tree.
+    reader takes that as a clean bill. Over skid, which is Python, the Go-only
+    scan printed exactly that and exited 0 while five registered pragmas sat in
+    the tree.
 
-    It fails rather than warns on this repository's own decision that a task
+    It fails instead of warning on this repository's own decision that a task
     which cannot fail is worse than an absent one.
     """
     (tmp_path / "README.md").write_text("Prose, and no source.\n", encoding="utf-8")
@@ -134,17 +134,17 @@ def test_pragmas_with_no_register_at_all_fails(checker, tmp_path):
 
 # COVERS: FR-5.4 | regression
 def test_a_python_pragma_is_seen_and_must_be_registered(checker, tmp_path):
-    """The defect this test used to PIN is fixed, so the test is inverted.
+    """A Python pragma is read, where a Go-only scan passed over it.
 
-    It read `*.go` only, so a Python project's `# nosec` was not
-    silenced-and-justified but silenced and unseen, and the gate reported a
-    pass. Measured 2026-08-28 in skid: `no suppression pragmas anywhere`, exit
-    0, over a tree holding five registered ones.
+    A checker reading `*.go` only leaves a Python project's `# nosec`
+    silenced and unseen instead of silenced and justified, and the gate
+    reports a pass. In skid that printed `no suppression pragmas anywhere`,
+    exit 0, over a tree holding five registered ones.
 
-    Kept as a regression rather than deleted, because the failure it describes
-    was invisible from toolbox: this repository is Go-free and Python-only, so
-    the checker's own suite could pass forever while the shipped behaviour was
-    wrong in every adopter.
+    This is a regression test because the failure it describes is invisible
+    from toolbox: this repository is Go-free and Python-only, so the checker's
+    own suite could pass forever while the shipped behaviour is wrong in every
+    adopter.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -178,12 +178,12 @@ def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
 
 # COVERS: FR-5.2 | regression
 def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
-    """A pragma IS a comment, so no rule about strings separates the two.
+    """A pragma is itself a comment, so no rule about strings separates the two.
 
     Position does: a real pragma opens its comment, and prose mentions the
     spelling mid-sentence. Without this the checker fails on its own source and
-    its own fixtures, which is the tool being graded as a use of itself.
-    Measured 2026-08-28: 28 findings in toolbox, none of them a suppression.
+    its own fixtures, which is the tool being graded as a use of itself: 28
+    findings in toolbox, none of them a suppression.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -202,7 +202,7 @@ def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
 def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
     """`// #nosec G304 -- reason` is how palette-print writes every one of its.
 
-    Requiring the pragma AT the comment opener missed three genuine Go
+    Requiring the pragma exactly at the comment opener missed three genuine Go
     suppressions there, which is the false-negative direction: it turns a gate
     green. The pragma may open the comment or be the first thing inside it.
     """
@@ -238,17 +238,16 @@ def test_the_script_runs_as_a_script(tmp_path):
 
 # COVERS: FR-5.2 | regression
 def test_a_pragma_with_a_trailing_reason_is_still_seen(checker, tmp_path):
-    """Writing WHY beside a suppression is the good habit, and it hid one.
+    """Writing why beside a suppression is the good habit, and it hid one.
 
-    The rule list used to run to end of line, so `# noqa: BLE001 - the reason`
-    matched nothing and the pragma was invisible. Measured 2026-08-29: this
-    checker reported `no suppression pragmas` over a tree where its own author
-    had just written one in exactly that form, an hour after committing the
-    scanner. A false negative here turns a gate green, and it hides precisely
-    the suppressions whose authors documented them.
+    A rule list running to end of line means `# noqa: BLE001 - the reason`
+    matches nothing and the pragma is invisible: the checker reported
+    `no suppression pragmas` over a tree holding one in exactly that form. A
+    false negative here turns a gate green, and it hides precisely the
+    suppressions whose authors documented them.
 
     The codes end the pragma and prose may follow, which is how the `nosec`
-    spelling already worked.
+    spelling already works.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -268,8 +267,8 @@ def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path)
 
     Both open their comment, so the position rule cannot separate them and the
     trailing text is what does: a bare spelling naming no codes must end the
-    line. Found in silo 2026-08-29, in a lesson document about this checker,
-    which was the estate's only false positive.
+    line. Found in silo, in a lesson document about this checker, which was the
+    estate's only false positive.
 
     Requiring code before the comment was the other obvious rule and is wrong.
     palette-print writes all twelve of its on their own line above the
@@ -294,8 +293,8 @@ def test_a_triple_quote_inside_a_string_does_not_open_a_docstring(checker, tmp_p
     toggled the state, so every docstring after it in this checker read as code
     and a sentence in its own documentation was reported as a suppression.
 
-    Measured 2026-08-29. Third instance in one file of the tool being read as a
-    use of itself, after the pattern table and the test fixtures.
+    This is the third place in one file where the tool could be read as a use
+    of itself, after the pattern table and the test fixtures.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")

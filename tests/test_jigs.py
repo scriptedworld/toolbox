@@ -19,45 +19,44 @@ JIGS = sorted(path for path in ROOT.glob("bolt.*.yaml") if not path.name.endswit
 
 DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 
-# THE SCHEMAS COME FROM WRENCH AND THIS REPOSITORY KEEPS NO COPY.
+# The schemas come from wrench and this repository keeps no copy.
 #
-# Decided 2026-08-29, which settles NFR-6. wrench ships them and bolt is built
-# from them, so a second copy here could only ever be a description free to
-# disagree with the one being enforced. It did disagree, twice: on `allow-empty`
-# when wrench added it, and again when wrench renamed it to `optional`. Both
-# times the copy was detected by a test rather than by anything failing, and
-# both times the fix was to copy the file again.
+# That settles NFR-6. wrench ships them and bolt is built from them, so a second
+# copy here could only ever be a description free to disagree with the one
+# being enforced. A copy did disagree, twice: on `allow-empty` when wrench added
+# it, and again when wrench renamed it to `optional`. Both times the drift was
+# caught by a test and not by anything failing, and both times the fix was to
+# copy the file again.
 #
-# Importing the pack removes the class of bug rather than the instance. There is
-# no longer a local artefact to drift.
+# Importing the pack removes the class of bug, not just the instance. There is
+# no local artefact to drift.
 #
-# THIS IS THE SOURCE AND NOT WHAT ANY BINARY ENFORCES. Bolt embeds these at
-# build time, so a binary enforces whatever wrench said when it was last built.
-# Measured 2026-08-27: the field was in the bolt built at 20:11 and absent from
-# the one built at 13:11, seven hours after it existed. Agreeing with this
-# source is therefore necessary and not sufficient, and a jig using a field
+# This is the source and not what any binary enforces. Bolt embeds these at
+# build time, so a binary enforces whatever wrench said when it was last built:
+# a new field was in the bolt built at 20:11 and absent from the one built at
+# 13:11, seven hours after the field existed. Agreeing with this source is
+# therefore necessary and not sufficient, and a jig using a field
 # younger than an adopter's binary is accepted and silently ignored, because the
 # schema does not refuse unknown keys.
 #
-# wrench ships a compiled VALIDATOR rather than a document, and it attaches its
-# own registry, so a jig schema referencing the definitions schema by `$id`
-# resolves without a network call and without this file assembling one. The
-# registry helper that used to live here is gone with the copies.
+# wrench ships a compiled validator, not a document, and it attaches its own
+# registry, so a jig schema referencing the definitions schema by `$id`
+# resolves without a network call and without this file assembling one.
 SCHEMA = wrench.JIG_SCHEMA
 DEFINITIONS_SCHEMA = wrench.DEFINITIONS_SCHEMA
 
 
 # Directories that belong to this repository. A command reaching one of them is
-# reaching for THE RULE, and must say {config_dir} to find it in the adopter's
-# checkout rather than in the adopter's own tree.
+# reaching for the rule, and must say {config_dir} to find it in toolbox's
+# checkout and not in the adopter's own tree.
 #
-# `schema/` was here and is gone with the directory, 2026-08-29. NFR-6 is
-# settled: wrench ships the schemas and this repository keeps no copy.
+# There is no `schema/`: NFR-6 is settled, wrench ships the schemas and this
+# repository keeps no copy.
 OURS = ("bin/", "adapters/", "config/")
 
 
 def commands(jig: dict) -> list[tuple[str, str]]:
-    """Every SHELL LINE a jig declares, paired with the task name.
+    """Every shell line a jig declares, paired with the task name.
 
     `adapter` is deliberately not one. It names an adapter rather than invoking
     it, and bolt resolves that name against the config directory itself, so a
@@ -97,10 +96,8 @@ def test_every_definitions_file_validates_against_its_own_schema():
     A jig has been held to its schema since the suite existed; the definitions
     files beside it, which supply that jig's placeholder values, were not. They
     have their own schema and wrench ships it, so the omission was that nobody
-    reached for it rather than that it was unavailable.
-
-    Noticed 2026-08-29 while removing the local schema copies: the constant was
-    imported and used nowhere.
+    reached for it, not that it was unavailable. The constant was imported and
+    used nowhere.
     """
     assert DEFINITIONS, "no bolt.*.definitions.yaml found; this proves nothing"
     for path in DEFINITIONS:
@@ -205,18 +202,17 @@ def test_a_task_that_excludes_anything_names_every_slot():
 def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
     """An adopter's `.venv` is thousands of files nobody here wrote.
 
-    Measured 2026-08-28 against a violation planted in a fake `.venv`: five of
-    the eight tasks read it. `analyse` does not fail on it, it HANGS, because
-    skid's virtualenv holds 11,795 files and the task was killed at 900s having
-    produced nothing.
+    Against a violation planted in a fake `.venv`, five of the eight tasks read
+    it. `analyse` does not fail on it, it hangs, because skid's virtualenv holds
+    11,795 files and the task was killed at 900s having produced nothing.
 
-    TWO SPELLINGS SATISFY THIS AND THEY ARE NOT INTERCHANGEABLE. Naming
-    `.venv` works for a tool with no opinion of its own. `--extend-exclude` is
-    for ruff, whose `--exclude` REPLACES a built-in default list that already
-    held `.venv`, so scoping the task with the obvious flag silently un-excluded
-    what ruff was already excluding. A future edit swapping one spelling for the
+    Two spellings satisfy this and they are not interchangeable. Naming `.venv`
+    works for a tool with no opinion of its own. `--extend-exclude` is for ruff,
+    whose `--exclude` replaces a built-in default list that already held
+    `.venv`, so scoping the task with the obvious flag silently un-excluded what
+    ruff was already excluding. A future edit swapping one spelling for the
     other reintroduces the defect in whichever direction it moves, which is why
-    this asserts on the command rather than on a run.
+    this asserts on the command and not on a run.
     """
     for path in JIGS:
         if "python" not in path.name:

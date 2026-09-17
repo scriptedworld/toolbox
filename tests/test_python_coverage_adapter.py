@@ -1,14 +1,14 @@
 """Tests for `adapters/python/coverage.py`.
 
-IT SPEAKS THE FLAG CONTRACT, NOT THE STDIN ONE, exactly as the Go and Rust
+It speaks the flag contract, not the stdin one, exactly as the Go and Rust
 coverage adapters do: it is handed `--evidence`, `--work-dir` and `--exitcode`
 and writes `output.yaml` into the work directory.
 
-WHAT IT ANSWERS FOR IS WIDER THAN COVERAGE. It is attached to the task that RUNS
+What it answers for is wider than coverage. It is attached to the task that runs
 the tests, so a suite that failed while leaving a report behind must not report
 as a pass with a number beside it.
 
-ENCODING IS A REAL CASE HERE AND NOT A HYPOTHETICAL. This adapter is the only
+Encoding is a real case here. This adapter is the only
 one of the three parsing XML, so it is the only one where the document declares
 its own encoding and the parser is obliged to honour it. A filename is the whole
 identity of a reason, so a filename decoded wrongly is a reason pointing at a

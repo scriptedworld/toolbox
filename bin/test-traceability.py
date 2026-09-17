@@ -12,43 +12,42 @@ above it, a line of the form:
     // COVERS: FR-4.4 | property          (Go, and Rust)
     # COVERS: FR-1.4, FR-1.5 | negative   (Python)
 
-RUST WRITES IT `//` AND NEVER `///`. A doc comment is not a comment for this
+Rust writes it `//` and never `///`. A doc comment is not a comment for this
 purpose: the pattern wants whitespace or `COVERS:` where the third slash sits,
 so `/// COVERS: FR-1.1 | positive` matches nothing and the test then reads as
-carrying no annotation at all. That is invisible rather than loud, which is the
-kind of wrong that survives, and `///` is exactly what a doc-comment reflex
-reaches for. A `///` line between the marker and the `fn` is fine and expected;
-it is stepped over.
+carrying no annotation at all. That failure is silent, so it survives, and
+`///` is exactly what a doc-comment reflex reaches for. A `///` line between
+the marker and the `fn` is fine and expected; it is stepped over.
 
-A Rust test is found by its `#[test]` attribute rather than by its name, so a
-helper function in a test file is not a test and is not asked to cite anything.
+A Rust test is found by its `#[test]` attribute, not by its name, so a helper
+function in a test file is not a test and is not asked to cite anything.
 
 The requirement ids must exist in REQUIREMENTS.md, so a renamed or deleted
-requirement fails here rather than leaving a test citing something gone. The
+requirement fails here instead of leaving a test citing something gone. The
 kind says which path through the requirement the test walks; a requirement
 whose only tests are `positive` has had its happy path checked and nothing
-else, and that is worth being able to see.
+else, and the kinds make that visible.
 
-RETIRED REQUIREMENTS. A requirement can be retired or superseded, and its id
+Retired requirements. A requirement can be retired or superseded, and its id
 is never reused. Two things record it, and a split repository should use the
 first.
 
-THE FILENAME, which is the better one:
+The filename, which is the better one:
 
     docs/REQUIREMENTS/<level>/<group>/FR-7.4-a-thing.retired
 
 Everything in a `.retired` document has gone, whatever is inside it. There is
 no heading, no switch and no below-this-line, so retiring a requirement and
-appending one are different gestures rather than the same gesture in different
+appending one are different gestures, not the same gesture in different
 positions. It shows in `ls` without opening anything, and it leaves the row in
 the group it always sat in. `.retired.md` is read the same way.
 
-`.superseded` and `.superseded.md` say the id was replaced rather than simply
+`.superseded` and `.superseded.md` say the id was replaced and not simply
 dropped, and are read the same way again. The suffix is the record; the
 checker treats all four alike, because what it needs from any of them is that
 the id stays held.
 
-A `## Retired` HEADING, for a document that has nowhere else to put the record:
+A `## Retired` heading, for a document that has nowhere else to put the record:
 
     ## Retired
 
@@ -62,11 +61,11 @@ append is a silent retirement. It stays because a single `REQUIREMENTS.md` has
 no alternative, and it goes when every repository has split.
 
 Rows retired either way are not live: they are not held to coverage, and a test
-citing one fails saying where it went rather than saying it does not exist. An
-id that is both live and retired fails outright, because reuse silently
-rewrites what every existing reference to that id meant.
+citing one fails saying where it went, not saying it does not exist. An id
+that is both live and retired fails outright, because reuse silently rewrites
+what every existing reference to that id meant.
 
-THE OTHER DIRECTION. A requirement no test cites is a requirement nothing
+The other direction. A requirement no test cites is a requirement nothing
 holds the code to, and it fails: unless the document marks it open.
 
     | FR-1.1 | Any command-line tool can be run.       | [A] |   settled: must be covered
@@ -79,14 +78,14 @@ marker cell at all) is settled, and settled means testable. A document with
 no marker column therefore has no exemptions, which is the correct reading:
 exemption is something you claim, never something you get by omission.
 
-Exiting 0 is this task's contract, which is why it prints its findings rather
-than returning an envelope: bolt's configuration never says what success
+Exiting 0 is this task's contract, which is why it prints its findings instead
+of returning an envelope: bolt's configuration never says what success
 means, and a tool whose exit code genuinely is the answer needs no adapter.
 """
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the
@@ -211,8 +210,8 @@ LANGUAGES = (
 
 DIGITS = "0123456789"
 
-# The note inside a directory that IS one requirement. Fixed rather than
-# derived from the directory's name, so retiring is one rename and nothing
+# The note inside a directory that is one requirement. Fixed, not derived from
+# the directory's name, so retiring is one rename and nothing
 # inside the directory has to change with it.
 REQUIREMENT_NOTE = "requirement.md"
 
@@ -220,7 +219,7 @@ REQUIREMENT_NOTE = "requirement.md"
 def requirement_key(req: str) -> tuple[str, tuple[tuple[int, str], ...]]:
     """Sort FR-7.3 before FR-7.10, which a plain string sort does not.
 
-    Every segment is keyed as (number, suffix) rather than as one or the other,
+    Every segment is keyed as (number, suffix), not as one or the other,
     so an id carrying a letter (`FR-4.13a`, which qwark uses and bolt does
     not) compares against a plain one instead of raising TypeError.
     """
@@ -246,7 +245,7 @@ def is_retired_by_name(path: Path) -> bool:
     markdown.
 
     `.superseded` and `.superseded.md` are read the same way, and record that
-    the id was replaced rather than simply dropped. The name carries the
+    the id was replaced and not simply dropped. The name carries the
     difference for a reader; nothing downstream needs it, because either way
     the id has gone and either way it must stay held so it cannot be declared
     again.
@@ -256,9 +255,9 @@ def is_retired_by_name(path: Path) -> bool:
     document is read and every row in it reads live, which inverts the
     never-reuse guarantee instead of merely failing to enforce it.
 
-    This tests a NAME, so it answers for a directory exactly as for a file.
+    This tests a name, so it answers for a directory exactly as for a file.
     Where a requirement is a directory, retiring it is renaming that directory
-    and the suffix lands there rather than on anything inside.
+    and the suffix lands there, not on anything inside.
     `is_retired_by_position` is what applies it to a document's holders.
     """
     return path.name.endswith((".retired", ".retired.md", ".superseded", ".superseded.md"))
@@ -267,12 +266,12 @@ def is_retired_by_name(path: Path) -> bool:
 def enclosing_directories(path: Path, root: Path) -> Iterator[Path]:
     """Every directory holding a document, from its own up to the root.
 
-    BOUNDED AT THE ROOT, which is the whole point of taking one. Walking to
+    Bounded at the root, which is the whole point of taking one. Walking to
     the filesystem root instead reads whatever happens to be above the
     repository: a tree archived as `holder.retired/`, or a checkout beneath
     one, would retire every requirement in it. Nothing would then be held to
-    coverage and the run would pass, which is the failure mode this checker
-    exists to prevent arriving through the checker itself.
+    coverage and the run would pass, the failure this checker exists to
+    prevent arriving through the checker itself.
     """
     current = path.parent
     while True:
@@ -303,14 +302,14 @@ def declares_requirements(document: Path, notes: set[Path], root: Path) -> bool:
 
     Nesting resolves outwards: a note inside another requirement's directory is
     supporting material, because everything beside a note is. Comparing against
-    the NEAREST holder is what says so, `enclosing_directories` yielding from
+    the nearest holder is what says so, `enclosing_directories` yielding from
     the document's own directory upwards.
 
-    A file called `requirement.md` whose own directory is NOT one of `notes` is
+    A file called `requirement.md` whose own directory is not one of `notes` is
     read as the ordinary document it appears to be. That is the root's case,
     the root being excluded from `notes` deliberately: testing the name alone
-    would drop it from the tree entirely rather than merely refusing to treat
-    its directory as one requirement.
+    would drop it from the tree entirely, where the intent is only to refuse to
+    treat its directory as one requirement.
     """
     holders = [d for d in enclosing_directories(document, root) if d in notes]
     if document.name == REQUIREMENT_NOTE and document.parent in notes:
@@ -324,7 +323,7 @@ def requirement_documents(path: Path) -> list[Path]:
     A directory holds one file per requirement, `<category>/<ID>-<slug>.md`,
     and a category may carry a `README.md` for its preamble. Every `.md`
     beneath is read, README included: a requirement written somewhere
-    unexpected should fail loudly for having no test rather than be skipped for
+    unexpected should fail loudly for having no test, not be skipped for
     sitting in the wrong file. The cost is that a preamble must not contain a
     parseable requirement row.
 
@@ -337,26 +336,26 @@ def requirement_documents(path: Path) -> list[Path]:
     What they need is `is_retired_by_name`, or they are collected here and
     read as live.
 
-    A DIRECTORY HOLDING `requirement.md` IS ONE REQUIREMENT, and only that note
+    A directory holding `requirement.md` is one requirement, and only that note
     declares anything. Everything beside it is supporting material: repro
     evidence, captured output, whatever has to travel with the row. Read as a
     requirements document, an evidence write-up containing a table would
     declare a phantom requirement that no test can cover and no author believes
     they wrote.
 
-    The note's name is fixed rather than matching the directory stem, so
+    The note's name is fixed instead of matching the directory stem, so
     retiring is a single directory rename with nothing inside to touch. A
     stem-matching name would stop matching at exactly that rename.
 
-    A directory without a note keeps the older behaviour, where every `.md`
-    beneath is read and a row in an unexpected file fails loudly rather than
+    A directory without a note is read the general way, where every `.md`
+    beneath is read and a row in an unexpected file fails loudly instead of
     being skipped. That is what makes the rule above safe to add: it narrows
     only where a note says it should.
 
-    THE ROOT IS NEVER ONE OF THOSE DIRECTORIES. It is the tree, not a
+    The root is never one of those directories. It is the tree, not a
     requirement in it, and a note written one level too high would otherwise
     make every document beneath it supporting material: the ids vanish and the
-    run passes, which is the one outcome this checker exists to prevent.
+    run passes.
     `requirement.md` at the root is read as the ordinary document it appears to
     be, so a row in it fails loudly for having no test.
 
@@ -406,7 +405,7 @@ def report_nested(nested: list[tuple[Path, Path]]) -> None:
 def nested_requirement_directories(path: Path) -> list[tuple[Path, Path]]:
     """Requirement directories sitting inside another, as (inner, outer) pairs.
 
-    Reported rather than resolved, the way a duplicate id is. Nothing here can
+    Reported and not resolved, the way a duplicate id is. Nothing here can
     tell a genuine nested requirement from a supporting file that happens to
     carry the note's name, and the sibling rule silently makes the inner one
     supporting material either way.
@@ -414,7 +413,7 @@ def nested_requirement_directories(path: Path) -> list[tuple[Path, Path]]:
     Silence is the expensive outcome: the inner id is never declared, so a test
     citing it is told the requirement does not exist, and the obvious remedy is
     to delete a real test's coverage of a requirement sitting on disk. That is
-    the same misleading remedy the retirement suffixes were fixed for twice.
+    the same misleading remedy the retirement suffix handling guards against.
     """
     if not path.is_dir():
         return []
@@ -439,8 +438,8 @@ def rows_in_retirement_order(
     yields `(gone, id, cells)` so `read_document` sorts rows into two
     dictionaries and does no parsing of its own.
 
-    `retired_by_name` arrives rather than being derived here, because it is now
-    a property of position in the TREE as well as in the name, and only a
+    `retired_by_name` arrives instead of being derived here, because it is a
+    property of position in the tree as well as of the name, and only a
     caller holding the requirements root can bound the search for a retired
     directory. See `is_retired_by_position`.
     """
@@ -467,15 +466,15 @@ def read_document(path: Path, retired_by_name: bool) -> tuple[dict[str, str], di
     A live requirement carries its status marker: the row's last bracketed
     cell, or the empty string where the document has no marker column.
 
-    A requirement has gone if the document's NAME retires it, if a DIRECTORY
+    A requirement has gone if the document's name retires it, if a directory
     holding it does, or if the row sits under a `## Retired` heading. All three
     keep it out of the live set so nothing holds it to coverage, and remember
     it so a test still citing it can be told where it went.
 
-    THE TWO ARE NOT EQUAL AND THE NAME IS THE BETTER ONE. A heading is a state
-    switch that runs to the end of the file, so appending a requirement and
-    retiring one are the same gesture, and only their position in the file
-    tells them apart. A name has no below-this-line to fall under.
+    A name and a heading are not equal, and the name is the better one. A
+    heading is a state switch that runs to the end of the file, so appending a
+    requirement and retiring one are the same gesture, and only their position
+    in the file tells them apart. A name has no below-this-line to fall under.
 
     The heading survives because a single `REQUIREMENTS.md` has nowhere else to
     put the record, and seven of the eight repositories here are still one
@@ -485,7 +484,7 @@ def read_document(path: Path, retired_by_name: bool) -> tuple[dict[str, str], di
     a tree would let a document ending inside `## Retired` carry that state
     into the next one and silently retire its rows.
 
-    A NAME-RETIRED DOCUMENT IGNORES ITS HEADINGS ENTIRELY. Otherwise the first
+    A name-retired document ignores its headings entirely. Otherwise the first
     heading that is not `## Retired` turns retirement back off for the rest of
     the file, and `## Superseded by` is the likeliest thing to write in a
     retired requirement's file. The failure points the wrong way: the id leaves
@@ -512,7 +511,7 @@ def read_requirements(
     document never made it: two files each declaring `FR-4.1` merge into one
     entry, the later silently winning, and both look correct opened alone.
     That is the same corruption reusing a retired id causes, so it is reported
-    the same way rather than resolved.
+    the same way and not resolved.
     """
     declared: dict[str, str] = {}
     retired: dict[str, str] = {}
@@ -551,17 +550,17 @@ def out_of_scope(marker: str, scope: str) -> bool:
     A scope names the trees expected to discharge a row, so a row naming none is
     expected everywhere and a row naming others is not this run's to cover. It
     is what lets one requirements document hold three packs to their own trees
-    rather than to the union of all of them, which passes whenever any one pack
+    instead of to the union of all of them, which passes whenever any one pack
     covers a row.
 
-    **A KIND-SCOPED ROW STAYS IN SCOPE EVERYWHERE, and that is not an
-    approximation.** `[A go,python:edge,negative]` scopes two KINDS of a row and
+    **A kind-scoped row stays in scope everywhere, and that is exact, not an
+    approximation.** `[A go,python:edge,negative]` scopes two kinds of a row and
     leaves the rest of it expected in every tree, so the row is still this run's
     to cover. This checker asks whether an id is cited at all and never asks by
     which kind, so the row-level answer is the whole of the question here.
     Which suite holds which kind is `test-suite-parity.py`'s to answer, and it
-    reads the same clause for it: this is a coarser reading of one grammar
-    rather than a second copy of the list.
+    reads the same clause for it: this is a coarser reading of one grammar,
+    not a second copy of the list.
     """
     if not scope:
         return False
@@ -574,16 +573,16 @@ def out_of_scope(marker: str, scope: str) -> bool:
 def comment_block_above(lines: list[str], index: int, language: Language) -> list[str]:
     """Return the comment lines above index, stepping over decorators.
 
-    A DECORATOR MAY WRAP, AND ITS CONTINUATION LINE STARTS WITH NEITHER `@` NOR
+    A decorator may wrap, and its continuation line starts with neither `@` nor
     `#`. Walking up from the declaration, a line inside an unclosed bracket
     group belongs to whatever opened it, so it is stepped over whatever it
     begins with. Without that the block stops at the wrapped line and a test
     carrying a correct mark reports as citing nothing.
 
-    Filed by agent-support 2026-08-28 after three of seven tests read as uncited
-    on first run, all three from wrapped decorators. **`ruff format` wraps a long
-    decorator by default**, so this is reachable by formatting a conformant file
-    rather than by writing one oddly, and the failure points the wrong way: the
+    In agent-support three of seven tests read as uncited on first run, all
+    three from wrapped decorators. **`ruff format` wraps a long decorator by
+    default**, so this is reachable by formatting a conformant file, not only by
+    writing one oddly, and the failure points the wrong way: the
     report blames the test for citing nothing while the mark sits right there,
     so the author's fix is to add what is already present.
 
@@ -651,7 +650,7 @@ def scan_file(path: Path, language: Language, declared: dict[str, str], retired:
             continue
         block = comment_block_above(lines, number, language)
 
-        # Where a language marks its tests with an attribute rather than in the
+        # Where a language marks its tests with an attribute instead of in the
         # name, a declaration without it is a helper and not a test. Reporting
         # it would fail every test file for the functions supporting its tests.
         if language.attribute and not any(language.attribute.match(above) for above in block):
@@ -706,9 +705,9 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str], scope
     A scoped run holds this tree to the rows that name it and to the rows that
     name no tree at all. The others are exempt exactly as an open row is: out of
     the denominator, reported as context, and never a failure. They stay in
-    `declared` rather than being dropped, so a test in this tree citing one is
+    `declared` instead of being dropped, so a test in this tree citing one is
     still told the id exists and is answered by parity's `cited by X but scoped
-    to Y` rather than by this checker claiming the requirement does not exist.
+    to Y`, not by this checker claiming the requirement does not exist.
     """
     elsewhere = sorted((req for req in declared if out_of_scope(declared[req], scope)), key=requirement_key)
     held_here = {req: marker for req, marker in declared.items() if req not in set(elsewhere)}
@@ -739,8 +738,8 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str], scope
     covered = len(held_here) - len(uncovered)
     held = len(held_here) - len(unresolved)
     # The scoped-out count is stated whether the run passes or fails, so the
-    # arithmetic a wrapper checks — files on disk against denominator plus
-    # exemptions — reaches every number it needs from one line.
+    # arithmetic a wrapper checks (files on disk against denominator plus
+    # exemptions) reaches every number it needs from one line.
     scoped_out = f"; {len(elsewhere)} scoped elsewhere" if elsewhere else ""
     if failures or untested:
         print(f"{covered} of {held} requirements covered; {len(unresolved)} open and exempt{scoped_out}")
@@ -774,12 +773,12 @@ def build_parser() -> argparse.ArgumentParser:
             "as one word written twice"
         ),
     )
-    # THE POSITIONAL STAYS, and `--dir` is added beside it rather than replacing
-    # it. This file is symlinked into bolt and wrench, and the positional is what
+    # The positional stays, and `--dir` sits beside it without replacing it.
+    # This file is symlinked into bolt and wrench, and the positional is what
     # `bolt.common-quality.yaml`, `bolt.rust-quality.yaml`,
     # `bolt.wrench-quality.yaml` and wrench's `test-requirement-count.py` all
-    # pass today. Removing it would be a breaking change to a shared checker, and
-    # every consumer of one needs somebody.
+    # pass. Removing it would be a breaking change to a shared checker, and
+    # every consumer of one would need somebody to change it.
     parser.add_argument("root", type=Path, nargs="?", default=None)
     return parser
 
@@ -798,13 +797,13 @@ def scan_tree(root: Path, declared: dict[str, str], retired: dict[str, str], req
 def main() -> int:
     args = build_parser().parse_args()
 
-    # Both is a mistake worth naming rather than resolving by precedence: a
-    # caller who wrote two directories meant one of them, and picking one for
-    # them reads whichever tree they did not mean.
+    # Both is a mistake to name, not to resolve by precedence: a caller who
+    # wrote two directories meant one of them, and picking one for them reads
+    # whichever tree they did not mean.
     #
-    # Printed and returned rather than `parser.error`, which raises SystemExit.
+    # Printed and returned instead of `parser.error`, which raises SystemExit.
     # Every other failure here prints and returns, a traceback reads as a broken
-    # checker rather than as something the caller can fix, and the tests call
+    # checker and not as something the caller can fix, and the tests call
     # main() directly and read a return code.
     if args.directory is not None and args.root is not None:
         print("give --dir or a positional directory, not both")

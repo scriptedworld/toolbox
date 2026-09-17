@@ -4,7 +4,7 @@
 clang-format is the one tool in the C++ jig with no directory mode and no
 project mode: it takes file paths and nothing else. Every other tool here reads
 `compile_commands.json` directly, so this reads the same database and hands it
-the files, rather than globbing a tree and guessing which of them are compiled.
+the files instead of globbing a tree and guessing which of them are compiled.
 
     clang-format-check.py --style FILE [--database PATH] [--exclude REGEX]...
 
@@ -13,14 +13,14 @@ checker exits; it does not return an envelope. bolt's configuration never says
 what success means for a checker, so the exit status is the whole answer, and
 `bin/suppression-register.py` beside this makes the same choice.
 
-WHY THE DATABASE AND NOT A GLOB. A glob finds headers nobody compiles, vendored
-third-party sources, and generated files, and each of those is a formatting
-failure the project cannot act on. The database is the project's own statement
-of what it builds. The cost is that a header included by nothing is unchecked,
-which is the right side to be wrong on: an unformatted file that is never
-compiled is not what a gate is for.
+The database is read instead of a glob because a glob finds headers nobody
+compiles, vendored third-party sources, and generated files, and each of those
+is a formatting failure the project cannot act on. The database is the project's
+own statement of what it builds. The cost is that a header included by nothing
+is unchecked, which is the right side to be wrong on: an unformatted file that
+is never compiled is not what a gate is for.
 
---dry-run --Werror rather than -output-replacements-xml. Both report without
+It runs `--dry-run --Werror`, not `-output-replacements-xml`. Both report without
 writing. The first gives a diagnostic per site with a line and column, which is
 what a person needs to fix it; the second gives an XML blob that has to be
 parsed to say anything at all.
@@ -74,14 +74,13 @@ def sources(database: pathlib.Path, base: pathlib.Path, excludes: list[re.Patter
     set is deduplicated and sorted: a checker that reported the same file twice
     would read as two failures.
 
-    AN EXCLUSION MATCHES THE PATH RELATIVE TO THE BASE, NEVER THE ABSOLUTE ONE.
+    An exclusion matches the path relative to the base, never the absolute one.
     A compilation database records absolute paths, and the jigs' exclusions are
     project-relative directory names like `.ephemera`. Matching those against an
     absolute path makes the answer depend on where the project happens to be
-    checked out: measured 2026-09-09, a fixture living under a directory called
-    `.ephemera` excluded every one of its own files and the checker reported an
-    empty database. A project cannot be responsible for its own parent
-    directories' names.
+    checked out: a fixture living under a directory called `.ephemera` excluded
+    every one of its own files and the checker reported an empty database. A
+    project cannot be responsible for its own parent directories' names.
     """
     entries = json.loads(database.read_text(encoding="utf-8"))
     found: set[str] = set()
@@ -106,7 +105,7 @@ def sources(database: pathlib.Path, base: pathlib.Path, excludes: list[re.Patter
 def unformatted(binary: str, style: pathlib.Path, files: list[str]) -> list[str]:
     """The files clang-format would change, one run per file.
 
-    PER FILE AND NOT ONE RUN OVER ALL OF THEM, because --Werror makes the exit
+    One run per file and not one over all of them, because --Werror makes the exit
     status a single bit for the whole invocation. Run together, one unformatted
     file and forty unformatted files are the same answer, and the point of this
     checker is to say which.

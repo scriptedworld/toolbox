@@ -1,28 +1,26 @@
 """Tests for `adapters/lcov/coverage.py`.
 
-IT SPEAKS THE FLAG CONTRACT, NOT THE STDIN ONE, exactly as `adapters/go/coverage.py`
+It speaks the flag contract, not the stdin one, exactly as `adapters/go/coverage.py`
 does: it is handed `--evidence`, `--work-dir` and `--exitcode` and writes
-`output.yaml` into the work directory, so these drive it directly rather than
+`output.yaml` into the work directory, so these drive it directly instead of
 through the `adapter` fixture.
 
-WHAT IT ANSWERS FOR IS WIDER THAN COVERAGE. It is attached to the task that RUNS
+What it answers for is wider than coverage. It is attached to the task that runs
 the tests, because that is the task whose work directory holds the profile, so a
 suite that failed while leaving a profile behind must not report as a pass with
 a number beside it.
 
-BRANCHES ARE READ AND ARE GATED BY THE C++ JIG, NOT BY THE RUST ONE. The
-lcov format carries `BRDA` records and the adapter reads them, but cargo-llvm-cov
+Branches are read, and gated by the C++ jig but not by the Rust one. The lcov
+format carries `BRDA` records and the adapter reads them, but cargo-llvm-cov
 emits none on a stable toolchain: its `--branch` flag is unstable and needs
 nightly. gcovr emits them by default, so the same records these cases feed are
 what a real C++ run produces.
 
-THAT IS WHY THE FIXTURES WERE RIGHT BEFORE THEY WERE REACHABLE. They were
-written against a producer that emitted nothing, on the grounds that the parsing
-had to be correct and pinned before the toolchain made it reachable. It became
-reachable on 2026-09-09 from a direction nobody was watching: not a newer rustc,
-but a second language whose profile carries the records today. `branch_measured`
-still has to say plainly when nothing was measured, because the Rust side is
-unchanged.
+The branch fixtures were written against a producer that emitted nothing, on
+the grounds that the parsing had to be correct and pinned before a toolchain
+made it reachable. What made it reachable was a second language whose profile
+carries the records, not a newer rustc. `branch_measured` still has to say
+plainly when nothing was measured, because the Rust side is unchanged.
 """
 
 from __future__ import annotations

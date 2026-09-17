@@ -2,14 +2,13 @@
 
 It landed at `0cfd449` with no tests at all, which is also why its `main()`
 grew to 88 lines against the jig's own `--length 60` without anything saying so.
-Written 2026-08-29 while fixing that.
 
-IT SPEAKS THE FLAG CONTRACT, NOT THE STDIN ONE. `gofmt.py` reads an execution
+It speaks the flag contract, not the stdin one. `gofmt.py` reads an execution
 record on stdin and is what the `adapter` fixture serves; this one is handed
 `--evidence`, `--work-dir` and `--exitcode` and writes `output.yaml` into the
-work directory. So these drive it directly rather than through that fixture.
+work directory. So these drive it directly instead of through that fixture.
 
-WHAT IT ANSWERS FOR IS WIDER THAN COVERAGE. It is attached to the task that RUNS
+What it answers for is wider than coverage. It is attached to the task that runs
 the tests, because that is the task whose work directory holds the profile, so a
 suite that failed while leaving a profile behind must not report as a pass with
 a number beside it.
@@ -44,7 +43,7 @@ COVERED = "mode: atomic\ngithub.com/x/p/a.go:1.1,2.2 2 1\ngithub.com/x/p/c.go:1.
 def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
     """Invoke the adapter as bolt does and read the envelope it wrote.
 
-    AS A SUBPROCESS, because an in-process call cannot catch a broken shebang,
+    As a subprocess, because an in-process call cannot catch a broken shebang,
     a missing import, or a `main()` that writes somewhere other than where it
     was told. The envelope's location is part of the contract.
     """

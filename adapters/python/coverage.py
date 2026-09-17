@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Adapter for a Cobertura coverage report: one reason per file below the minimum.
 
-Judged PER FILE, never in aggregate. An aggregate threshold is precisely what
+Judged per file, never in aggregate. An aggregate threshold is precisely what
 lets a well-tested file carry an untested one, so the total is reported as
 context in statistics and nothing branches on it. The Go and Rust adapters
 beside this one make the same choice for the same reason, and the three are
 meant to read alike.
 
 A file with no test at all appears in the report with every line at zero hits,
-so this sees it as 0% rather than not seeing it — BUT ONLY IF THE PRODUCER PUT
-IT THERE, and coverage.py does not always. It adds an unexecuted file to the
-report only where it can reach it as a package, so a source root whose
+so this sees it as 0% instead of not seeing it. **That holds only if the
+producer put it there**, and coverage.py does not always. It adds an unexecuted
+file to the report only where it can reach it as a package, so a source root whose
 subdirectories carry no `__init__.py` yields the files that ran and silently
 omits the ones that did not.
 
@@ -37,49 +37,48 @@ returning a verdict. No stdin is supplied.
 Bolt checks declared evidence exists before invoking an adapter, so a missing
 report arrives as its `evidence-missing` verdict and never reaches here.
 
-LINE-RATE IS NOT READ, and the lines are counted instead. Cobertura carries a
+`line-rate` is not read, and the lines are counted instead. Cobertura carries a
 `line-rate` attribute per class, already rounded, and deriving a percentage from
 it would report a number this adapter did not compute. Counting `<line>`
 elements gives the covered and total counts the reason needs anyway, so the
 attribute would be a second source for something already in hand.
 
-`branch-rate` IS NOT READ EITHER, for the same reason and one more: it is
+`branch-rate` is not read either, for the same reason and one more: it is
 rounded, and it is also present and zero when branch measurement was never
 switched on. Counting `condition-coverage` tells the two apart, because an
-absent attribute means no branch data rather than no branches taken.
+absent attribute means no branch data, not no branches taken.
 
-XML FROM A TOOL IS STILL UNTRUSTED INPUT. `defusedxml` is not a dependency here,
+XML from a tool is still untrusted input. `defusedxml` is not a dependency here,
 so this uses the standard parser on a file the task next to it just wrote. That
 is the one case where the standard parser is defensible: the producer is the
 `tests` task in the same jig, not a document arriving from somewhere.
 
-BRANCHES ARE GATED HERE AND IN NEITHER OF THE OTHER TWO, and that asymmetry is
+Branches are gated here and in neither of the other two, and that asymmetry is
 deliberate. Cobertura carries `condition-coverage` in the same document the
 lines come from, and coverage.py produces it on the stable interpreter, so here
 the data really is free.
 
-It is not free elsewhere, which the first draft of these three adapters had
-wrong. Go has no branch mode at all: `-covermode` offers set, count and atomic
-and all three count statements. Rust has one behind cargo-llvm-cov's unstable
-`--branch`, which needs a nightly compiler, and on stable the profile carries
-`BRF:0` and no `BRDA` records at all — measured 2026-09-04 against bolt on
-1.98.1.
+It is not free elsewhere. Go has no branch mode at all: `-covermode` offers
+set, count and atomic and all three count statements. Rust has one behind
+cargo-llvm-cov's unstable `--branch`, which needs a nightly compiler, and on
+stable (bolt on 1.98.1) the profile carries `BRF:0` and no `BRDA` records at
+all.
 
 Holding Python to lines alone would discard a guarantee it has for free, to
-match two languages that cannot have it. That is levelling down to the weakest
-tooling. The three numbers were never one number, and a gate that pretends
-otherwise reports a guarantee nothing established.
+match two languages that cannot have it, levelling down to the weakest tooling.
+The three numbers are not one number, and a gate that treated them as one would
+report a guarantee nothing established.
 
-THE PRODUCER HAS TO BE ASKED FOR BRANCHES. coverage.py writes no
+The producer has to be asked for branches. coverage.py writes no
 `condition-coverage` unless it ran in branch mode, and a report without it
-parses cleanly and reports nothing — the failure mode is a silent pass, not an
-error. The jig's `tests` task therefore names `--cov-branch` explicitly, and
+parses cleanly and reports nothing, so the failure mode is a silent pass and
+not an error. The jig's `tests` task therefore names `--cov-branch` explicitly, and
 `branch_measured` in the statistics below says whether any arrived.
 """
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the
@@ -95,7 +94,7 @@ import yaml
 
 CHECKER = "coverage"
 
-# condition-coverage="50% (1/2)" — the parenthesised pair is the count, and the
+# condition-coverage="50% (1/2)": the parenthesised pair is the count, and the
 # percentage before it is derived from exactly those two numbers, so the pair is
 # read and the percentage ignored.
 CONDITION = re.compile(r"\((?P<covered>\d+)/(?P<total>\d+)\)")
@@ -106,7 +105,7 @@ def parse_report(path):
 
     Keyed by line rather than accumulated, and merged by taking the highest
     count, because a filename can appear in more than one `<package>` and the
-    same line then arrives twice. A line is covered if ANY entry reached it,
+    same line then arrives twice. A line is covered if any entry reached it,
     which is what merging reports means; summing would count a line's hits once
     per entry and overwriting would let a later miss erase an earlier hit.
 
@@ -195,13 +194,13 @@ def arguments():
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("--min", type=float, default=80.0)
-    # A SEPARATE FLAG, WHICH TODAY CARRIES THE SAME NUMBER. Branch coverage is
-    # normally lower than line coverage, because reaching a line proves only
+    # A separate flag, which carries the same number as `--min`. Branch coverage
+    # is normally lower than line coverage, because reaching a line proves only
     # that one of its arms ran, so the two have to be settable apart even when
     # they agree.
     #
-    # 80 is measured rather than conventional. Across toolbox's own checkers on
-    # 2026-09-04 the worst per-file branch figure was 84.1%
+    # 80 is measured, not conventional. When it was set, the worst per-file
+    # branch figure across toolbox's own checkers was 84.1%
     # (`bin/link-toolbox.py`) against a worst line figure of 91.8% in the same
     # file, so 80 clears every file that has tests with a little headroom and
     # fails one that has none.
@@ -294,13 +293,13 @@ def statistics_for(files, kept, reasons):
 def judge(files, minimum, branch_minimum, patterns):
     """Per file against each minimum, with the totals for context.
 
-    PER FILE AND NOT IN AGGREGATE, which is hard rule 5's reason: an aggregate
+    Per file and not in aggregate, which is hard rule 5's reason: an aggregate
     lets a well-tested file carry an untested one, and the exclusion that would
     settle a failure drops the guarantee quietly.
 
-    A FILE WITH NO BRANCHES IS NOT JUDGED ON BRANCHES. Straight-line code has no
-    arms to take, so a zero denominator means the question does not apply rather
-    than that the file failed it — the same reading `total == 0` already gets
+    A file with no branches is not judged on branches. Straight-line code has no
+    arms to take, so a zero denominator means the question does not apply, not
+    that the file failed it. That is the same reading `total == 0` already gets
     for lines. A whole report with no branch data anywhere is the same shape,
     which is why `branch_measured` is reported rather than inferred from a zero.
     """
@@ -346,7 +345,7 @@ def main():
     args = arguments()
     work_dir = pathlib.Path(args.work_dir)
 
-    # This adapter is attached to the task that RUNS the tests, because that is
+    # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the report. So it answers for the test
     # run as well: a suite that failed while leaving a report behind would
     # otherwise be reported as a pass with a coverage number beside it.

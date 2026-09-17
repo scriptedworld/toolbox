@@ -215,14 +215,14 @@ def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
 def test_a_decorator_wrapped_onto_a_second_line_does_not_hide_it(checker, tmp_path):
     """`ruff format` wraps a long decorator, so this is reachable by formatting.
 
-    The continuation line begins with whitespace rather than `@` or `#`, so the
-    block walk stopped there and the test reported as citing nothing while
-    carrying a correct mark. The failure points the wrong way: the report blames
-    the test, so the author's fix is to add a mark that is already present.
+    The continuation line begins with whitespace, not `@` or `#`, so the block
+    walk stopped there and the test reported as citing nothing while carrying a
+    correct mark. The failure points the wrong way: the report blames the test,
+    so the author's fix is to add a mark that is already present.
 
-    Filed by agent-support 2026-08-28, who hit it on three of seven tests in one
-    file and worked around it by hoisting every parametrize list to a module
-    constant so each decorator fit on one line.
+    agent-support hit it on three of seven tests in one file and worked around
+    it by hoisting every parametrize list to a module constant so each
+    decorator fit on one line.
     """
     tree = project(
         tmp_path,
@@ -406,7 +406,7 @@ def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
 
 # COVERS: FR-4.9 | regression
 def test_a_lettered_requirement_id_sorts_without_raising():
-    """FR-4.13a compared against FR-4.13 raised TypeError until 2026-08-20.
+    """FR-4.13a compared against FR-4.13 once raised TypeError.
 
     bolt has no lettered id, so bolt could never have found this; qwark's
     FR-4.13a did, on the first run against a second repository.
@@ -803,7 +803,7 @@ def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path)
 #
 # The requirement is `<ID>-<slug>/requirement.md` and everything beside it is
 # supporting material: repro evidence, captured output, whatever has to travel
-# with the row. The note's name is FIXED rather than matching the directory
+# with the row. The note's name is fixed instead of matching the directory
 # stem, because retiring is then a single directory rename with nothing inside
 # to touch. A stem-matching note would stop matching the moment the directory
 # was renamed, which is the one operation the shape exists to make cheap.
@@ -929,7 +929,7 @@ def test_a_note_at_the_root_does_not_swallow_the_tree(checker, tmp_path):
     Unbounded, a `requirement.md` written one level too high makes the root a
     requirement directory, so every document beneath it resolves to the root as
     its nearest holder and becomes supporting material. The declared ids vanish
-    and the run PASSES, which is the one outcome this checker exists to
+    and the run passes, which is the one outcome this checker exists to
     prevent.
 
     FR-4.20 bounds the retirement walk at the root for exactly this reason. The

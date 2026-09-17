@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adapter for an lcov coverage profile: one reason per file below the minimum.
 
-Judged PER FILE, never in aggregate. An aggregate threshold is precisely what
+Judged per file, never in aggregate. An aggregate threshold is precisely what
 lets a well-tested file carry an untested one, so the total is reported as
 context in statistics and nothing branches on it. The Go adapter beside this one
 makes the same choice for the same reason, and the two are meant to read alike.
@@ -23,52 +23,47 @@ returning a verdict. No stdin is supplied.
 Bolt checks declared evidence exists before invoking an adapter, so a missing
 profile arrives as its `evidence-missing` verdict and never reaches here.
 
-LINES AND NOT STATEMENTS, which is the honest name for what lcov carries. Go's
-profile counts statements per block; lcov's `DA` records count executable lines.
-The threshold is the same number against a slightly different denominator, and
-calling it lines here rather than statements is what stops a reader comparing
-the two as though they measured one thing.
+Lines, not statements, is the honest name for what lcov carries. Go's profile
+counts statements per block; lcov's `DA` records count executable lines. The
+threshold is the same number against a slightly different denominator, and
+calling it lines here is what stops a reader comparing the two as though they
+measured one thing.
 
-BRANCH RECORDS ARE READ WHERE THEY EXIST, AND ON A STABLE TOOLCHAIN THEY DO NOT.
-The lcov format carries `BRDA` records and this adapter reads them. cargo-llvm-cov
-emits none without its `--branch` flag, which is unstable and needs a nightly
-compiler: it passes `-Z coverage-options=branch`, which stable rustc rejects
-outright.
+Branch records are read where they exist, and on a stable Rust toolchain they do
+not. The lcov format carries `BRDA` records and this adapter reads them.
+cargo-llvm-cov emits none without its `--branch` flag, which is unstable and
+needs a nightly compiler: it passes `-Z coverage-options=branch`, which stable
+rustc rejects outright.
 
-Measured 2026-09-04 against bolt on 1.98.1: the profile carried `BRF:0` and
-`BRH:0` for every file and not one `BRDA` record. The branch data is NOT sitting
-in the file waiting to be read, which is what this adapter was first written
-believing.
+Against bolt on rustc 1.98.1 the profile carries `BRF:0` and `BRH:0` for every
+file and not one `BRDA` record, so the branch data is not sitting in the file
+waiting to be read. On the same compiler `cargo llvm-cov --branch` fails outright
+with exit 101 instead of being quietly ignored. This decides whether a gate
+exists, so recheck it on a newer rustc.
 
 So the Rust jig sets no branch minimum, and `branch_measured` in the statistics
-below reports false rather than letting a threshold pass quietly on a zero
-denominator. A check that cannot fail is not a check, and one that looks like it
-could is worse than one that is plainly absent.
+below reports false instead of letting a threshold pass quietly on a zero
+denominator. A check that looks like it could fail and cannot is worse than one
+that is plainly absent.
 
-Re-measured 2026-09-09 on rustc 1.98.1, because the claim above is dated and it
-decides whether a gate exists: still no `BRDA` records, still `BRF:0` and
-`BRH:0`, and `cargo llvm-cov --branch` now fails outright with exit 101 rather
-than being quietly ignored.
+This file is named for a format and not a language (it was `adapters/rust/`
+until the C++ jig needed it). lcov is what cargo-llvm-cov and gcovr both emit,
+so the Rust jig and the C++ jig read the same records with the same judgement,
+per file, and neither owns it.
 
-THIS FILE IS NAMED FOR A FORMAT AND NOT A LANGUAGE, and it moved out of
-`adapters/rust/` on 2026-09-09 to say so. lcov is what cargo-llvm-cov and gcovr
-both emit, so the Rust jig and the C++ jig read the same records with the same
-judgement, per file, and neither owns it.
-
-THE FOUR LANGUAGES ARE NOT LEVEL ON THIS, AND SAYING SO IS THE POINT. Python's
+The four languages are not level on branches, and the jigs say so. Python's
 coverage.py measures branches on the stable toolchain, so the Python jig gates
-them. C++ does too: gcovr 7.2 emits `BRDA` by default with no flag, measured
-2026-09-09 against a fixture carrying one deliberately untaken branch, which
-reported `BRF:4 BRH:3` and reached this adapter as a per-file branch failure. Go
-has no branch mode at all. Rust could on nightly and does not, because the estate
-builds on stable. Holding all four to lines would discard a guarantee two of them
-have for free; reporting all four as though they had it would claim one that
-nothing established.
+them. C++ does too: gcovr 7.2 emits `BRDA` by default with no flag. A fixture
+carrying one deliberately untaken branch reported `BRF:4 BRH:3` and reached this
+adapter as a per-file branch failure. Go has no branch mode at all. Rust could
+on nightly and does not, because the estate builds on stable. Holding all four
+to lines would discard a guarantee two of them have for free; reporting all four
+as though they had it would claim one that nothing established.
 """
 
 # pylint: disable=duplicate-code
 #
-# STRUCTURAL, NOT INCIDENTAL. Every script in `bin/` and `adapters/` is spawned
+# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
 # by path from a directory that is not a package, so none can import another,
 # so anything two of them must both do is written twice. R0801 finds a different
 # pair each time one is dissolved: the coverage adapters' judgement, the
@@ -96,7 +91,7 @@ def parse_profile(text):
 
     A file appears once per record and cargo-llvm-cov writes a record per
     binary, so the same line arrives several times over. Taking the maximum is
-    what merging profiles means: a line is covered if ANY binary reached it.
+    what merging profiles means: a line is covered if any binary reached it.
     Summing instead would count a line's hits once per binary and say nothing
     useful, and overwriting would let the last binary's miss erase the first
     binary's hit.
@@ -201,13 +196,13 @@ def arguments():
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("--min", type=float, default=80.0)
-    # A SEPARATE FLAG, WHICH TODAY CARRIES THE SAME NUMBER. Branch coverage is
-    # normally lower than line coverage, because reaching a line proves only
+    # A separate flag, which carries the same number as `--min`. Branch coverage
+    # is normally lower than line coverage, because reaching a line proves only
     # that one of its arms ran, so the two have to be settable apart even when
     # they agree.
     #
-    # 80 is measured rather than conventional. Across toolbox's own checkers on
-    # 2026-09-04 the worst per-file branch figure was 84.1%
+    # 80 is measured, not conventional. When it was set, the worst per-file
+    # branch figure across toolbox's own checkers was 84.1%
     # (`bin/link-toolbox.py`) against a worst line figure of 91.8% in the same
     # file, so 80 clears every file that has tests with a little headroom and
     # fails one that has none.
@@ -297,15 +292,15 @@ def statistics_for(files, kept, reasons):
 def judge(files, minimum, branch_minimum, patterns):
     """Per file against each minimum, with the totals for context.
 
-    PER FILE AND NOT IN AGGREGATE, which is hard rule 5's reason: an aggregate
+    Per file and not in aggregate, which is hard rule 5's reason: an aggregate
     lets a well-tested file carry an untested one, and the exclusion that would
     settle a failure drops the guarantee quietly.
 
-    A FILE WITH NO BRANCHES IS NOT JUDGED ON BRANCHES. Straight-line code has no
-    arms to take, so a zero denominator means the question does not apply rather
-    than that the file failed it — the same reading `total == 0` already gets
-    for lines. On a stable toolchain that is EVERY file, which is why
-    `branch_measured` is reported rather than left to be inferred from a pass.
+    A file with no branches is not judged on branches. Straight-line code has no
+    arms to take, so a zero denominator means the question does not apply, not
+    that the file failed it. That is the same reading `total == 0` already gets
+    for lines. On a stable Rust toolchain that is every file, which is why
+    `branch_measured` is reported instead of left to be inferred from a pass.
     """
     kept = kept_files(files, patterns)
 
@@ -349,7 +344,7 @@ def main():
     args = arguments()
     work_dir = pathlib.Path(args.work_dir)
 
-    # This adapter is attached to the task that RUNS the tests, because that is
+    # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the profile. So it answers for the
     # test run as well: a suite that failed while leaving a profile behind would
     # otherwise be reported as a pass with a coverage number beside it.
