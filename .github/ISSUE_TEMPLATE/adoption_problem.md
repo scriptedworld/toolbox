@@ -10,7 +10,7 @@ The task name and its output from `result.yaml`.
 
 ## Whether it is the jig or your project
 
-Two checks separate these, and they are worth running before filing.
+Two checks separate these. Run them before filing.
 
 **Does the jig reach outside your project?** A shared jig should name only its
 own checkers and your project's own documents. If a path in the failing command
@@ -35,5 +35,5 @@ symptom is the two disagreeing about the same tree.
 ## What you have supplied
 
 `traceability` needs a `REQUIREMENTS.md`, and `suppressions` needs a
-`SUPPRESSIONS` file once you have any pragmas. Absent, both fail by design
-rather than by accident.
+`SUPPRESSIONS` file once you have any pragmas. Absent, both fail, and that
+is by design.

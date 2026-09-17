@@ -10,7 +10,7 @@ reports without failing when that requirement's row marks it `[?]`.
     | FR-1.1 | Any command-line tool can be run.  | [A] |   uncovered -> FAILURE
     | FR-5.9 | Schema versioning is unresolved.   | [?] |   uncovered -> context
 
-`[A]`, `[D]`, `[A/D]` and **no marker column at all** are settled. A document
+`[A]`, `[D]`, `[A/D]` and no marker column at all are settled. A document
 with no markers therefore claims no exemptions, which is the right way round:
 exemption is claimed, never granted by omission.
 
@@ -30,7 +30,7 @@ Both real adopters, same tooling:
 | Repo | Result |
 |---|---|
 | `bolt` | exit 1: 28 settled requirements untested, 3 open and exempt |
-| `qwark` | exit 0: 19 untested, **all** marked `[?]` |
+| `qwark` | exit 0: 19 untested, all marked `[?]` |
 
 qwark had been marking its open decisions honestly all along, so the gate found
 nothing to complain about.

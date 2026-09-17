@@ -6,7 +6,7 @@ first time.
 ## What it cost
 
 Two defects had been shipping in `bolt.python-std-quality.yaml` since it was
-first drafted, and both failed for **every adopter**.
+first drafted, and both failed for every adopter.
 
 **`cognitive` never ran at all.** The task was `complexipy --max-complexity 15 .`
 and that flag does not exist: complexipy 7.0.1 takes `--max-complexity-allowed`,
@@ -21,7 +21,7 @@ Fixed in `d243a18`.
 
 **`security` fails any project that has tests.** `bandit -r -q .` exits non-zero
 on any finding at any severity. This repository produced 72 findings the moment
-it grew a test suite: **all Low, zero Medium, zero High**, and 66 of them
+it grew a test suite: all Low, zero Medium, zero High, and 66 of them
 `B101 assert_used`, which is what a test is made of.
 
 The count only goes one way: the same command now reports 117 and 108, because
@@ -32,7 +32,7 @@ function of how well tested the code is was never measuring what it claimed to.
 
 The Go jig had been run against `bolt` and `qwark`, two real Go projects, so its
 faults surfaced. The Python jig had only ever been run against a repository with
-**no Python tests in it**. It looked exercised and was not.
+no Python tests in it. It looked exercised and was not.
 
 A jig is a claim about how a language is checked, and the claim is only tested by
 pointing it at a project written in that language, shaped the way a real project
@@ -46,9 +46,9 @@ repository's own checkers reached through symlinks: a project of that language
 with tests in it.
 
 This generalises past jigs. Measured in `agent-support`, the `complexity` task
-passed there having read 23 functions, **every one of them toolbox's own code
-reached through the adoption symlinks**, and not one line of the project's own.
+passed there having read 23 functions, every one of them toolbox's own code
+reached through the adoption symlinks, and not one line of the project's own.
 Its `install.sh` is shell, which lizard does not parse.
 
-So when a task passes, confirm **what it read**. A green task that measured
+So when a task passes, confirm what it read. A green task that measured
 nothing is worse than a red one, because it reports safety it never established.

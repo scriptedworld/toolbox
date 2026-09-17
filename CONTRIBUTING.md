@@ -23,20 +23,20 @@ adopter's tools would otherwise grade toolbox's work as their own. Here they are
 the real files, so taking the default would stop toolbox gating its own checkers.
 `bolt.toolbox.definitions.yaml` holds the override.
 
-Read `result.yaml` rather than the exit status. bolt exits 0 when the run
+Read `result.yaml`, not the exit status. bolt exits 0 when the run
 completed, whatever the tools concluded, and also when it refuses the jig
 outright.
 
 The Python suite needs none of the gate's external tools, but it does need
-`wrench` importable. That is a sibling checkout rather than a package:
+`wrench` importable. That is a sibling checkout, not a package:
 
 ```sh
 python3 -m pytest
 ```
 
-**Without wrench, collection is interrupted and none of the suite runs.** That
-reads as a broken repository rather than a missing sibling, so it is worth
-knowing before you conclude anything from a red first run. `README.md` says
+Without wrench, collection is interrupted and none of the suite runs. That
+reads as a broken repository when the cause is a missing sibling, so check for
+wrench before you conclude anything from a red first run. `README.md` says
 where wrench comes from.
 
 ## The mistake that costs the most
@@ -45,8 +45,8 @@ Getting the path rule backwards. A path resolves against `{config_dir}` if it
 travels with the jig, and stays relative to the run root if it belongs to the
 project being checked. The README states it in full.
 
-This is worth singling out because **it is invisible in the repository that gets
-it wrong.** A jig sitting at its own root has a `{config_dir}` equal to its run
+It costs the most because it is invisible in the repository that gets it wrong.
+A jig sitting at its own root has a `{config_dir}` equal to its run
 root, so both spellings resolve to the same file and the mistake shows up only
 in somebody else's project.
 
@@ -57,7 +57,7 @@ in somebody else's project.
 ## Changing a jig
 
 Every jig validates against the schema wrench ships, which
-`tests/test_jigs.py` imports rather than copying. If a jig needs a field the
+`tests/test_jigs.py` imports instead of copying. If a jig needs a field the
 schema does not have, the change starts in wrench.
 
 bolt embeds those schemas at build time, so a binary enforces whatever the
@@ -130,7 +130,7 @@ things it asks for that a reviewer will look for:
 - **Cover the empty case.** A checker that finds nothing after looking in the
   wrong place is indistinguishable from one that found nothing wrong.
 
-Tests call `main()` in process rather than through a subprocess, because
+Tests call `main()` in process, not through a subprocess, because
 coverage sees nothing a subprocess does. One subprocess smoke test per script
 covers the wiring that in-process testing cannot reach: a bad shebang, a file
 that is not executable, a crash on import.
@@ -138,7 +138,7 @@ that is not executable, a crash on import.
 ## Suppressions
 
 There is no `SUPPRESSIONS` file here, because nothing is silenced. That is the
-honest state rather than a gap: an empty register asserts that something is
+honest state and not a gap: an empty register asserts that something is
 suppressed when nothing is.
 
 If a change genuinely needs a `#nosec`, `# noqa`, `//nolint` or a `type: ignore`,
@@ -164,6 +164,6 @@ there instead.
 ## Prose
 
 `README.md` and the documents under `docs/` are held to the same bar as the
-code. State what is true rather than narrating what changed and when, since git
-already records that. No em-dashes. A document earns its length by covering its
+code. State what is true, and leave what changed and when to git, which already
+records it. No em-dashes. A document earns its length by covering its
 subject, not by explaining a decision twice in two places.

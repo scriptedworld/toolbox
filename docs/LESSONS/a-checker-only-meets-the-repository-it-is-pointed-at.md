@@ -14,7 +14,7 @@ raises:
 
     TypeError: '<' not supported between instances of 'str' and 'int'
 
-**`bolt` has no lettered requirement id, so bolt could never have found it.** It
+`bolt` has no lettered requirement id, so bolt could never have found it. It
 passed review, and it passed a full run against bolt. It surfaced on the first
 run against `qwark`, which has eleven: `FR-4.9a`, `FR-4.13a`, `FR-10.3b` and the
 rest.
@@ -26,9 +26,9 @@ The fix keys every segment as `(number, suffix)`, so both shapes compare:
 
 ## Why it matters more here than elsewhere
 
-These checkers are **shared**. They get pointed at repositories their author has
-never seen, by sessions that will read a traceback as *their* repository being
-broken. A crash is at least loud. The worse case is the same class of bug giving
+These checkers are shared. They get pointed at repositories their author has
+never seen, and whoever runs them will read a traceback as *their* repository
+being broken. A crash is at least loud. The worse case is the same class of bug giving
 a wrong answer quietly, which is what `suppression-register.py` scanning
 `rglob("*.go")` does for every non-Go adopter.
 
@@ -37,15 +37,15 @@ first thing that counts as a test.
 
 ## What to do with it
 
-Write tests. See `docs/PATTERNS/testing-checkers-and-adapters.md`. The suite that
-now exists would have caught this:
+Write tests. See `docs/PATTERNS/testing-checkers-and-adapters.md`. The suite
+would have caught this:
 `test_a_lettered_requirement_id_sorts_without_raising` pins it as a regression,
 and it needs no repository to run.
 
 **Where a checker takes a convention as input, whether an id format, a marker or
 a pragma spelling, get a second real example before believing it works.**
 
-## A second instance, same day
+## A second instance
 
 Estimating how many `[?]` markers qwark carried was done with
 `grep -oE '\| *\[[^]]*\] *\|? *$'`. It matched 9 of a true 19, and the wrong

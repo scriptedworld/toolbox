@@ -3,7 +3,7 @@
 Six tools in `bolt.python-std-quality.yaml` spell exclusion six ways. Three of
 them accept the obvious spelling, exit 0, and exclude nothing at all.
 
-Measured 2026-08-27 against a planted violation, a deliberately bad `.py` in a
+Measured against a planted violation, a deliberately bad `.py` in a
 directory that was supposed to be skipped. The number is findings in that file,
 before the flag and after it:
 
@@ -41,8 +41,8 @@ Exit status will not tell you. Every one of these tools exits 0 when it finds
 nothing to report, which is also what it does when it has been pointed at
 nothing.
 
-The forms that work are in the jigs with a comment each. Re-measure rather than
-copy one to a new tool: `pylint` alone needs `--ignore` and not
+The forms that work are in the jigs with a comment each. Re-measure instead of
+copying one to a new tool: `pylint` alone needs `--ignore` and not
 `--ignore-paths`, because the latter misses a directory whose name begins with a
 dot, and the two flags read as synonyms.
 
@@ -52,5 +52,5 @@ This is the false-green family. A check that runs, reports nothing and exits 0
 is indistinguishable from a check that was never pointed at anything, and the
 green row reads as a checked property either way.
 
-The wider version of this is a claim outliving its own check: the thing that
-would falsify a claim lives on a shorter timescale than the claim does.
+The wider version is a claim outliving its own check, where whatever would
+falsify the claim lives on a shorter timescale than the claim does.

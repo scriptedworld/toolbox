@@ -48,15 +48,15 @@ provisioned them.
 it sees a credential that was committed and later deleted. `detect-secrets` adds
 entropy detection and keeps a reviewed baseline.
 
-Two limits worth stating plainly.
+It has two limits.
 
-**Rotation is not a check.** Neither scanner can tell you whether a credential it
+Rotation is not a check. Neither scanner can tell you whether a credential it
 found has been revoked. A scan that goes green after a secret is deleted from
 the working tree has reported on the tree, not on the secret. The key is valid
 until somebody rotates it, and that step belongs to a person.
 
 **A baseline is a list of accepted findings, and it belongs to the adopting
-project.** `--baseline` stays relative to the project rather than travelling with
+project.** `--baseline` stays relative to the project and does not travel with
 the jig, so no adopter is judged against another project's accepted findings. A
 baseline that is never re-reviewed will absorb real findings, which is the cost
 of having one.

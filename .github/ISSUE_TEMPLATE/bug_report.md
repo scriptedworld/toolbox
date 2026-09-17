@@ -14,7 +14,7 @@ bolt common-quality .
 
 ## What happened
 
-Paste the relevant part of `result.yaml` rather than the exit status. bolt exits
+Paste the relevant part of `result.yaml`, not the exit status. bolt exits
 0 whenever the run completed, so the status does not carry the verdict.
 
 If one task is at fault, its output under the run's `work/<task>/` directory is

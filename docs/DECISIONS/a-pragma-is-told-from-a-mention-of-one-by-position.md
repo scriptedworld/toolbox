@@ -1,12 +1,12 @@
 # A pragma is told from a mention of one by position
 
-Decided 2026-08-28, while making `suppression-register.py` read every language
-at `6ac4304`. It was question 4 of `shared-checkers/20`, and it had no answer
+Decided while making `suppression-register.py` read every language, at
+`6ac4304`. It was question 4 of `shared-checkers/20`, and it had no answer
 when the other three were settled.
 
 ## The problem
 
-A pragma **is** a comment. So no rule about strings, quoting or file type
+A pragma is a comment. So no rule about strings, quoting or file type
 separates a suppression from prose describing one, and the checker's own source
 has to quote every spelling it hunts for.
 
@@ -30,22 +30,22 @@ mentions the spelling mid-sentence.**
 
 ## Why position, and not the alternatives
 
-**Not a list of exempt filenames.** It would have to name every adopter's copy
+Not a list of exempt filenames. It would have to name every adopter's copy
 of every checker, and it would exempt a real pragma written in the same file.
 Position is a property of the text, so it holds everywhere with no configuration
 and no register of exceptions.
 
-**Not "skip anything in a string".** Necessary and nowhere near sufficient: a
+Not "skip anything in a string". Necessary and nowhere near sufficient: a
 pragma is a comment, so the interesting false positives are in comments. The
 string rule is still there for fixture data on one line, and `code_lines`
 handles triple-quoted blocks, but neither addresses prose in a `#` comment.
 
-**Not requiring the pragma AT the comment opener.** Tried, and measured wrong:
-palette-print writes `// #nosec G304 -- reason` for all twelve of its, where the
-marker is `//` and the pragma begins three characters later. That version
-silently missed all three of its `load.go` and `print.go` suppressions. **A
-false negative here is the direction that matters, because it turns a gate
-green.** Hence "opens the comment OR is the first thing inside it".
+Not requiring the pragma to sit exactly at the comment opener. Tried, and
+measured wrong: palette-print writes `// #nosec G304 -- reason` for all twelve of
+its, where the marker is `//` and the pragma begins three characters later. That
+version silently missed all three of its `load.go` and `print.go` suppressions.
+A false negative here is the direction that matters, because it turns a gate
+green. Hence "opens the comment, or is the first thing inside it".
 
 ## What it does not handle, so nobody assumes it does
 
@@ -57,8 +57,8 @@ more than this checker should carry.
 
 ## The general form, which outlives this checker
 
-The estate spent 2026-08-28 on one fault: **a tool's selection rule is invisible
-and answers a narrower question than its name.** This is that fault turned
+One fault turned up repeatedly across the estate: a tool's selection rule is
+invisible and answers a narrower question than its name. This is that fault turned
 inward, where the thing being selected wrongly is the tool's own source.
 
 The general version of that fault has several instances across these tools, and

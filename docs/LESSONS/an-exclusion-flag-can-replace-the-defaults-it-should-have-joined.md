@@ -5,14 +5,14 @@ covers a flag that is accepted and does nothing. This is the other direction,
 and it is worse, because the flag does exactly what it says while silently
 undoing something else.
 
-**ruff's `--exclude` REPLACES its built-in default exclude list. That list
+**ruff's `--exclude` replaces its built-in default exclude list. That list
 already held `.venv`, `venv`, `build`, `dist` and the tool caches.**
 
 So `format` and `lint` were scoped with three directories and, in the same
 gesture, told to start reading every virtualenv in every adopter. The flag was
 added to narrow the run and it widened it.
 
-Measured 2026-08-28 against a violation planted in a fake `.venv`, counting
+Measured against a violation planted in a fake `.venv`, counting
 findings in the virtualenv and in the project's own file:
 
     ruff check, no flag                        venv 0   own 2
@@ -20,23 +20,22 @@ findings in the virtualenv and in the project's own file:
     ruff check --extend-exclude <three dirs>   venv 0   own 2
 
 `ruff format` behaves identically. `--extend-exclude` adds to the defaults and
-is the correct spelling whenever a tool has defaults worth keeping.
+is the correct spelling whenever a tool has defaults to keep.
 
 ## Why it survived a year of the other lesson's method
 
-The planted-violation method that caught the four wrong spellings **could not
-catch this one**, and the reason is worth keeping.
+The planted-violation method that caught the four wrong spellings could not
+catch this one, and the reason generalises.
 
 That method plants a violation in the directory being excluded and checks the
 finding count goes to zero. It answers *did the flag exclude what it named*.
 This flag did. Every one of those tests passed.
 
 The question it does not ask is *what else changed*, and nothing about a
-passing exclusion test suggests there is a second question. **A regression
-introduced by a correct-looking flag is invisible to a test aimed at the
-flag.**
+passing exclusion test suggests there is a second question. A regression
+introduced by a correct-looking flag is invisible to a test aimed at the flag.
 
-What found it was widening the fixture rather than sharpening the assertion:
+What found it was widening the fixture, not sharpening the assertion:
 planting a violation in a `.venv` as well, because an adopter has one and
 toolbox does not.
 
@@ -46,9 +45,9 @@ The first sweep reported four tools clean, with `venv:0` for each. Three of
 those four were wrong, and they were wrong because the fixture planted nothing
 those tools detect, so they found nothing anywhere and reported zero.
 
-**A zero in the excluded column beside a zero in the control column is an
-unmeasured row wearing a pass**, which is precisely the failure this whole
-family of lessons is about, occurring inside the script written to detect it.
+A zero in the excluded column beside a zero in the control column is an
+unmeasured row wearing a pass. That is the false green this family of lessons
+describes, occurring inside the script written to detect it.
 The fixture now carries a violation for every tool at once and the control
 column is checked first.
 

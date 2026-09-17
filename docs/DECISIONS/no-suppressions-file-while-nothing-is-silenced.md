@@ -19,7 +19,7 @@ Measured:
 An empty register asserts that something is silenced when nothing is. The
 standard treats `SUPPRESSIONS` and `MOCKS` as **claimed, never granted by
 omission**: a project with nothing silenced says so by having neither directory,
-while an empty one reads to the next session as a file somebody lost.
+while an empty one reads to the next person as a file somebody lost.
 
 The checker agrees. It passes a project with no pragmas and no register, and it
 fails a project with pragmas and no register. Those are different states, and it
@@ -29,7 +29,7 @@ tells them apart.
 
 While the sort key for `test-traceability.py` was being written, a
 `# type: ignore[union-attr]` went in to satisfy mypy. It typechecked. It would
-also have been **the first pragma in this repository**, requiring a
+also have been the first pragma in this repository, requiring a
 `SUPPRESSIONS` file, an answer to the question *why is this needed*,
 and a registered entry, all for a regex match that cannot fail.
 
