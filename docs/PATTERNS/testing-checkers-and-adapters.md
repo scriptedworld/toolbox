@@ -17,10 +17,9 @@ and raised `TypeError` on any requirement id with a letter suffix. It survived
 review and a full run against `bolt`, which has no such id. It surfaced only
 because the checker happened to be pointed at `qwark`, which has eleven.
 
-**A checker is only exercised by the repository it happens to be pointed at**,
-and the shared ones are pointed at repositories their author has never seen. A
-gate that crashes is at least loud.
-The worse failure is a gate that passes when it should not, and nothing in this
+A checker is only exercised by the repository it happens to be pointed at, and
+the shared ones are pointed at repositories their author has never seen. A gate
+that crashes is at least loud. The worse failure is a gate that passes when it should not, and nothing in this
 repository would currently notice either kind.
 
 ## Two contracts, two shapes of test
@@ -46,8 +45,8 @@ property that lets `anvil` build an image without running the suite inside it.
 
 Two facts about the layout dictate its shape.
 
-`bin/test-traceability.py` and `bin/suppression-register.py` **cannot be imported
-by name**: a hyphen is not valid in a Python identifier, and neither directory is
+`bin/test-traceability.py` and `bin/suppression-register.py` cannot be imported
+by name: a hyphen is not valid in a Python identifier, and neither directory is
 a package. Tests load them by path instead, which `tests/conftest.py` does once:
 
 ```python
@@ -86,7 +85,7 @@ smoke test per script covers the wiring, and everything else stays in-process.
 ## Fixtures are captured, never composed
 
 An adapter exists because a tool's output needs interpreting. A test that feeds
-it output **you imagined** tests your imagination.
+it output you imagined tests your imagination.
 
 So run the real tool once, save what it printed under `tests/fixtures/`, and
 record where it came from.
@@ -113,7 +112,7 @@ payload itself.
 when the adapter fails for the wrong reason, on the wrong file, and reports it
 unreadably.
 
-Assert the verdict **and** what the verdict says:
+Assert the verdict and what the verdict says:
 
 ```python
 assert envelope["success"] is False
@@ -121,7 +120,7 @@ assert [r["file"] for r in envelope["reasons"]] == ["internal/cli/cli.go"]
 assert "not gofmt-clean" in envelope["reasons"][0]["message"]
 ```
 
-For a checker, assert the exit code **and** that the finding names the thing:
+For a checker, assert the exit code and that the finding names the thing:
 
 ```python
 assert code == 1
@@ -162,19 +161,21 @@ because the more parsing an adapter performs the more there is to get wrong.
 
 | | Script | State |
 |---|---|---|
-| 1 | `bin/test-traceability.py` | **done** |
-| 2 | `bin/suppression-register.py` | **done** |
-| 3 | `adapters/go/gofmt.py` | **done**, the worked example for the rest |
-| 4 | `adapters/go/coverage.py` | **done** 2026-08-29 |
-| 5 | `adapters/lcov/coverage.py` | **done** 2026-09-04, with the lcov branch records and the encoding cases |
-| 6 | `adapters/python/coverage.py` | **done** 2026-09-04, with the Cobertura branch data and the encoding cases |
-| 7 | `adapters/common/bolt-result.py` | **done** |
-| 8 | `adapters/go/govet.py` | **done** 2026-09-04 |
+| 1 | `bin/test-traceability.py` | done |
+| 2 | `bin/suppression-register.py` | done |
+| 3 | `adapters/go/gofmt.py` | done, the worked example for the rest |
+| 4 | `adapters/go/coverage.py` | done |
+| 5 | `adapters/lcov/coverage.py` | done, with the lcov branch records and the encoding cases |
+| 6 | `adapters/python/coverage.py` | done, with the Cobertura branch data and the encoding cases |
+| 7 | `adapters/common/bolt-result.py` | done |
+| 8 | `adapters/go/govet.py` | done |
+| 9 | `bin/voice-review.py` | done, with a fake API connection and a fake CLI handed in, never a model |
+| 10 | `bin/voice-tells.py` | done, against real git repositories built in the test |
 
-Every script in `bin/` and `adapters/` now has tests. The queue is empty, and
+Every script in `bin/` and `adapters/` has tests. The queue is empty, and
 `bolt python-std-quality .` is what keeps it that way: it judges coverage per
 file at 80% of lines and 80% of branches, so a new script arriving without tests
-fails the gate rather than joining a list.
+fails the gate and does not wait on a list.
 
 Every adapter written for the Python jig (`NEXT_STEPS.md` item 1) arrives with
 its tests instead of joining this queue.

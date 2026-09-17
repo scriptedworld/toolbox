@@ -4,11 +4,11 @@
 # that live beside it here, so adoption is a set of symlinks and this file says
 # which.
 #
-# The list is declared rather than derived, because a jig running `ruff check .`
+# The list is declared and not derived, because a jig running `ruff check .`
 # or `mypy .` needs config those tools find by convention and names nothing on
 # the command line.
 #
-# Paths land at the SAME relative path in the target.  That is forced: a linked
+# Paths land at the same relative path in the target.  That is forced: a linked
 # definition sits at the target's root, making `{config_dir}` the target's root,
 # so `bin/x.py` has to be at `bin/x.py`.
 
@@ -18,20 +18,19 @@ sets:
   # The ten recipes every project supplies whatever it is written in, imported
   # by an adopter's Justfile as `import 'just/base.just'`.
   #
-  # A SET OF ITS OWN, INCLUDED BY NOTHING. Adopting the jigs and adopting the
+  # A set of its own, included by nothing. Adopting the jigs and adopting the
   # recipe set are different decisions: a project can run the checks without a
   # Justfile, and can have a Justfile without adopting a jig. Folding this into
-  # `common` would make one imply the other and there is no reason it should.
+  # `common` would make one imply the other for no reason.
   #
-  # IT EXISTS BECAUSE THE COPIES ALREADY DID. Measured 2026-08-31: five
-  # byte-identical copies, sha256 81db942f738d, 198 lines, all tracked, and no
-  # shared source anywhere. Nothing detected that they agreed, so nothing would
-  # have detected that they had stopped.
+  # It exists because five repositories already held byte-identical copies
+  # (sha256 81db942f738d, 198 lines, all tracked) with no shared source, and
+  # nothing would have detected them drifting apart.
   #
-  # A REPOSITORY HOLDING SEVERAL PROJECTS CANNOT TAKE THIS AT ITS ROOT. A file
+  # A repository holding several projects cannot take this at its root. A file
   # lands at the same relative path it has here, so a repository that wants one
-  # `just/base.just` per subproject adopts per subproject rather than once at
-  # the top. `README.md` has the two adoption models and which to pick.
+  # `just/base.just` per subproject adopts per subproject and not once at the
+  # top. `README.md` has the two adoption models and which to pick.
   base:
     files:
       - just/base.just
@@ -39,7 +38,7 @@ sets:
   # Checks that do not care what language the project is written in. Every
   # language set includes this one.
   #
-  # COMMON INCLUDES SECRETS, and the arrow only points that way. The common jig
+  # Common includes secrets, and the arrow only points that way. The common jig
   # composes `bolt.secrets.yaml` as a child, so an adopter of `common` needs the
   # secrets definition on disk or that task cannot run. `secrets` still includes
   # nothing, because scanning a repository for credentials needs nothing else to
@@ -50,14 +49,14 @@ sets:
       - bolt.common-quality.yaml
       - bin/test-traceability.py
       - bin/suppression-register.py
-      # `adapters/common/lizard.py` was here until 2026-09-03 and has gone with
-      # the `complexity` task it read for. It was already unused before that:
-      # the task ran on the exit-code adapter because this one speaks the
-      # retired contract, so every adopter was linking a file nothing invoked.
-      #
       # The composition adapter, which turns the child secrets run's verdict
       # into this jig's. Without it the composed task cannot fail.
       - adapters/common/bolt-result.py
+      # The wording check, which gates, and the model review, which reports
+      # and loads the wording check from beside itself, with its prompt.
+      - bin/voice-tells.py
+      - bin/voice-review.py
+      - config/prompts/voice-findings.md
 
   go:
     includes: [common]
@@ -68,9 +67,8 @@ sets:
       - adapters/go/govet.py
       - config/go-std-quality.golangci.yml
 
-  # The definition was the whole set until 2026-09-04, when `tests` gained an
-  # adapter. Every other tool here is off the shelf and its exit code is the
-  # answer. A shared ruff or mypy configuration would be the next entry to join,
+  # The coverage adapter is the only file besides the definition. Every other
+  # tool here is off the shelf and its exit code is the answer. A shared ruff or mypy configuration would be the next entry to join,
   # and would be invisible to anything that tried to infer this list from the
   # definition's command lines.
   python:
@@ -79,8 +77,8 @@ sets:
       - bolt.python-std-quality.yaml
       - adapters/python/coverage.py
 
-  # Adopted from bolt on 2026-09-03, which carried it while nothing here shipped
-  # a Rust jig. The clippy config is listed for the same reason the golangci one
+  # Adopted from bolt, which carried it while nothing here shipped a Rust jig.
+  # The clippy config is listed for the same reason the golangci one
   # is: it travels with the jig, and nothing could infer it from a command line
   # because clippy finds it by directory through CLIPPY_CONF_DIR.
   rust:
@@ -90,14 +88,13 @@ sets:
       - adapters/lcov/coverage.py
       - config/rust/clippy.toml
 
-  # THE ADAPTER IS SHARED WITH `cpp` AND IS NOT THIS SET'S. It moved out of
-  # `adapters/rust/` on 2026-09-09, because it reads lcov and lcov is what
-  # cargo-llvm-cov and gcovr both emit. Both sets list it, both symlink the same
-  # file, and a project adopting both gets one copy.
+  # The lcov adapter is shared with `cpp` and belongs to neither set. It lives
+  # in `adapters/lcov/` because it reads lcov, which cargo-llvm-cov and gcovr
+  # both emit. Both sets list it, both symlink the same file, and a project
+  # adopting both gets one copy.
   #
-  # The rename cost nothing because it happened while the count of adopters was
-  # zero: measured that day, only this repository referenced the path. Doing it
-  # later would have meant re-linking every adopter.
+  # It moved from `adapters/rust/` while only this repository referenced that
+  # path, so no adopter had to re-link.
 
   # C++. Alone among the language sets in requiring the adopter to produce a
   # compilation database, because C++ has no `cargo` and no `go`: nothing on a
@@ -105,7 +102,7 @@ sets:
   # cmake's CMAKE_EXPORT_COMPILE_COMMANDS both produce one, which is why this
   # jig mandates neither build system.
   #
-  # Six tools where Rust has two and Go has three. That is C++ rather than an
+  # Six tools where Rust has two and Go has three. That is C++, not an
   # accident of this jig: there is no multi-tool, and the header check has no
   # counterpart in any other language here because no other language here has
   # textual inclusion to get wrong.

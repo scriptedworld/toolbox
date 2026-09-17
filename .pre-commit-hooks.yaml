@@ -1,0 +1,20 @@
+# The wording check as pre-commit hooks, for a project that runs pre-commit as
+# well as the jig. `bolt common-quality` runs the same script over the whole
+# repository; these two run it over what a commit is about to carry.
+#
+# `language: system` and a path into the adopter's own `bin/`, because adoption
+# links this repository's checkers there. A project that has not adopted the
+# `common` set has no such link and should not declare these hooks.
+- id: voice-tells
+  name: wording (staged files)
+  description: documentation and comments carry none of the wording the writing standard names
+  entry: python3 bin/voice-tells.py
+  language: system
+  types: [text]
+  stages: [pre-commit]
+
+- id: voice-tells-commit-msg
+  name: wording (commit message)
+  entry: python3 bin/voice-tells.py --commit-msg-filename
+  language: system
+  stages: [commit-msg]

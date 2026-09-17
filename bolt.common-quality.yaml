@@ -2,18 +2,17 @@
 #
 #     bolt common-quality .          flags before the positionals
 #
-# THE PATH RULE.  A path resolves against {config_dir} if it travels with this
+# The path rule.  A path resolves against {config_dir} if it travels with this
 # file: a checker, an adapter, a linter's config.  It stays relative to the base
 # if it belongs to the project being checked: its source, REQUIREMENTS.md,
 # SUPPRESSIONS.  Getting this backwards works in a repository whose jig sits at
 # its own root, where the two are the same directory, and breaks for every
 # adopter.
 #
-# WHAT IS LANGUAGE-INDEPENDENT IS NARROWER THAN IT LOOKED. Traceability,
-# suppressions and secrets read text and do not care what language wrote it.
-# Complexity read source and had to parse it, so it only appeared to be common:
-# it lived here until 2026-09-03, and the note below the tasks says what
-# measuring it in one place actually produced.
+# Only checks that read text belong here. Traceability, suppressions and
+# secrets do not care what language wrote the file. Complexity has to parse
+# source, so it is not common; the note below the tasks says why it lives in
+# each language jig.
 
 version: "1.0.0"
 
@@ -23,6 +22,10 @@ requires:
 definitions:
   requirements: REQUIREMENTS.md
   suppressions: SUPPRESSIONS
+
+  # Belongs to the project: one SHA, the commit the gate landed at. Commits
+  # after it are judged; without the file, commits are not judged at all.
+  voice_start_file: .voice-review-start
 
 tasks:
   # ---- documents held against the source ------------------------------------
@@ -44,57 +47,64 @@ tasks:
     description: every suppression is registered, and every entry is real
     command: python3 {config_dir}/bin/suppression-register.py --register {suppressions} .
 
-  # ---- complexity is a language jig's, and no longer here --------------------
+  # The wording the writing standard names, found by pattern with no model, so
+  # one instance fails and every run agrees. `bin/voice-tells.py` lists the
+  # rules. The model review, `bin/voice-review.py`, reads the same text and is
+  # not a task here: its findings do not repeat between runs, so it is run by
+  # hand and never gates.
+  - name: wording
+    description: documentation, comments and commit messages carry none of the wording the writing standard names
+    command: >-
+      python3 {config_dir}/bin/voice-tells.py --all-files --base {base_dir}
+      --start-file {voice_start_file} --report {work_dir}/voice-tells.json
+    evidence:
+      - voice-tells.json
+
+  # ---- complexity belongs to each language jig -------------------------------
   #
-  # `complexity` ran lizard at 15 CCN, 5 parameters and 60 lines for every
-  # language at once. It has gone, and so has lizard from `requires`, because
-  # every language jig here already runs a linter that measures the same things
-  # natively and measures them better. Measured 2026-09-03:
+  # There is no `complexity` task here and no lizard in `requires`. A single
+  # lizard task at 15 CCN, 5 parameters and 60 lines cannot serve every
+  # language, and every language jig already runs a linter that measures the
+  # same things natively and better:
   #
   #     metric        lizard                  the language's own
   #     cyclomatic    yes                     ruff C901 / golangci cyclop
-  #     cognitive     NO SUCH METRIC          complexipy / gocognit / clippy
-  #     nesting       Go yes, PYTHON ALWAYS 0 ruff PLR1702 / nestif / clippy
+  #     cognitive     no such metric          complexipy / gocognit / clippy
+  #     nesting       Go yes, Python always 0 ruff PLR1702 / nestif / clippy
   #     arguments     yes                     ruff PLR0913 / clippy
   #     length        yes                     ruff PLR0915 / funlen / clippy
   #
-  # TWO OF THOSE ROWS ARE WHY. lizard has no cognitive metric at all, and its
+  # Two of those rows decide it. lizard has no cognitive metric at all, and its
   # nesting extension reports 0 for every Python function while working on Go,
-  # so the one jig that claimed to measure every language the same way was
-  # measuring them differently and saying otherwise.
+  # so one common task would measure languages differently while claiming to
+  # measure them the same way.
   #
-  # The header's open question — whether a language jig accepts these numbers or
-  # declares its own task — is answered: its own, because the numbers were never
-  # the same numbers.
+  # That also settles whether a language jig accepts common numbers or declares
+  # its own task (see NEXT_STEPS.md): its own, because the numbers are not the
+  # same numbers.
   #
-  # THE COST IS THAT A NEW LANGUAGE STARTS WITH NO COMPLEXITY GATE, where it
-  # used to inherit one. That is the honest trade: an inherited gate that cannot
-  # measure the language it was pointed at is worse than an absent one, since
-  # only the absent one is visible.
+  # The cost is that a new language starts with no complexity gate. An
+  # inherited gate that cannot measure the language it is pointed at is worse
+  # than an absent one, since only the absent one is visible.
 
   # ---- secrets ---------------------------------------------------------------
 
-  # THE SECRETS JIG RUNS FROM HERE, COMPOSED RATHER THAN COPIED. Directed
-  # 2026-08-29: the common jig should run the security one as well.
+  # The secrets jig runs from here as a child, composed and not copied, so a
+  # project running only its common gate still scans for credentials. The two
+  # sets can be adopted separately, and when they were, a common-only project
+  # scanned for nothing and nothing said so.
   #
-  # Before this, "all the quality tooling" reached secret scanning nowhere. The
-  # two sets were adopted separately, ten repositories to nine, so a project
-  # running only its common gate scanned for no credentials at all and nothing
-  # said so.
-  #
-  # COMPOSED, so `bolt.secrets.yaml` stays the single definition of what a
+  # Composed, so `bolt.secrets.yaml` stays the single definition of what a
   # secret scan is. Copying the two tasks here would put detect-secrets'
-  # configuration in two files free to drift, which is the fault this estate
-  # spent two days finding in other shapes, and the drift would be between two
-  # documents that both look authoritative.
+  # configuration in two files free to drift, and both would look authoritative.
   #
-  # THE ADAPTER IS NOT OPTIONAL. Bolt exits 0 whenever it carried a run out,
+  # The adapter is not optional. Bolt exits 0 whenever it carried a run out,
   # whatever the tools concluded, so a composed task with no adapter passes
-  # however badly the child failed. Measured 2026-08-29 on a deliberately
-  # failing child: with the adapter `success=False`, without it `success=True`.
+  # however badly the child failed. On a deliberately failing child, the task
+  # reports `success=False` with the adapter and `success=True` without it.
   # The adapter reads the child's result and folds its reasons up, so a
-  # credential found by the child reports here as the child's own finding rather
-  # than as a path to go and read.
+  # credential found by the child reports here as the child's own finding, not
+  # as a path to go and read.
   #
   # `--output-dir` is named because bolt refuses a directory that already holds
   # a run, and the child must not land in the parent's own.

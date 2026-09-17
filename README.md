@@ -22,8 +22,8 @@ here and installs exactly those.
 
 ## What is not ready
 
-**Nothing here runs without bolt, and the test suite also imports wrench.**
-Neither is on a package registry, so both are sibling checkouts rather than
+Nothing here runs without bolt, and the test suite also imports wrench.
+Neither is on a package registry, so both are sibling checkouts, not
 dependencies a resolver fetches:
 
     git clone https://github.com/scriptedworld/bolt.git   ../bolt
@@ -41,7 +41,7 @@ gating on exit status with no per-finding detail.
 
 | Jig | Checks |
 |---|---|
-| `bolt.common-quality.yaml` | Whatever the language: requirement traceability, the suppression register, and a composed secret scan |
+| `bolt.common-quality.yaml` | Whatever the language: requirement traceability, the suppression register, a composed secret scan, and a wording check that fails docs, comments and commits on the phrasing the writing standard names |
 | `bolt.go-std-quality.yaml` | Go: `gofmt`, `go mod tidy`, build, `vet`, `golangci-lint`, race-and-shuffle tests, per-file coverage, `govulncheck` |
 | `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `ruff` complexity, `vulture`, `interrogate`, `bandit`, `pytest`, per-file line **and branch** coverage |
 | `bolt.rust-std-quality.yaml` | Rust: `cargo fmt`, `clippy`, build, tests, per-file coverage, `cargo-audit`, `cargo-deny` |
@@ -66,7 +66,7 @@ python3 bin/link-toolbox.py --yes  ../your-project python
 ```
 
 That links seven files: three jigs, two checkers and two adapters. They are
-symlinks rather than copies, landing at the same relative path they have here,
+symlinks, not copies, landing at the same relative path they have here,
 because a jig finds its checkers through `{config_dir}` and a jig reached
 through a link resolves them back through that link. The links are relative
 unless you pass `--absolute`, so the two directories have to keep their
@@ -78,7 +78,7 @@ on drift.
 
 ### A repository holding several projects
 
-**Adoption assumes one root.** A file lands at the same relative path it has
+Adoption assumes one root. A file lands at the same relative path it has
 here, so linking into a repository root gates that root. A repository holding
 several projects has two ways to use that and they are not interchangeable.
 
@@ -102,6 +102,8 @@ terms, it adopts on its own terms.
 | `REQUIREMENTS.md` | `traceability` | a failure: the check has nothing to hold the code to |
 | `SUPPRESSIONS` | `suppressions` | fine if you have no pragmas, a failure if you do |
 | `coverage.out` | `tests` | produced by the `tests` task, not by you |
+| `.voice-review-start` | `wording` | commits are not judged; write the SHA the gate landed at to judge the ones after it |
+| `.voice-baseline.json` | `wording` | nothing is accepted, which is how a project starts; entries are added by hand, each with the reason it stands |
 | `bolt.<name>.definitions.yaml` | any task carrying a placeholder | the jig's own defaults stand, which suit a project laid out like this one |
 
 Everything else a jig needs lives here. Nothing reaches outside those two places.
@@ -187,10 +189,10 @@ register, and no state that project could reach would have passed.
 reach. It has to name a specific main package and a specific invocation of the
 built binary, so in a shared jig it fails for every adopter and the failure
 looks like the adopter's own. The foot of `bolt.go-std-quality.yaml` shows where
-it belongs instead.
+it belongs.
 
 **A task that cannot fail.** Where no adapter can read a tool's output yet, the
-task is left out rather than shipped green. An absent check tells you the gate
+task is left out, not shipped green. An absent check tells you the gate
 does not cover that property; a green one claims a guarantee it never
 established. `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md` has the
 worked case.

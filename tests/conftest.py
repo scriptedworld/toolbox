@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import shutil
 import subprocess  # nosec B404
 import sys
 from collections.abc import Callable, Sequence
@@ -47,12 +48,12 @@ def load(relative: str) -> ModuleType:
 def script_argv(path: Path | str, *args: str) -> list[str]:
     """The command that runs a checker or adapter as its own process.
 
-    UNDER COVERAGE WHEN THE PARENT IS. These scripts are spawned rather than
-    called, because the shebang, the imports, and where `main()` writes its
-    envelope are all part of the contract and an in-process call proves none of
-    them. A spawned process is invisible to the parent's coverage, though, so
-    until 2026-09-04 every script tested only this way reported 0% with a full
-    suite behind it: `adapters/go/coverage.py` measured 0 of 96 lines, and
+    Under coverage when the parent is. These scripts are spawned, not called,
+    because the shebang, the imports, and where `main()` writes its envelope
+    are all part of the contract and an in-process call proves none of them. A
+    spawned process is invisible to the parent's coverage, though, so without
+    this every script tested only this way reported 0% with a full suite behind
+    it: `adapters/go/coverage.py` measured 0 of 96 lines, and
     `adapters/common/bolt-result.py` 0 of 65.
 
     That is worse than a gap, because the number was going to be gated. A
@@ -92,7 +93,7 @@ def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode
     because it was written out twice, identically, and pylint's R0801 was right
     about it.
 
-    AS A SUBPROCESS, because an in-process call cannot catch a broken shebang, a
+    As a subprocess, because an in-process call cannot catch a broken shebang, a
     missing import, or a `main()` that writes somewhere other than where it was
     told. The envelope's location is part of the contract.
 
@@ -167,3 +168,27 @@ def fixture_text(relative: str) -> str:
     """Read captured tool output, dropping the provenance comment on line one."""
     lines = (Path(__file__).parent / "fixtures" / relative).read_text(encoding="utf-8").splitlines(keepends=True)
     return "".join(lines[1:]) if lines and lines[0].startswith("#") else "".join(lines)
+
+
+def git(tree: Path, *args: str) -> str:
+    """git in the tree, with an identity and without the machine's hooks or signing.
+
+    The two voice checks read real repositories, so their tests build real ones.
+    """
+    found = shutil.which("git")
+    assert found is not None
+    identity = ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false")
+    return subprocess.run([found, "-C", str(tree), *identity, *args], capture_output=True, text=True, check=True).stdout.strip()
+
+
+def repository(tmp_path: Path, files: dict[str, str]) -> Path:
+    """A repository with the files named, committed once."""
+    tree = tmp_path / "repo"
+    tree.mkdir(parents=True)
+    for name, text in files.items():
+        (tree / name).parent.mkdir(parents=True, exist_ok=True)
+        (tree / name).write_text(text, encoding="utf-8")
+    git(tree, "init", "-q")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", "start")
+    return tree
