@@ -35,7 +35,7 @@ import io
 import json
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tokenize
 from collections.abc import Callable, Iterator
@@ -240,7 +240,7 @@ def git_lines(git: str | None, base: Path, *args: str) -> list[str]:
     """The null-separated names a git command prints, or nothing where git cannot say."""
     if not git:
         return []
-    listed = subprocess.run([git, "-C", str(base), *args], capture_output=True, check=False)
+    listed = subprocess.run([git, "-C", str(base), *args], capture_output=True, check=False)  # nosec B603
     if listed.returncode != 0:
         return []
     return [name for name in listed.stdout.decode("utf-8", "replace").split("\0") if name]
@@ -283,7 +283,7 @@ def staged_text(base: Path, git: str | None, relative: Path) -> str | None:
     """What the index holds for the file, which is what a commit would carry."""
     if not git:
         return None
-    shown = subprocess.run([git, "-C", str(base), "show", f":{relative.as_posix()}"], capture_output=True, check=False)
+    shown = subprocess.run([git, "-C", str(base), "show", f":{relative.as_posix()}"], capture_output=True, check=False)  # nosec B603
     return shown.stdout.decode("utf-8", "replace") if shown.returncode == 0 else None
 
 
@@ -420,7 +420,7 @@ def recorded_start(base: Path, git: str | None, start_file: str) -> tuple[str | 
         return None, "commits not read: git is not on PATH"
     words = recorded.read_text(encoding="utf-8", errors="replace").split()
     named = words[0] if words else ""
-    resolved = subprocess.run(
+    resolved = subprocess.run(  # nosec B603
         [git, "-C", str(base), "rev-parse", "--verify", "--quiet", f"{named}^{{commit}}"], capture_output=True, text=True, check=False
     )
     if not named or resolved.returncode != 0:
@@ -433,7 +433,7 @@ def commit_texts(base: Path, git: str | None, span: str | None) -> list[Text]:
     """Commit messages over a revision span, newest first."""
     if not span or not git:
         return []
-    log = subprocess.run([git, "-C", str(base), "log", "--no-merges", "--format=%H%x1f%B%x1e", span], capture_output=True, text=True, check=False)
+    log = subprocess.run([git, "-C", str(base), "log", "--no-merges", "--format=%H%x1f%B%x1e", span], capture_output=True, text=True, check=False)  # nosec B603
     texts = []
     for record in log.stdout.split("\x1e"):
         sha, _, message = record.strip("\n").partition("\x1f")

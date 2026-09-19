@@ -37,7 +37,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor

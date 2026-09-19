@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -350,7 +350,7 @@ def test_the_script_runs_by_path_and_says_not_run_without_a_model(tmp_path):
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})
     argv = script_argv(ROOT / "bin" / "voice-review.py", "--all-files", "--fallback", "none")
 
-    result = subprocess.run(argv, cwd=tree, capture_output=True, text=True, check=False, env={"PATH": "/usr/bin:/bin"})
+    result = subprocess.run(argv, cwd=tree, capture_output=True, text=True, check=False, env={"PATH": "/usr/bin:/bin"})  # nosec B603
 
     assert result.returncode == 0
     assert "NOT RUN" in result.stdout

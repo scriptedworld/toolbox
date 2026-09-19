@@ -88,6 +88,17 @@ sets:
       - adapters/lcov/coverage.py
       - config/rust/clippy.toml
 
+  # The Ruby jig shipped with no set, so nothing could adopt it: `link-toolbox`
+  # links what a set names, and no set named it. Its coverage task reads a
+  # Cobertura report, which is the Python adapter's format, so the two sets
+  # share that file the way `rust` and `cpp` share the lcov one.
+  ruby:
+    includes: [common]
+    files:
+      - bolt.ruby-std-quality.yaml
+      - adapters/python/coverage.py
+      - config/ruby-std-quality.rubocop.yml
+
   # The lcov adapter is shared with `cpp` and belongs to neither set. It lives
   # in `adapters/lcov/` because it reads lcov, which cargo-llvm-cov and gcovr
   # both emit. Both sets list it, both symlink the same file, and a project

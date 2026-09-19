@@ -12,11 +12,17 @@ about an empty set, and it said it would expire once something was.
 
 ## S-1, bandit's subprocess findings in the test tree
 
-Thirteen marks, two rules, six files, and every one is a test. `B404` for
+Twenty marks, two rules, nine files, and every one is a test. `B404` for
 importing `subprocess`, `B603` for calling it without `shell=True`.
 
     tests/conftest.py                         # nosec B404    import subprocess
-    tests/conftest.py                         # nosec B603    the flag-contract runner
+    tests/conftest.py                    ×2   # nosec B603    the flag-contract runner, and the git helper
+    tests/test_voice_review.py                # nosec B404    import subprocess
+    tests/test_voice_review.py                # nosec B603    the script-runs-as-a-script case
+    tests/test_voice_tells.py                 # nosec B404    import subprocess
+    tests/test_voice_tells.py                 # nosec B603    the script-runs-as-a-script case
+    tests/test_clang_format_check.py          # nosec B404    import subprocess
+    tests/test_clang_format_check.py          # nosec B603    the script-runs-as-a-script case
     tests/test_bolt_result_adapter.py         # nosec B404    import subprocess
     tests/test_bolt_result_adapter.py         # nosec B603    running the adapter
     tests/test_coverage_adapter.py            # nosec B404    import subprocess
@@ -48,6 +54,11 @@ says why B404 and B603 are not also skipped there: "deliberate subprocess use is
 a design choice worth seeing rather than noise to silence". Marking each site is
 what that sentence asks for. Excluding the test tree would have been one line
 and would have stopped anyone ever seeing a new one appear.
+
+`conftest.py`'s git helper is the one new reason. Both voice checks read a real
+repository: the wording check asks git for the tracked files, the staged copy of
+one and the messages after a start commit. A test of either builds a repository
+and commits into it, so the helper runs git the way the checker does.
 
 ### Why the subprocess calls exist at all
 
@@ -98,7 +109,7 @@ Nine marks, one rule, every standalone script here.
     adapters/go/gofmt.py           # pylint: disable=duplicate-code
     adapters/go/govet.py           # pylint: disable=duplicate-code
     adapters/python/coverage.py    # pylint: disable=duplicate-code
-    adapters/rust/coverage.py      # pylint: disable=duplicate-code
+    adapters/lcov/coverage.py      # pylint: disable=duplicate-code
 
 The cause is structural, and it turned up three times before it was written down
 as one thing. Every script here is spawned by path, from a directory that is not
@@ -132,3 +143,32 @@ same shape without thought. `NEXT_STEPS.md` carries it.
 findings stop. That is `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`
 exactly, and it would also silence a case R0801 got right: two test files that
 had copied a subprocess block, which was dissolved and not marked.
+
+## S-4, bandit's subprocess findings in the checkers themselves
+
+Eight marks, two rules, three checkers. These are not tests: they are the
+production path, where a checker runs the tool it is a checker for.
+
+    bin/clang-format-check.py                 # nosec B404    import subprocess
+    bin/clang-format-check.py                 # nosec B603    clang-format over the compilation database
+    bin/voice-review.py                       # nosec B404    import subprocess
+    bin/voice-tells.py                        # nosec B404    import subprocess
+    bin/voice-tells.py                   ×4   # nosec B603    git: ls-files, show, rev-parse, log
+
+Asked and answered on the same terms as S-1: mark each site rather than skip the
+two rules for `bin/`, so a new subprocess call in a checker still has to be
+justified here.
+
+Every call passes a fixed program and a list of arguments, with no shell and no
+string interpolation into a command line. The program is `git` or the tool the
+checker exists to run, found on PATH by name. What varies is a path inside the
+project being checked, which reaches the tool as one argument, so a file named
+`; rm -rf /` is an argument and never a command.
+
+`bin/voice-review.py` imports `subprocess` and calls none itself. `Access.run`
+defaults to `subprocess.run` and a test hands in its own, which is how the claude
+CLI is asked for a review without a test ever calling a model.
+
+The alternative was to skip B404 and B603 for the production tree, one flag in
+the jig. That hides the next one from every adopter, which is the same argument
+S-1 makes for the test tree.

@@ -244,3 +244,77 @@ def test_every_slot_a_jig_uses_has_a_default_and_an_override():
             assert slot in declared, f"{path.name} uses {slot} and defines no default"
             for name, override in overrides.items():
                 assert slot in override, f"{name} does not override {slot}"
+
+
+# ---- what a jig is, and what it may name ------------------------------------
+
+
+# COVERS: FR-1.7 | property
+def test_a_task_running_a_child_jig_folds_its_verdict_up():
+    """bolt runs one jig, so composition is a task, and a child run needs an adapter.
+
+    Bolt exits 0 whenever it carried a run out, whatever the tools concluded, so
+    a composed task with no adapter passes however badly the child failed.
+    """
+    composing = []
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert isinstance(jig.get("tasks"), list) and jig["tasks"], f"{path.name} holds no tasks"
+        for task in jig["tasks"]:
+            if "bolt " in (task.get("command") or ""):
+                composing.append((path.name, task["name"]))
+                assert task.get("adapter"), f"{path.name}:{task['name']} runs a child jig and folds no verdict up"
+    assert composing, "no jig composes another, so the rule is untested"
+
+
+# COVERS: FR-1.3 | negative
+def test_no_jig_names_a_document_the_project_owns():
+    """The rule travels; the subject is the adopter's, and reaches a task through a placeholder.
+
+    `REQUIREMENTS.md` and `SUPPRESSIONS` are the two a task here reads, and both
+    arrive as `{requirements}` and `{suppressions}` so an adopter can put them
+    elsewhere.
+    """
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for task, command in commands(jig):
+            for subject in ("REQUIREMENTS.md", "SUPPRESSIONS", "NEXT_STEPS.md", "docs/"):
+                assert subject not in command, f"{path.name}:{task} names the subject {subject!r}: {command!r}"
+
+
+# COVERS: FR-6.1 | property
+def test_nothing_a_jig_names_reaches_outside_the_two_repositories():
+    """Every path is either the adopter's, relative to the run, or toolbox's through {config_dir}."""
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        for task, command in commands(jig):
+            for word in command.split():
+                assert not word.startswith("/"), f"{path.name}:{task} names an absolute path: {word!r}"
+                assert not word.startswith("~"), f"{path.name}:{task} reaches a home directory: {word!r}"
+                assert not word.startswith("../") and "/../" not in word, f"{path.name}:{task} climbs out of the run: {word!r}"
+
+
+# COVERS: FR-7.3 | property
+def test_the_manifest_is_declared_and_could_not_be_derived_from_the_jigs():
+    """Every {config_dir} file a jig names is in the manifest, and the manifest holds more.
+
+    The second half is what makes it a declaration. Deriving the list from
+    `{config_dir}` references would build today's list correctly and drop
+    whatever a tool reads by convention, such as a linter config a jig never
+    names on a command line.
+    """
+    manifest = yaml.safe_load((ROOT / "jigs.yaml").read_text(encoding="utf-8"))
+    declared = {entry for one in manifest["sets"].values() for entry in (one.get("files") or [])}
+    named = set()
+    for path in JIGS:
+        jig = yaml.safe_load(path.read_text(encoding="utf-8"))
+        named.add(path.name)
+        for _, command in commands(jig):
+            named |= {word.split("{config_dir}/")[1] for word in command.split() if "{config_dir}/" in word}
+        named |= {adapter for _, adapter in adapters(jig)}
+
+    # A reference may be to a directory, which clippy is handed through
+    # CLIPPY_CONF_DIR, and the manifest declares the files inside it.
+    missing = {one for one in named - declared if not any(entry.startswith(f"{one}/") for entry in declared)}
+    assert not missing, f"a jig names files the manifest does not declare: {sorted(missing)}"
+    assert declared - named, "the manifest declares nothing a jig does not name, so it could be derived"

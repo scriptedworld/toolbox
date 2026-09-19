@@ -82,7 +82,7 @@ def test_entries_land_at_the_same_relative_path(checker, tmp_path):
     assert (target / "bin/checker.py").read_text(encoding="utf-8") == "# bin/checker.py\n"
 
 
-# COVERS: FR-7.2 | positive
+# COVERS: FR-7.15 | positive
 def test_includes_are_followed(checker, tmp_path):
     """Adopting go brings common with it, because go's definition overlays it."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -91,7 +91,7 @@ def test_includes_are_followed(checker, tmp_path):
     assert (target / "bolt.go-std-quality.yaml").is_symlink()
 
 
-# COVERS: FR-7.2 | edge
+# COVERS: FR-7.15 | edge
 def test_a_set_without_includes_stands_alone(checker, tmp_path):
     """`secrets` needs nothing else to be true of a repository, so it pulls nothing."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -224,6 +224,25 @@ def test_a_link_left_behind_by_a_dropped_set_is_found(checker, tmp_path):
     assert code == 1
     assert "no longer in any adopted set" in out
     assert "gofmt.py" in out
+
+
+# COVERS: FR-7.14 | negative
+def test_a_destination_reached_through_a_link_out_of_the_project_is_refused(checker, tmp_path):
+    """Adoption must not write through a symlink that leaves the target.
+
+    `bin/` here is a link to a directory outside the project, so writing
+    `bin/checker.py` would land outside the tree the adopter named.
+    """
+    root, target = toolbox(tmp_path), project(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (target / "bin").symlink_to(outside)
+
+    code, out = checker(link_toolbox, argv(root, target, "common", "--yes"), tmp_path)
+
+    assert code == 1
+    assert "resolves outside the project, refused" in out
+    assert not any(outside.iterdir())
 
 
 # COVERS: FR-7.13 | positive

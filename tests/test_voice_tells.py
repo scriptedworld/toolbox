@@ -9,7 +9,7 @@ check.
 from __future__ import annotations
 
 import json
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 
 import pytest
@@ -67,7 +67,7 @@ def test_a_clean_tree_passes_and_says_what_it_read(tmp_path, capsys):
     assert "no start commit is recorded" in output
 
 
-# COVERS: FR-9.1 | negative
+# COVERS: FR-9.1, FR-2.2 | negative
 def test_one_instance_fails_and_names_where_the_line_and_the_rule(tmp_path, capsys):
     """A single instance is enough, and the output is enough to go and fix it."""
     tree = repository(tmp_path, {"docs/guide.md": f"# guide\n\nplain\n\nThe run stopped {DASH} twice.\n"})
@@ -85,7 +85,7 @@ def test_the_script_runs_by_path_from_the_project_directory(tmp_path):
     """Invoked as the jig invokes it, the exit code is the verdict."""
     tree = repository(tmp_path, {"README.md": "# repo\n\nFound -- twice.\n"})
 
-    result = subprocess.run(script_argv(ROOT / "bin" / "voice-tells.py", "--all-files"), cwd=tree, capture_output=True, text=True, check=False)
+    result = subprocess.run(script_argv(ROOT / "bin" / "voice-tells.py", "--all-files"), cwd=tree, capture_output=True, text=True, check=False)  # nosec B603
 
     assert result.returncode == 1
     assert "README.md:3: ascii-dash:" in result.stdout

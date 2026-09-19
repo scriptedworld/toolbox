@@ -178,7 +178,7 @@ def git(tree: Path, *args: str) -> str:
     found = shutil.which("git")
     assert found is not None
     identity = ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false")
-    return subprocess.run([found, "-C", str(tree), *identity, *args], capture_output=True, text=True, check=True).stdout.strip()
+    return subprocess.run([found, "-C", str(tree), *identity, *args], capture_output=True, text=True, check=True).stdout.strip()  # nosec B603
 
 
 def repository(tmp_path: Path, files: dict[str, str]) -> Path:

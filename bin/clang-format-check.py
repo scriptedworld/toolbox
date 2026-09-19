@@ -30,7 +30,7 @@ import argparse
 import json
 import pathlib
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 
 
@@ -112,7 +112,7 @@ def unformatted(binary: str, style: pathlib.Path, files: list[str]) -> list[str]
     """
     bad = []
     for name in files:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [binary, f"--style=file:{style}", "--dry-run", "--Werror", name],
             capture_output=True,
             text=True,

@@ -52,7 +52,7 @@ def test_every_settled_requirement_covered_passes(checker, tmp_path):
     assert "2 of 2" in out
 
 
-# COVERS: FR-4.5 | negative
+# COVERS: FR-4.5, FR-2.2 | negative
 def test_uncovered_settled_requirement_fails_and_is_named(checker, tmp_path):
     """An uncovered settled requirement is the failure this change exists for."""
     tree = project(

@@ -28,7 +28,7 @@ requirement it marks is testable.
 
 | ID | Requirement | |
 |---|---|---|
-| FR-1.1 | A jig is a `bolt.*.yaml` file holding a set of tasks. Jigs compose by overlay: later files win and tasks merge by id, so one jig can adjust an inherited task without restating the whole of it. | [A] |
+| FR-1.7 | A jig is one `bolt.*.yaml` file holding a set of tasks, and bolt runs one jig over one directory. Composition is a task: a jig runs another through bolt as a child, and an adapter folds the child's verdict into the parent's, because bolt exits 0 whenever it carried a run out. | [D] |
 | FR-1.2 | Every jig here validates against `schema/jig.schema.json`. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
 | FR-1.3 | A jig carries the rule and never the subject. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
 | FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
@@ -56,7 +56,7 @@ requirement it marks is testable.
 |---|---|---|
 | FR-3.1 | An adapter is a task's `result_command`. Its input is `argv` and an execution **record** on stdin; its output is an **envelope** on stdout. Its own exit code means nothing, because the envelope is the verdict. | [D] |
 | FR-3.2 | An adapter exists only where the checker's exit code is not the answer. `gofmt -l` lists unformatted files and exits 0 whichever it finds, so its status answers "did gofmt run" and never "is this formatted". | [A] |
-| FR-3.3 | An adapter is pure: no clock, no filesystem, no network. That makes it testable from a fixture record, on a machine where the tool it is about is not installed at all. | [D] |
+| FR-3.8 | An adapter reads only what it is handed, the record on stdin or the evidence named on its command line, and writes only its envelope. No clock, no network, and no file it was not given. That makes it testable from a fixture, on a machine where the tool it is about is not installed. | [D] |
 | FR-3.4 | An adapter emits one reason per finding, naming its `checker` and, where the tool supplies them, the file and line. Where the fix is mechanical, the reason carries the fix. | [D] |
 | FR-3.5 | An adapter omits an optional block instead of emitting it empty. `reasons: []` on a pass reads as "checked and found nothing to say", which is a different claim from having nothing to report. | [D] |
 | FR-3.6 | An adapter that cannot recognise the output of a checker which also exited non-zero reports a failure it cannot name, never a pass. Silence plus a bad exit code is not success. | [D] |
@@ -126,7 +126,7 @@ Adoption is therefore a set of symlinks.
 | ID | Requirement | |
 |---|---|---|
 | FR-7.1 | An entry lands at the same relative path in the target that it has here. This is forced and not chosen: a linked jig sits at the target's root, which makes `{config_dir}` the target's root, so `bin/x.py` has to be at `bin/x.py` for the jig to find it. There is no destination to configure and so no mapping to keep in step. | [A] |
-| FR-7.2 | A set may include another, and adopting it brings the included set along, because the including jig overlays the included one. A set declaring no includes pulls nothing. | [A] |
+| FR-7.15 | A set may include another, and adopting it links the included set's files too, because a task in the including jig runs the included jig as a child and needs it on disk. A set declaring no includes pulls nothing. | [A] |
 | FR-7.3 | The manifest is declared, not derived. Reading `{config_dir}` references out of the jigs would build today's list correctly and be wrong tomorrow: a jig running `ruff check .` or `pylint --recursive=y .` needs whatever configuration those tools read by convention, and names none of it on the command line. | [A] |
 | FR-7.4 | Links are relative by default, so the pair can move together; an absolute link encodes one machine's layout. Absolute stays available for a toolbox that sits at a fixed path and never travels. | [D] |
 | FR-7.5 | **Nothing is ever overwritten.** A real file sitting where a link belongs is reported and left alone: it is usually a vendored copy predating adoption, and deleting someone's file is their decision to make. | [A] |
@@ -198,7 +198,7 @@ after two reviews of one repository agreed on 30 of 77 findings;
 | NFR-2 | Every script here is measured by the suite that tests it, however the test reaches it. A spawned script is invisible to the parent's coverage, and a suite built on subprocesses reported 0% while testing thoroughly (`adapters/go/coverage.py` read 0 of 96 lines with a full suite behind it), which once forced tests to run in-process. `tests/conftest.py`'s `script_argv` removes that trade: it spawns the child under `coverage run --parallel-mode` when the parent is under coverage, and the jig's `tests` task combines before reporting. So a test may spawn, which it should where the shebang, the imports, or where `main()` writes are part of what is being checked, and the number still moves. | [D] |
 | NFR-3 | Every script is also exercised once as a script, because in-process testing catches neither a broken shebang, nor a missing executable bit, nor a failure on import. | [D] |
 | NFR-4 | Adapter fixtures are captured from real tool output, and each records the tool version and the date of capture. A fixture composed by hand tests whoever composed it, and a tool changing its output format is the break adapters exist to absorb. | [D] |
-| NFR-5 | `[?]` **This repository's own gate passes on this repository.** It does not yet: `security` fails on 117 Low findings, 108 of them `assert` in tests. See `NEXT_STEPS.md` item 11. | [?] |
+| NFR-5 | `[?]` This repository's own gate passes on this repository, and it does: `common-quality`, `python-std-quality` and `secrets` each report `success: true` under `--definitions toolbox`. The row stays open because nothing in the suite can assert it. NFR-1 has the suite running without the tools the jigs name, so the only check is running the three jigs. | [?] |
 | NFR-6 | The schema has one home, and it is wrench. A jig schema describes bolt's configuration format, which is not toolbox's to define. wrench ships the schemas and bolt is built from them, so this repository keeps no copy and imports the pack instead. The local `schema/` directory was deleted, not resynced. | [A] |
 
 ## Retired
@@ -219,3 +219,6 @@ document finds where it went.
 | FR-8.9 | 2026-09-16 | material is sampled up to a byte cap | FR-10.1: every text is sent whole |
 | FR-8.10 | 2026-09-16 | exempt paths, links and directives are never sent | FR-9.8, which the review reads through |
 | FR-8.11 | 2026-09-16 | the adapter carries the verdict and scores into the envelope | nothing: the adapter is deleted with the task |
+| FR-1.1 | 2026-09-17 | jigs compose by overlay, later files winning and tasks merging by id | FR-1.7: bolt runs one jig, and composition is a child task |
+| FR-7.2 | 2026-09-17 | a set includes another because the including jig overlays the included one | FR-7.15: the same linking, for the child-task reason |
+| FR-3.3 | 2026-09-17 | an adapter is pure: no clock, no filesystem, no network | FR-3.8: it reads only what it is handed and writes only its envelope |

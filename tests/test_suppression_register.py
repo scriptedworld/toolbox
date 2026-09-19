@@ -75,7 +75,7 @@ def test_a_registered_pragma_passes(checker, tmp_path):
 # ---- the two directions -----------------------------------------------------
 
 
-# COVERS: FR-5.1 | negative
+# COVERS: FR-5.1, FR-2.2 | negative
 def test_an_unregistered_pragma_fails(checker, tmp_path):
     """A suppression nobody justified."""
     tree = project(
