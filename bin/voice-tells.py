@@ -79,18 +79,33 @@ class Syntax:
     anchored: bool = False
 
 
+# tmux, zellij, herdr and screen each call a window group a session, so a
+# multiplexer's session is a thing and never an actor. Blanked before the
+# session-actor rule reads a line, which is what dotfiles' commit-message gate
+# does for the same reason.
+MULTIPLEXER = re.compile(r"\b(a|an|the|one|another|each|every|its|my|our)?\s*\b(tmux|zellij|herdr|screen)\s+session('s)?\b", re.IGNORECASE)
+
+
 @dataclass(frozen=True)
 class Rule:
-    """One pattern, the kinds of text it reads, and its name in the output."""
+    """One pattern, the kinds of text it reads, its name in the output, and what it does not read."""
 
     name: str
     pattern: re.Pattern[str]
     reads: frozenset[str] = EVERYWHERE
+    blank: re.Pattern[str] | None = None
 
 
-def rule(name: str, pattern: str, *, ignore_case: bool = False, reads: frozenset[str] = EVERYWHERE) -> Rule:
-    """A rule compiled once."""
-    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads)
+def rule(
+    name: str,
+    pattern: str,
+    *,
+    ignore_case: bool = False,
+    reads: frozenset[str] = EVERYWHERE,
+    blank: re.Pattern[str] | None = None,
+) -> Rule:
+    """A rule compiled once, with the vocabulary it is not about blanked first."""
+    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads, blank)
 
 
 # A finding at `error` fails the run. A `suggestion` is printed and never fails.
@@ -129,6 +144,7 @@ LINE_RULES = (
         r"|\b(found|flagged|raised|filed|written|recorded|measured|noticed) by (an?|the|this|another|my)\s+[~a-z0-9._/-]*\s*(session|agent)\b",
         ignore_case=True,
         reads=frozenset({COMMITS}),
+        blank=MULTIPLEXER,
     ),
     rule("strikethrough", r"~~[^~\n]+~~"),
     rule(
@@ -459,7 +475,7 @@ def line_findings(text: Text) -> list[Finding]:
         Finding(text.where, number, each.name, line.strip()[:160])
         for number, line in text.lines
         for each in LINE_RULES
-        if text.kind in each.reads and re.search(each.pattern, line)
+        if text.kind in each.reads and re.search(each.pattern, each.blank.sub("_", line) if each.blank else line)
     ]
 
 

@@ -157,6 +157,38 @@ def test_a_session_as_the_actor_is_found_in_a_commit(tmp_path, capsys):
 
 
 # COVERS: FR-9.4 | negative
+@pytest.mark.parametrize(
+    "body",
+    [
+        "A zellij session's directory holds the layout.",
+        "The tmux session's pane count is two.",
+        "The herdr session list shows five.",
+        "Each screen session keeps its own scrollback.",
+    ],
+)
+def test_a_multiplexers_session_is_a_thing_and_not_an_actor(tmp_path, capsys, body):
+    """tmux, zellij, herdr and screen all call a window group a session, and so may a commit."""
+    tree = repository(tmp_path)
+    start_here(tree)
+    commit(tree, f"feat: a change\n\n{body}")
+
+    code, report, _ = run(tree, capsys)
+
+    assert code == 0 and report["findings"] == []
+
+
+# COVERS: FR-9.4 | positive
+@pytest.mark.parametrize("body", ["This session's own findings are listed.", "The silo session's ruling stands."])
+def test_a_narrated_session_and_its_possessive_are_still_refused(tmp_path, capsys, body):
+    """Blanking the multiplexers must not blank the narration the rule is for."""
+    tree = repository(tmp_path)
+    start_here(tree)
+    commit(tree, f"feat: a change\n\n{body}")
+
+    assert rules_hit(tree, capsys) == {"session-actor"}
+
+
+# COVERS: FR-9.4 | negative
 def test_a_session_in_documentation_is_the_subject_and_passes(tmp_path, capsys):
     """Where sessions are what a project is about, a document may talk about one."""
     assert doc_rules(tmp_path, capsys, "The status line reads this session's transcript.") == set()
