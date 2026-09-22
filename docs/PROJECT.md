@@ -105,16 +105,12 @@ in one invocation was the overlay model, which the current CLI does not have.
 completed, whatever the tools concluded, and the verdict is in the artifact. It
 also exits 0 when it refuses the jig outright.
 
-Across the three runs, 13 of 16 tasks pass. The three that fail are known,
-open defects.
+All three runs report `success: true` in `result.yaml`. Read that artifact, never
+bolt's exit status.
 
-| Task | Jig | Why |
-|---|---|---|
-| `traceability` | common | 11 settled requirements have no test citing them |
-| `analyse` | python | pylint 9.99/10, `duplicate-code` between the two checkers and between the two new-contract adapters |
-| `security-tests` | python | bandit, 11 findings, all Low and all high confidence, subprocess calls in the test tree |
-
-`security` and `detect-secrets` both pass, and the secrets jig passes whole.
+The gate cannot be asserted from inside the suite, which is why NFR-5 stays
+marked open: NFR-1 has the suite running with none of the tools the jigs name, so
+running the three jigs is the only check there is.
 
 `complexity` measures each adopter's own code, because the shared jigs exclude
 the directories adoption fills. Before that an adopter was graded on the checkers
@@ -123,23 +119,23 @@ it had adopted instead of on its own source.
 One gap remains in what `complexity` reads: it misses a script with no file
 extension, which is how one adopter's only source file went unread.
 
-Eleven requirements have no test citing them, and they split two ways.
+Every settled requirement is cited by a test, 100 of 100, and two rows carry
+`[?]`: `FR-6.2` and `NFR-5`.
 
-A test can reach two of them. `FR-7.14` refuses a link resolving outside the
-target project, through a `State.ESCAPES` in `link-toolbox.py` that nothing
-exercises. `NFR-4` requires every adapter fixture to record the tool version and
-the capture date, which both fixtures under `tests/fixtures/` do and no test
-asserts.
+Nine of those citations were written by holding the jig documents and the scripts
+themselves to what the requirement says, which is how a property that reads like
+a design statement turns out assertable. A jig carrying the rule and never the
+subject becomes: no command names `REQUIREMENTS.md` or `SUPPRESSIONS` except
+through a placeholder. An adapter reading only what it is handed becomes: no
+adapter imports a clock, a socket or `subprocess`. The suite running without the
+toolchain becomes: no test spawns anything but the interpreter and git.
 
-The other nine are design properties held by review, and they are not a
-backlog: `FR-1.1`, `FR-1.3`, `FR-2.1`, `FR-2.2`, `FR-3.3`, `FR-6.1`, `FR-7.3`,
-`NFR-1` and `NFR-2`. *"A jig carries the rule and never the subject"* is not an
-assertion a test can make. `FR-1.4` and `FR-1.5` looked the same way and turned
-out assertable against the jig documents themselves, so the nine are what nobody
-has yet found a way to reach. Nobody has proved them unreachable.
-
-All eleven are settled, not open, so they carry no `[?]` and the gate is right
-to fail on them.
+Three requirements were retired on the way, because they described a toolbox that
+had changed under them. `FR-1.1` and `FR-7.2` said jigs compose by overlay, and
+bolt runs one jig with composition as a child task. `FR-3.3` said an adapter
+touches no filesystem, and the four flag-contract adapters read their evidence
+and write `output.yaml`. `FR-1.7`, `FR-7.15` and `FR-3.8` replace them, and
+`REQUIREMENTS.md`'s `## Retired` section holds the pointers.
 
 ## Adoption
 

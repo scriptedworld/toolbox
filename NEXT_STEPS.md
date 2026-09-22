@@ -164,10 +164,11 @@ entry there finds no tests, cites nothing, and fails every requirement at once.
 
 ## What blocks publication
 
-The gate is not green. `traceability` reports 9 settled requirements with no
-test citing them, `analyse` reports the duplicate code above, and
-`security-tests` reports 11 low-severity bandit findings in the test tree. Each
-is a known defect, and none is silenced.
+The gate is green, and the repository is pushed. `common-quality`,
+`python-std-quality` and `secrets` each report `success: true` under
+`--definitions toolbox`; `traceability` cites 100 of 100; the bandit findings are
+marked and registered as S-1 and S-4 in `SUPPRESSIONS`; `analyse` passes with the
+pylint allowlist in `pyproject.toml`.
 
 Neither the runner nor the schema library this repository depends on is
 published, so a clone cannot run a jig or the test suite. That ordering is not
@@ -274,6 +275,9 @@ because that list is what anvil builds an image from.
 
 
 ## The Ruby jig, part-written
+
+`jigs.yaml` now declares a `ruby` set, so the jig can be adopted at all. Nothing
+has adopted it, so the jig has still never run.
 
 `bolt.ruby-std-quality.yaml` is drafted and validates against wrench's
 `JIG_SCHEMA`. Seven tasks, two mechanisms, no bespoke adapters:
