@@ -1,0 +1,730 @@
+# The Node toolchain's standard checks, over a TypeScript project.
+#
+#     bolt node-std-quality .          flags before the positionals
+#
+# A jig is a toolchain contract, not a language one. It names executables in
+# `requires` and runs concrete commands, and Node, deno and bun do not share a
+# toolchain: deno has a formatter, a linter, a test runner and coverage built
+# in, Node reaches prettier, eslint, tsc and its own test runner, and bun has a
+# runner of its own. One file spanning all three would be a template of
+# placeholders standing in for the very things the standard is supposed to
+# state, which is what the C++ jig refused to become when it mandated a
+# compilation database rather than guessing a build system.
+#
+# So the commands here are Node's and nothing in this file is a runtime knob.
+#
+# What is shared across engines is the category list, below, which is the
+# language-independent standard taken from the Python jig. Each engine jig is
+# held to it:
+#
+#     bolt.deno-std-quality.yaml        the same list under deno's built-ins,
+#                                       with five categories it cannot cover
+#                                       and records as open
+#     bolt.typescript-std-quality.yaml  the composite, which runs the full
+#                                       standard once under the engine a
+#                                       project is published for and the suite
+#                                       alone under each further engine it
+#                                       claims
+#
+# Where a task here has a deno counterpart worth knowing it is named in that
+# task's comment, so the two files can be read against each other. There is no
+# bun jig: bun is not installed on the machine this was measured on, and a jig
+# nobody can run is worse than an absent one.
+#
+# Node 26 runs TypeScript directly, stripping types rather than compiling them,
+# so there is no build step and no emitted JavaScript. That is what lets every
+# task below read `.ts` where a pre-Node-22 project would have needed a build
+# first, and it is why `types` exists as a separate task: stripping types does
+# not check them.
+#
+# The path rule. A path resolves against {config_dir} if it travels with this
+# file: a checker, a linter's config. It stays relative to the base if it
+# belongs to the project being checked. Getting this backwards works in a
+# repository whose jig sits at its own root, where the two are the same
+# directory, and breaks for every adopter.
+#
+# The standard, taken from the Python jig, which is the written statement of
+# what should be validated for every language:
+#
+#     shape         a formatter that reports without writing, and a linter
+#     correctness   types, and a test suite with coverage
+#     security      known vulnerabilities, and the licences of what is linked
+#     hygiene       dead code, documentation, complexity
+#
+# Every one of those is covered here. There is no absent category, which sets
+# this jig apart from the Rust and C++ ones: npm has a real lock file, so
+# vulnerabilities and licences can both be answered from what is actually
+# resolved, where C++ has no manifest to read at all.
+#
+# Ordered cheapest first, so a failure surfaces before the slow checks run.
+#
+# ---- how the tools are reached ----------------------------------------------
+#
+# Every tool below except `node` and `npm` is an npm package and is invoked
+# through `npx --no-install`. That is deliberate and it is two decisions.
+#
+# `npx` rather than a bare name, because npm's convention is that a project's
+# tools are pinned in its own `devDependencies` and installed into
+# `node_modules/.bin`, which is not on PATH. A jig invoking `prettier` bare
+# would demand a global installation, and a global installation is a version
+# nobody pinned.
+#
+# `--no-install` rather than plain `npx`, because plain `npx` downloads a
+# missing package from the registry and runs it. A gate that installs software
+# to answer a question is not hermetic and does not report what the project
+# pinned. Measured with npm 11.19.1: `npx --no-install eslint .` in a directory
+# with no local eslint exits 1 with
+# `npx canceled due to missing packages and no YES option`, which is the loud
+# failure wanted.
+#
+# The `toolchain` task below is what turns that from a failure three tasks into
+# a run to a failure on the first one.
+#
+# ---- what an adopter declares ------------------------------------------------
+#
+# In `devDependencies`, pinned, because that is where a Node project pins what
+# it binds. Measured together at these versions on node v26.9.0, npm 11.19.1:
+#
+#     prettier                     3.9.8     format
+#     eslint                       9.39.5    lint, complexity, cognitive,
+#     typescript-eslint            8.70.1      analyse, docs, security
+#     @eslint/js                   9.39.5    the recommended base
+#     typescript                   5.9.3     types
+#     @types/node                  26.6.2    types, for `node:` specifiers
+#     eslint-plugin-sonarjs        4.2.1     cognitive, analyse
+#     eslint-plugin-jsdoc          64.5.4    docs
+#     eslint-plugin-security       4.0.1     security
+#     knip                         6.37.0    dead-code
+#     license-checker-rseidelsohn  5.0.1     licences
+#
+# And four files, none of which this jig supplies, because each states something
+# only the project knows:
+#
+#     tsconfig.json     what `types` compiles and how strictly
+#     eslint.config.js  the rule set, and the TypeScript parser
+#     knip.json         the entry points dead code is measured from
+#     package-lock.json what `vuln` and `licences` read
+#
+# `eslint.config.js` is load-bearing beyond the `lint` task and this is the one
+# surprise in the file. Core eslint cannot parse TypeScript: measured against a
+# flat config carrying only core rules, `eslint src/measure.ts` reported
+# `Parsing error: Unexpected token :` at the first type annotation. The parser
+# comes from `typescript-eslint` in the project's own config, so every
+# eslint-driven task below needs that config to exist even though the rules it
+# gates on are on the command line.
+#
+# That also settles where the jig's thresholds live. They are in this file and
+# not in the project's config, because eslint's CLI `--rule` wins over the
+# config: measured against a project config carrying `complexity: "off"`,
+# `eslint --rule '{"complexity":["error",{"max":1}]}'` still failed. So the
+# project supplies the parser and its own rule set, and the jig supplies numbers
+# the project cannot switch off.
+#
+# They sit in `definitions` rather than on the command lines, which is where the
+# Python jig puts its equivalents, and the reason is bolt rather than taste. A
+# `--rule` argument is JSON, JSON is written in braces, and bolt reads `{` up to
+# the next `}` as a placeholder name with no escape. Measured: a task carrying
+# the rule JSON inline was refused before anything ran, with
+# `task complexity names {"complexity":["error",{"max":15}, which nothing
+# defines`. Substitution is a single left-to-right pass and never re-reads what
+# it substituted, so the same JSON passes through untouched as a definition's
+# value and arrives as one shell word.
+#
+# The consequence for an adopter is worth stating: overriding one of these
+# replaces a whole rule set rather than one number, because the value is the
+# whole JSON document.
+#
+# A config that travels with this jig was tried first, the way the Go jig ships
+# a golangci config and the Rust jig a clippy.toml, and it does not work here.
+# An eslint config imports its parser, `link-toolbox` places it as a symlink,
+# and node resolves a symlink to its real path, so the import would resolve
+# against toolbox's `node_modules` and not the adopter's.
+#
+# ---- the one thing this jig cannot do, stated plainly ------------------------
+#
+# The five eslint-driven tasks below run the project's own rule set as well as
+# their own, and cannot be isolated from it. The Python jig's `complexity` task
+# passes `--isolated` so that a project's ruff config cannot reach it, and there
+# is no counterpart here.
+#
+# Measured, both ways round and on two eslint versions:
+#
+#   eslint 9.39.5   --no-config-lookup --rule <jig rules> src/measure.ts
+#                   reported `File ignored because no matching configuration was
+#                   supplied` and exited 0. A silent pass.
+#   eslint 10.11.0  --no-config-lookup --ext .ts --rule <jig rules> src/schema.ts
+#                   matched the file and then exited 1 with
+#                   `Parsing error: Unexpected token {`.
+#
+# So eslint cannot read TypeScript without the parser, the parser can only come
+# from the project's config, and reading the project's config brings the
+# project's rules with it. The consequence: while `lint` is failing, the
+# verdicts of `complexity`, `cognitive`, `analyse`, `docs` and `security` repeat
+# its findings and say little of their own. Each task's captured stdout still
+# names which rule fired, so the category's own findings are readable; it is the
+# pass-or-fail that is not independent.
+#
+# `short-circuit-failure` on `lint` would hide that, and it is deliberately not
+# set: stopping a run throws away the evidence the later tasks would have
+# produced, which is what FR-4.8 exists to prevent.
+
+version: "1.0.0"
+
+requires:
+  # Everything else is reached through npx, so these three are the whole PATH
+  # contract. `npx` is what `requires` can usefully check: whether the packages
+  # behind it are present is what `toolchain` below answers, because PATH cannot
+  # see into `node_modules/.bin`.
+  - node
+  - npm
+  - npx
+
+definitions:
+  # What `types` compiles. Named explicitly rather than left to discovery, so
+  # its absence is an error: measured, `tsc --noEmit -p nosuch.json` exits 1
+  # with `error TS5058: The specified path does not exist`.
+  tsconfig: tsconfig.json
+
+  # Where the project's own source lives, as against its tests. Only `docs` uses
+  # it, because JSDoc on a test helper is noise while a complexity limit on a
+  # test is not: the standing rule is that tests are held to the same quality
+  # bar as the code, so `complexity`, `cognitive`, `analyse` and `security` all
+  # run over the whole tree and this narrows one task.
+  source_dir: src
+
+  # What the coverage report covers, as one glob. Scoped positively to the
+  # project's source rather than by excluding things, because the alternative is
+  # measuring line coverage of the project's own tool configuration: measured
+  # against a fixture, `--test-coverage-include-all` with no include glob put
+  # `eslint.config.js` in the report at 0.0% of lines and failed the gate on a
+  # file no test should ever load.
+  #
+  # This is not hard rule 5's forbidden exclusion, and the line is worth
+  # stating. Rule 5 forbids settling a coverage failure by excluding a source
+  # file the tests could not reach; an entry point that no test process can
+  # enter is measured instead, never dropped. This says which directory holds
+  # the code under test, and everything in it stays judged, including the files
+  # nothing imports.
+  #
+  # A whole glob rather than composing `{source_dir}` with `/**` on the command
+  # line, so bolt's quoting covers the `*` characters. A glob left unquoted on a
+  # command line is expanded by the shell into a file list before node sees it.
+  coverage_include: src/**
+
+  # The lock file `vuln` and `licences` read. npm writes `package-lock.json`;
+  # an adopter using a shrinkwrap names it here.
+  #
+  # Measured with npm 11.19.1: `npm audit` with no lock file at all exits 1 with
+  # `code ENOLOCK`, so a missing lock is a loud failure and not a quiet pass.
+  # That is not true of every runtime's audit command; see the deno note on the
+  # `vuln` task.
+  lock_file: package-lock.json
+
+  # The licences a dependency may carry, as one semicolon-separated word.
+  # license-checker's `--onlyAllow` takes exactly this shape, which is what lets
+  # a policy list be a definition at all: bolt holds a definition to a scalar and
+  # quotes it as a single shell word, so a list spelled with spaces would arrive
+  # as one argument named after the whole list.
+  #
+  # The default is the permissive set the estate already ships under: MIT, ISC,
+  # Apache-2.0, the BSD pair, BlueOak, Unlicense, CC0 and Python-2.0. It is a
+  # starting point and not a ruling. A project with a different policy overrides
+  # this one line.
+  #
+  # Measured over a 321-package tree: `--onlyAllow 'MIT;ISC'` exited 1 naming
+  # `@eslint/config-array@0.21.2` as `Apache-2.0` and not permitted, so the flag
+  # gates rather than reports.
+  allowed_licences: MIT;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;BlueOak-1.0.0;0BSD;Unlicense;CC0-1.0;Python-2.0
+
+  # Per-file coverage minima, read by the shared lcov adapter through the
+  # explicit `adapter-command` on the `tests` task. Lines and branches both,
+  # which TypeScript on Node can do: measured on node v26.9.0, the lcov reporter
+  # emitted 4 BRDA records for a two-function fixture and the adapter reported
+  # `branch_measured: true`.
+  #
+  # These are wired rather than declared. The C++ jig declares `min_line` and
+  # `min_branch` and no task reads them, so its adapter runs on its own defaults
+  # and the two definitions change nothing; that is filed against that jig, not
+  # copied here.
+  min_line: "80"
+  min_branch: "80"
+
+  # What the coverage gate does not judge, as one regex over the shortened
+  # paths the adapter reports. `bin` and `adapters` are where an adopter's links
+  # into toolbox land, and `.ephemera` is gitignored working space by standing
+  # rule.
+  excluded_regex: (^|/)(\.ephemera|bin|adapters|node_modules)/
+
+  # ---- the eslint rule sets --------------------------------------------------
+  #
+  # Each is the whole `--rule` argument for one task, as JSON. They are
+  # definitions because bolt would read their braces as placeholders otherwise;
+  # the header says why, and the task above each command says what the numbers
+  # mean and where they came from.
+
+  # Cyclomatic complexity 15, 5 parameters, 60 statements, 4 levels of nesting.
+  # The Python jig's four numbers, so the two languages are held to one
+  # standard: C901, PLR0913, PLR0915, and pylint's R1702.
+  complexity_rules: '{"complexity":["error",{"max":15}],"max-params":["error",5],"max-statements":["error",60],"max-depth":["error",4]}'
+
+  # Cognitive complexity 15, which is complexipy's threshold in the Python jig.
+  cognitive_rules: '{"sonarjs/cognitive-complexity":["error",15]}'
+
+  # The same function body written twice, which is pylint's `duplicate-code`.
+  duplication_rules: '{"sonarjs/no-identical-functions":"error"}'
+
+  # A JSDoc comment on every exported symbol, and every parameter and return
+  # value described. `publicOnly` is what makes this interrogate's "public
+  # objects" rather than every symbol in the file.
+  docs_rules: '{"jsdoc/require-jsdoc":["error",{"publicOnly":true,"require":{"FunctionDeclaration":true,"ClassDeclaration":true,"MethodDefinition":true,"ArrowFunctionExpression":true,"FunctionExpression":true}}],"jsdoc/require-param":"error","jsdoc/require-returns":"error"}'
+
+  # Twelve of eslint-plugin-security's fourteen rules. The two that are absent
+  # and the measurement that settled it are above the `security` task.
+  security_rules: '{"security/detect-unsafe-regex":"error","security/detect-non-literal-regexp":"error","security/detect-non-literal-require":"error","security/detect-eval-with-expression":"error","security/detect-pseudoRandomBytes":"error","security/detect-possible-timing-attacks":"error","security/detect-no-csrf-before-method-override":"error","security/detect-buffer-noassert":"error","security/detect-child-process":"error","security/detect-disable-mustache-escape":"error","security/detect-new-buffer":"error","security/detect-bidi-characters":"error"}'
+
+tasks:
+  # ---- the toolchain ---------------------------------------------------------
+
+  # Not one of the four categories. It is `requires` for tools PATH cannot see.
+  #
+  # `requires` resolves names against PATH, and every tool below lives in
+  # `node_modules/.bin`, which is not on it. Without this task a project missing
+  # one devDependency discovers it partway through a run, with the failure
+  # wearing the shape of the check rather than of the absence. Half a gate run
+  # on a machine missing a tool costs more than the check that would have caught
+  # it, which is the reasoning `requires` already carries.
+  #
+  # `--version` on each, because that is the one invocation most tools answer
+  # without reading the project. knip and license-checker are the two that are
+  # slow to start, so they are last.
+  #
+  # license-checker is probed with `--help` and not `--version`, and that is
+  # measured rather than a preference. With license-checker-rseidelsohn 5.0.1,
+  # `--version` prints `4.4.2` to stderr and exits 1, so a `--version` probe
+  # fails a correctly installed tool and reports the wrong version while doing
+  # it. `--help` exits 0.
+  - name: toolchain
+    description: every npm tool the jig invokes is installed locally
+    command: >-
+      npx --no-install prettier --version &&
+      npx --no-install eslint --version &&
+      npx --no-install tsc --version &&
+      npx --no-install knip --version &&
+      npx --no-install license-checker-rseidelsohn --help
+
+  # ---- shape -----------------------------------------------------------------
+
+  # --check reports without writing. A formatter that reformats during a check
+  # is a check with a side effect, and in CI it produces a green run against a
+  # tree nobody has seen.
+  #
+  # No --ignore-path, and that is the load-bearing absence. Prettier 3 defaults
+  # its ignore paths to `.gitignore` and `.prettierignore` together, and naming
+  # one on the command line REPLACES both rather than adding to it. Measured
+  # with prettier 3.9.8 against a tree whose `.gitignore` excluded a working
+  # directory and whose `.prettierignore` did not:
+  #
+  #     prettier --check .                                 2 findings
+  #     prettier --check --ignore-path .prettierignore .    4 findings,
+  #                                                          the 2 extra being
+  #                                                          gitignored files
+  #
+  # That is the same shape as ruff's `--exclude` replacing its defaults, which
+  # toolbox already carries as
+  # docs/LESSONS/an-exclusion-flag-can-replace-the-defaults-it-should-have-joined.md
+  # So an adopter excludes through `.prettierignore` and `.gitignore`, which are
+  # the project's files, and this jig names neither.
+  #
+  # On deno the counterpart is `deno fmt --check`, which takes its exclusions
+  # from `deno.json`'s `exclude` and `fmt.exclude` instead.
+  - name: format
+    description: every file is prettier-clean
+    command: npx --no-install prettier --check .
+
+  # The project's own rule set, whatever it has enabled, exactly as the Python
+  # jig's `lint` runs the project's ruff configuration. The jig's own numbers
+  # are in `complexity`, `cognitive`, `docs` and `security` below, where a
+  # reader sees them on the command line.
+  #
+  # eslint with no configuration is a loud failure and not a silent pass:
+  # measured with eslint 9.39.5, `eslint .` in a tree with no
+  # `eslint.config.js` exits 2 and prints the flat-config migration guide. So
+  # this task cannot pass by finding nothing to do.
+  #
+  # On deno the counterpart is `deno lint`, which carries its own 124 rules and
+  # reads the selection from `deno.json`.
+  - name: lint
+    description: the eslint rule set, whatever the project has enabled
+    command: npx --no-install eslint .
+
+  # ---- correctness -----------------------------------------------------------
+
+  # Node strips types to run TypeScript and does not check them, so unlike Rust
+  # and C++ there is a mypy-shaped gap here and this is what fills it. Running
+  # the tests proves nothing about the types.
+  #
+  # --noEmit, because the project is consumed as TypeScript. Emitting would
+  # write JavaScript nobody asked for into the tree being checked, which is the
+  # same fault as a formatter that writes during a check.
+  #
+  # Strictness is not set here. `tsconfig.json` is the project's and says how
+  # strict it is, for the reason the Python jig gives for not forcing
+  # `mypy --strict`: a shared jig turning strict mode on for every adopter fails
+  # every adopter on day one, which teaches them to delete the task rather than
+  # fix the code.
+  #
+  # On deno the counterpart is `deno check .`, and it carries a trap worth
+  # naming: measured with deno 2.9.7, `deno check` with no path argument exits 0
+  # immediately having checked nothing, while `deno check .` checked ten files.
+  - name: types
+    description: tsc is satisfied, against the project's own tsconfig
+    command: npx --no-install tsc --noEmit -p {tsconfig}
+
+  # ---- hygiene ---------------------------------------------------------------
+
+  # Cyclomatic complexity, arguments, statements and nesting depth, which are
+  # eslint core rules and need no plugin. The four numbers are the Python jig's,
+  # so the two languages are held to one standard rather than to two:
+  #
+  #     complexity      15   cyclomatic, the mccabe number C901 measures
+  #     max-params       5   PLR0913
+  #     max-statements  60   PLR0915
+  #     max-depth        4   pylint's R1702, which the Python jig gets from
+  #                          `analyse` because ruff's nesting rule is preview
+  #
+  # In this jig and not in the project's config, because eslint's CLI `--rule`
+  # beats the project's config: measured against a config setting
+  # `complexity: "off"`, the CLI rule still failed the file. The project's
+  # config is still read, and must be, because that is where the TypeScript
+  # parser comes from.
+  #
+  # The whole tree, tests included. Tests are held to the same quality bar as
+  # the code by standing rule, and a 60-statement test function is as hard to
+  # read as a 60-statement one anywhere else.
+  #
+  # On deno there is no counterpart at all. `deno lint --rules` listed 124 rules
+  # on deno 2.9.7 and not one of them measures complexity, so a deno adopter
+  # either installs eslint beside deno or has no complexity gate.
+  - name: complexity
+    description: no function over cyclomatic 15, 5 parameters, 60 statements or 4 levels of nesting
+    command: npx --no-install eslint --rule {complexity_rules} .
+
+  # Cognitive complexity, which does not duplicate `complexity` above. The
+  # cyclomatic number counts independent paths through a function; the cognitive
+  # number weights nesting far more heavily and asks how hard the function is to
+  # hold in your head. A flat function with a ten-branch switch scores badly on
+  # the first and well on the second, and three nested loops score the reverse.
+  #
+  # This is the complexipy counterpart, and the threshold is complexipy's: 15.
+  #
+  # sonarjs rather than a dedicated tool, because SonarSource originated the
+  # cognitive complexity metric and this is their implementation of it, and
+  # because eslint is already parsing the tree, so the second number costs a
+  # plugin rather than a second parse. No other maintained npm implementation of
+  # the metric was found.
+  - name: cognitive
+    description: no function over cognitive complexity 15
+    command: npx --no-install eslint --plugin sonarjs --rule {cognitive_rules} .
+
+  # The same code in two places, which is what the Python jig's `analyse` gets
+  # from pylint's `duplicate-code`. A duplicate needs to see more than one file
+  # at a time, which is why it is not something a single-file rule can answer.
+  #
+  # sonarjs and not jscpd, which is the rival. jscpd is a token-based
+  # copy-paste detector with its own report format and its own configuration
+  # file, and it would be a second tool and a second parse for one metric.
+  # `sonarjs/no-identical-functions` answers the same question inside an eslint
+  # run that is already happening, which is the reasoning the Rust jig uses for
+  # folding complexity into clippy. jscpd finds duplicated fragments below
+  # function granularity and this does not; that is the cost, and it is named
+  # here rather than hidden.
+  - name: analyse
+    description: no function whose body is identical to another's
+    command: npx --no-install eslint --plugin sonarjs --rule {duplication_rules} .
+
+  # Dead code, and unlike Rust and C++ this is a real task rather than a
+  # compiler warning. knip walks the module graph from the project's declared
+  # entry points and reports what nothing reaches: unused files, unused exports,
+  # and dependencies declared but never imported.
+  #
+  # knip and not ts-prune, which is the rival and is archived: ts-prune's
+  # repository points readers at knip as its successor. knip also reports
+  # unused files and unused dependencies, where ts-prune reported unused exports
+  # alone.
+  #
+  # `knip.json` is the adopter's and this jig does not supply it, because only
+  # the project knows what its entry points are. That is the same contract the
+  # C++ jig has with `compile_commands.json`, and it has the same consequence:
+  # measured on a fixture with no knip.json, knip reported all three of its
+  # source files as unused, because with no entry point declared nothing is
+  # reachable. With `entry` declared it reported exactly the one file nothing
+  # imports.
+  #
+  # A project whose tools are invoked by this jig rather than by an npm script
+  # will see them reported as unused devDependencies, because knip reads
+  # `package.json` scripts and cannot read a bolt jig. `ignoreDependencies` in
+  # `knip.json` is where that is answered, and it is a statement about this
+  # gate rather than a suppression of a finding.
+  - name: dead-code
+    description: no file, export or dependency that nothing reaches
+    command: npx --no-install knip
+
+  # Documentation of the public surface, the interrogate counterpart.
+  #
+  # `publicOnly` restricts it to exported symbols, which is interrogate's
+  # "public objects". The three `require` rules ask for more than interrogate
+  # does: interrogate checks that a docstring exists, and this additionally
+  # checks that every parameter and every return value is described.
+  #
+  # What is lost is the number. interrogate reports a percentage and takes
+  # `--fail-under 80`; this reports pass or fail at 100% of exported symbols,
+  # and there is no threshold to set. That is the same loss the Rust jig records
+  # for `missing_docs`, and it means this task is stricter than the Python
+  # standard rather than equal to it. An adopter meets it or fails it.
+  #
+  # eslint-plugin-jsdoc and not typedoc, which is the rival and does work:
+  # measured, `typedoc --validation.notDocumented
+  # --treatValidationWarningsAsErrors` exited 4 on an undocumented export. It
+  # was not chosen for three reasons. It needs its own entry-point
+  # configuration, where this needs none. It reports a symbol and a file with no
+  # line number, where this reports file, line and column. And it cannot ask for
+  # `@param` and `@returns` at all, which is most of what makes a JSDoc comment
+  # worth having.
+  #
+  # {source_dir} and not the whole tree, because JSDoc on a test helper is noise.
+  #
+  # On deno the counterpart is `deno doc --lint`, which is a genuine equivalent
+  # and needs no plugin. Measured against wrench's deno pack it reported 19
+  # missing-jsdoc errors.
+  - name: docs
+    description: every exported symbol is documented, with its parameters and its return
+    command: npx --no-install eslint --plugin jsdoc --rule {docs_rules} {source_dir}
+
+  # ---- security --------------------------------------------------------------
+
+  # Static security patterns, the bandit counterpart. Twelve of
+  # eslint-plugin-security's fourteen rules, named one by one in
+  # `security_rules` above so a reader sees the set without opening a config.
+  #
+  # Two rules are deliberately not here, and this is the one place the jig makes
+  # a judgement an adopter might overturn. Measured over wrench's TypeScript
+  # pack, nine files and about 62KB of source, the full fourteen reported 13
+  # findings:
+  #
+  #     detect-object-injection           7
+  #     detect-non-literal-fs-filename    5
+  #     detect-unsafe-regex               1
+  #
+  # The first fires on any `obj[key]` whose key is not a literal, and the second
+  # on any filesystem call whose path is not a literal. Neither rule performs
+  # taint analysis, so neither can tell a path that came from an attacker from a
+  # path the caller passed in, and in a library whose whole job is reading a
+  # file the second is a false positive in every instance. Including them fails
+  # a correct project on its own design, which is the failure the Python jig
+  # names for bandit's B101: it teaches an adopter to delete the task rather
+  # than fix the code.
+  #
+  # The twelve that remain fire on things that are nearly always worth a second
+  # look: eval, child_process, a non-literal require, an unsafe regular
+  # expression, the unchecked Buffer constructors, a bidirectional control
+  # character.
+  #
+  # Unlike the Python jig there is no test-tree split. That split exists because
+  # bandit's B101 fires on every `assert`, and an assert in a test is the test.
+  # No rule here has that property, so the whole tree is held to all twelve.
+  #
+  # There is no deno counterpart. eslint-plugin-security is an eslint plugin, so
+  # a deno adopter installs eslint beside deno or has no pattern-based security
+  # check.
+  - name: security
+    description: the eslint security patterns, across the whole tree
+    command: npx --no-install eslint --plugin security --rule {security_rules} .
+
+  # Advisories against what the lock file actually resolved, the cargo-audit
+  # counterpart. npm ships it, so unlike C++ this needs no extra tool and unlike
+  # Rust it needs no separately installed binary.
+  #
+  # `test -f {lock_file}` first, for the reason the Go jig writes `test -z` round
+  # gofmt: a check that cannot tell "nothing to audit" from "nothing was
+  # audited" passes forever. npm is honest here on its own, exiting 1 with
+  # `ENOLOCK` when there is no lock file at all, but naming the file is what
+  # makes THIS jig's contract checkable, and it is cheap.
+  #
+  # `--audit-level=low` because the default is to fail on any advisory anyway
+  # and stating it puts the threshold where a reader sees it. Nothing about
+  # severity is left to npm's defaults changing under the gate.
+  #
+  # This reports every advisory touching a resolved package, not only those
+  # whose vulnerable functions are reached. It is the noisier kind of signal,
+  # the same kind pip-audit gives and unlike govulncheck's reachability
+  # analysis, and there is no reachability-based auditor for npm to prefer
+  # instead.
+  #
+  # Both this and `licences` reach the network. A run on a machine with no route
+  # to the registry fails here, and that is an environment fault rather than a
+  # finding: it is a restart or a route, not a defect in the tree. npm's
+  # `--offline` would make the task pass without asking anything, so it is
+  # deliberately not set.
+  #
+  # On deno the counterpart is `deno audit`, and it carries a trap this one does
+  # not. Measured with deno 2.9.7, `deno audit --lock <a path that does not
+  # exist>` printed `No known vulnerabilities found` and exited 0, so naming a
+  # missing lock file is a silent pass there and the `test -f` guard is not
+  # optional for a deno adopter.
+  - name: vuln
+    description: no resolved dependency carries a known advisory
+    command: test -f {lock_file} && npm audit --audit-level=low
+
+  # The licences of what is linked, the cargo-deny counterpart. This is the
+  # category C++ has to leave open, because C++ has no manifest; npm has one and
+  # a lock file beneath it, so the question is answerable.
+  #
+  # --production, so the set is what ships rather than what builds. A build tool
+  # is not linked into the artifact and its licence does not travel with it. An
+  # adopter who wants the build tools covered too removes the flag, which is a
+  # change to what the check means and therefore a change to the jig rather than
+  # a definition to override.
+  #
+  # --excludePrivatePackages drops the project itself. license-checker reads a
+  # package marked `"private": true` as `UNLICENSED` regardless of its own
+  # `license` field: measured, a fixture declaring `"license": "Apache-2.0"` and
+  # `"private": true` was reported as UNLICENSED, and it is the only entry in a
+  # tree with no runtime dependencies. Without this flag every private project
+  # fails its own licence gate.
+  #
+  # A project with no runtime dependencies passes this having judged nothing.
+  # That is the honest answer rather than a hole: nothing is linked, so no
+  # licence is carried. `cargo deny check` says the same of a crate with no
+  # dependencies.
+  #
+  # license-checker-rseidelsohn and not license-checker, which is the rival and
+  # is the older unmaintained original; the fork is the maintained continuation
+  # and is where `--excludePrivatePackages` and the current `--onlyAllow`
+  # behaviour live.
+  - name: licences
+    description: every linked dependency carries a permitted licence
+    command: >-
+      npx --no-install license-checker-rseidelsohn
+      --production
+      --excludePrivatePackages
+      --onlyAllow {allowed_licences}
+
+  # ---- tests -----------------------------------------------------------------
+
+  # The suite, and coverage judged per file for lines and branches.
+  #
+  # Node's own test runner and its own coverage, not c8 and not nyc. Both rivals
+  # work: measured, `c8 --reporter=lcovonly --all --src src node --test` produced
+  # an lcov naming both fixture files with 5 BRDA records. Node's built-in was
+  # chosen because it ships with the runtime, so it adds no devDependency and
+  # cannot drift from the Node the project runs on, and because
+  # `--test-coverage-include-all` answers the one thing a per-file gate must get
+  # right. An adopter on a Node older than 22 has no built-in lcov reporter and
+  # takes c8 instead.
+  #
+  # --test-coverage-include-all is the load-bearing flag and hard rule 5 is why.
+  # Coverage is judged per file so that a well-tested file cannot carry an
+  # untested one, and a file no test ever imports is absent from a V8 coverage
+  # report entirely. Measured on node v26.9.0 against a fixture holding one
+  # module nothing imports:
+  #
+  #     without the flag   the file does not appear, and the gate passes
+  #     with the flag      SF:src/untested.ts, 18 lines, 0 covered, and the
+  #                        adapter reported it at 0.0%
+  #
+  # So without it the per-file gate silently passes exactly the files nobody
+  # wrote a test for, which is the guarantee it exists to provide.
+  #
+  # --test-coverage-include scopes that to {coverage_include}. Without it,
+  # include-all also pulls in the project's own configuration: measured, a
+  # fixture's `eslint.config.js` arrived in the report at 0.0% and failed the
+  # gate. The definition above says why that is a scope and not an exclusion.
+  #
+  # Two reporters, because one would replace the other. `--test-reporter=spec`
+  # to stdout keeps the run readable in the captured output; `--test-reporter=lcov`
+  # to a file produces the evidence. Node pairs each `--test-reporter` with the
+  # `--test-reporter-destination` that follows it.
+  #
+  # --experimental-test-coverage is still the spelling on node v26.9.0. It is
+  # the flag name, not a statement that the numbers are provisional.
+  #
+  # The adapter is the one the Rust and C++ jigs share, and it is shared because
+  # it reads lcov rather than because it knows a language. It answers for the
+  # test run as well: it reads the captured exit status, so a suite that failed
+  # while leaving a profile behind is a failure and not a coverage report.
+  #
+  # An explicit `adapter-command`, unlike every other jig here, because the
+  # default invocation passes no `--min`, no `--min-branch` and no `--exclude`,
+  # and the adapter then runs on its own defaults. The C++ jig declares
+  # `min_line` and `min_branch` and does not wire them, so changing those two
+  # values there changes nothing. Wiring them is what makes them definitions
+  # rather than documentation. Everything the default invocation passes is
+  # repeated here, because an explicit command replaces it rather than adding
+  # to it.
+  #
+  # {config_dir} in front of the adapter, because an explicit command does not
+  # get the resolution the default one does. Bolt's default invocation builds
+  # the adapter's absolute path from the config directory; an `adapter-command`
+  # is a shell line run from the base, so a bare `adapters/lcov/coverage.py`
+  # names a path in the project being checked. Measured: the first run of this
+  # jig reported `the adapter adapters/lcov/coverage.py exited 127`, which is
+  # command-not-found and a fact about the path rather than about the coverage.
+  #
+  # No aggregate threshold. An aggregate is what lets a well-tested file carry
+  # an untested one, and the total is reported in the adapter's statistics as
+  # context with nothing branching on it. Node's own `--test-coverage-lines` is
+  # an aggregate for that reason and is deliberately not used.
+  #
+  # Lines, not statements. lcov's `DA` records count lines, and node counts
+  # every line of a never-loaded file including its comments, so the denominator
+  # is not the same one Go's statement counts use. The threshold is the same
+  # number against a different denominator and the two should not be read as one
+  # measurement.
+  #
+  # On deno the counterpart is `deno test --coverage=DIR` followed by
+  # `deno coverage DIR --lcov --output=FILE`, which the same adapter reads:
+  # measured with deno 2.9.7 against wrench's pack, that produced 10 SF records
+  # and 222 BRDA records.
+  - name: tests
+    description: the suite, and coverage judged per file for lines and branches
+    command: >-
+      node --test
+      --experimental-test-coverage
+      --test-coverage-include-all
+      --test-coverage-include={coverage_include}
+      --test-reporter=spec --test-reporter-destination=stdout
+      --test-reporter=lcov --test-reporter-destination={work_dir}/coverage.lcov
+    evidence:
+      - coverage.lcov
+    adapter: adapters/lcov/coverage.py
+    adapter-command: >-
+      {config_dir}/adapters/lcov/coverage.py
+      --min {min_line} --min-branch {min_branch}
+      --exclude {excluded_regex}
+      --stdout {work_dir}/stdout --stderr {work_dir}/stderr
+      --exitcode {work_dir}/exitcode
+      --project-root {project_root} --base-dir {base_dir}
+      --work-dir {work_dir}
+      --evidence {work_dir}/coverage.lcov
+
+# ---- not here, and why -------------------------------------------------------
+#
+# A build task. Node 26 runs TypeScript by stripping types, so there is nothing
+# to build ahead of time and no emitted artifact to check. `types` above is what
+# a Rust or C++ `build` task would be, and it is filed under correctness for
+# that reason.
+#
+# A lock-file freshness task, the counterpart to the Go jig's `go mod tidy
+# -diff`. `npm ci` fails when `package-lock.json` disagrees with `package.json`,
+# so the check exists, but it also deletes and reinstalls `node_modules`, which
+# is a gate with a large side effect. `npm ls --package-lock-only` is the
+# read-only candidate. Neither is in the Python standard this jig is measured
+# against, so adding one is a decision rather than an omission.
+#
+# eslint-plugin-security's `detect-object-injection` and
+# `detect-non-literal-fs-filename`, with the measurement, above the `security`
+# task.
+#
+# jscpd for duplicate detection, typedoc for documentation, c8 and nyc for
+# coverage, ts-prune for dead code, and license-checker for licences. Each is
+# named above the task that chose against it, with what choosing it would cost.

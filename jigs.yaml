@@ -99,10 +99,11 @@ sets:
       - adapters/python/coverage.py
       - config/ruby-std-quality.rubocop.yml
 
-  # The lcov adapter is shared with `cpp` and belongs to neither set. It lives
-  # in `adapters/lcov/` because it reads lcov, which cargo-llvm-cov and gcovr
-  # both emit. Both sets list it, both symlink the same file, and a project
-  # adopting both gets one copy.
+  # The lcov adapter is shared with `cpp` and `typescript` and belongs to none
+  # of the three. It lives in `adapters/lcov/` because it reads lcov, which
+  # cargo-llvm-cov, gcovr and node's own test reporter all emit. Every set lists
+  # it, all of them symlink the same file, and a project adopting two gets one
+  # copy.
   #
   # It moved from `adapters/rust/` while only this repository referenced that
   # path, so no adopter had to re-link.
@@ -125,6 +126,70 @@ sets:
       - bin/clang-format-check.py
       - config/cpp/clang-format.yaml
       - config/cpp/clang-tidy.yaml
+
+  # The Node toolchain, over a TypeScript project. Named for the toolchain and
+  # not the language, which is the one set here that has to be: deno and bun run
+  # the same language through entirely different tools, so a set called
+  # `typescript` would promise something no single file can deliver. A
+  # `deno-std-quality` set joins this list when a project adopts one, and is
+  # held to the same category list rather than inventing its own.
+  #
+  # The shortest file list of any language set, and that is a property of the
+  # ecosystem rather than of the jig: every tool it drives is an npm package the
+  # adopter pins in its own `devDependencies`, so there is nothing to symlink
+  # except the jig and the shared adapter.
+  #
+  # No linter configuration travels with it, where `go`, `ruby`, `rust` and
+  # `cpp` all ship one. It cannot. An eslint config imports its parser,
+  # `link-toolbox` places a file as a symlink, and node resolves a symlink to
+  # its real path, so an eslint config linked from here would resolve
+  # `typescript-eslint` against toolbox's `node_modules` and not the adopter's.
+  # The jig's thresholds are definitions in its own file instead, passed with
+  # eslint's `--rule`, which beats whatever the project's own config says.
+  #
+  # The adopter supplies four files of its own: `tsconfig.json`,
+  # `eslint.config.js`, `knip.json` and a `package-lock.json`. That is a longer
+  # contract than any other language set here asks for, and it is the same shape
+  # as the compilation database `cpp` requires: each states something only the
+  # project knows.
+  node-std-quality:
+    includes: [common]
+    files:
+      - bolt.node-std-quality.yaml
+      - adapters/lcov/coverage.py
+
+  # The Deno toolchain, over the same language. A separate set and not a variant
+  # of the one above, because the two share no tool: every task in the deno jig
+  # is a deno subcommand and every task in the node one reaches an npm package.
+  #
+  # It shares the lcov adapter with `node-std-quality`, `rust` and `cpp`, which
+  # is four sets reading one file. That is what naming the adapter for its
+  # format rather than for a language bought.
+  #
+  # Shorter than the Node set in what it gates, not in what it links. Deno's
+  # built-ins leave complexity, duplicate detection, dead code, licences and
+  # static security patterns open; the jig records each with the measurement.
+  deno-std-quality:
+    includes: [common]
+    files:
+      - bolt.deno-std-quality.yaml
+      - adapters/lcov/coverage.py
+
+  # The composite, which runs the engine jigs an adopter declares.
+  #
+  # It includes both engine sets rather than picking one, because an adopter
+  # cannot know which it will declare until it writes its definitions file, and
+  # a jig that is not on disk when its name is composed fails the run rather
+  # than skipping. Linking both costs two symlinks.
+  #
+  # `adapters/common/bolt-result.py` arrives through `common`, which both engine
+  # sets already include, so it is not listed twice. Without it the composed
+  # task cannot fail: bolt exits 0 whenever it carried a run out, so a composed
+  # task with no adapter passes however badly the child failed.
+  typescript-std-quality:
+    includes: [node-std-quality, deno-std-quality]
+    files:
+      - bolt.typescript-std-quality.yaml
 
   secrets:
     files:

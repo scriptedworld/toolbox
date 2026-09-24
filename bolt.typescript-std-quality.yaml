@@ -1,0 +1,162 @@
+# TypeScript's standard, composed from the engine jigs an adopter declares.
+#
+#     bolt typescript-std-quality .    flags before the positionals
+#
+# This file runs no tool of its own. It runs other jigs, because a jig is a
+# toolchain contract and TypeScript has more than one toolchain:
+#
+#     bolt.node-std-quality.yaml   prettier, eslint with typescript-eslint,
+#                                  tsc, node --test, knip, license-checker,
+#                                  npm audit
+#     bolt.deno-std-quality.yaml   deno fmt, lint, check, test, coverage, doc,
+#                                  audit, all built in
+#
+# Each is held to the same category list, which is the language-independent
+# standard taken from the Python jig:
+#
+#     shape         a formatter that reports without writing, and a linter
+#     correctness   types, and a test suite with coverage
+#     security      known vulnerabilities, and the licences of what is linked
+#     hygiene       dead code, documentation, complexity
+#
+# The two engines do not meet it equally and the jigs say so rather than
+# implying they do. Node's toolchain covers every category. Deno's covers shape
+# and correctness and leaves complexity, duplicate detection, dead code,
+# licences and static security patterns open, each written down in that file
+# with the measurement behind it.
+#
+# No bun jig. Bun is not installed on the machine this was measured on, so
+# anything written for it would be unproven, and a jig nobody can run is worse
+# than an absent one. `bolt.bun-std-quality.yaml` joins the same way when there
+# is an installed engine and an adopter, and it is held to the same category
+# list.
+#
+# ---- what runs once and what runs per engine ---------------------------------
+#
+# This is the decision the composite exists to make, so it is written down
+# rather than left to be inferred from the task list.
+#
+# The full standard runs ONCE, under {standard}. prettier, eslint, tsc, knip,
+# license-checker and npm audit read source files and manifests. None of them
+# changes its answer according to which engine will later execute the code, so
+# running a second full engine jig would ask one question twice and take twice
+# as long to give the same answer.
+#
+# What genuinely varies is whether the suite RUNS under an engine. That is the
+# portability claim, it is the only thing a second engine can falsify, and it is
+# the whole reason a project claims to support one. So each additional engine
+# contributes one task: its suite, under its own runtime.
+#
+# It is one task and not a composed jig because bolt cannot run part of a jig.
+# Measured: bolt's command line carries four flags, `--definitions`,
+# `--output-dir`, `--config-dir` and `--result-to-exitcode`, and there is no
+# task selection among them. So composing `deno-std-quality` here would run
+# deno's formatter and linter over a tree prettier and eslint have already
+# judged, and would fail a Node-first project on `deno check` for the reason
+# wrench's own pack records: the `lib` and `types` settings tsc needs to see
+# `@types/node` are the ones that hide deno's globals from deno, and the two
+# cannot be satisfied at once.
+#
+# The cost of the split, stated so it is not discovered: the secondary engine's
+# suite is not covered by a coverage minimum here. Coverage was judged once,
+# under {standard}, against the same source. A second profile from a second
+# engine would measure the same lines through a different runtime, and gating on
+# it would fail a project for a coverage difference that is the engine's rather
+# than the code's.
+#
+# A Deno-first project does not invert this file. It adopts
+# `deno-std-quality` directly, and accepts the five open categories that jig
+# names. Pointing {standard} at it and adding a Node suite task would claim a
+# standard this composite cannot deliver.
+
+version: "1.0.0"
+
+requires:
+  # `bolt` alone, and deliberately not `deno`.
+  #
+  # `requires` refuses a run before anything executes when an entry is not on
+  # PATH, which is right for a tool every task needs and wrong for one only an
+  # opted-in task uses. Naming `deno` here would refuse a Node-only adopter's
+  # run on a machine with no deno installed, which is every default adopter.
+  # The engine's own absence surfaces on its own task instead.
+  - bolt
+
+definitions:
+  # The engine whose full standard this composite runs. Node by default, because
+  # that is what a plain adopter targets: Cloud Functions runs Node natively
+  # while deno and bun need a container.
+  standard: node-std-quality
+
+  # The second engine's suite, defaulting to off.
+  #
+  # `true` is the shell builtin that ignores its arguments and exits 0, so the
+  # task below runs and passes having done nothing until an adopter sets this to
+  # `deno`. The Go jig's `entrypoint` definition is the same mechanism for the
+  # same reason: a task cannot be declared conditionally, so the way to say
+  # "not applicable here" is to name a program that does nothing.
+  #
+  # A definition is one shell word, so this names a program and never a command
+  # line. Setting it to `deno test --allow-read` would fail with the whole
+  # string treated as one program name.
+  deno_engine: "true"
+
+  # What the second engine's suite is allowed to do, as three slots, for the
+  # reason `bolt.deno-std-quality.yaml` gives at greater length: bolt holds a
+  # definition to a scalar and quotes it as one shell word, so a multi-flag
+  # permission list cannot be one definition. `--no-prompt` is a harmless
+  # repeat, and the command names it once more literally so an adopter's
+  # overrides cannot remove it.
+  deno_permission_one: --no-prompt
+  deno_permission_two: --no-prompt
+  deno_permission_three: --no-prompt
+
+tasks:
+  # ---- the standard, once -----------------------------------------------------
+
+  # The adapter is not optional and this is the trap the whole composition
+  # pattern turns on. Bolt exits 0 whenever it carried a run out, whatever the
+  # tools concluded, so a composed task naming no adapter gets the generic
+  # exit-code one and passes however badly the child failed.
+  #
+  # `adapters/common/bolt-result.py` reads the last line of the child's stdout
+  # for the path to its `result.yaml`, validates it as an envelope, and folds
+  # the child's reasons up into this task's, each gaining a `child` field naming
+  # where it came from. So a coverage failure inside the Node jig arrives here
+  # as that coverage failure and not as a path to go and read.
+  #
+  # `--output-dir {work_dir}/child` is named because bolt refuses a directory
+  # that already holds a run, and the child must not land in this run's own.
+  #
+  # Flags before the positionals, which is the documented order.
+  - name: standard
+    description: the full standard under the engine this project is published for
+    command: >-
+      bolt --config-dir {config_dir} --output-dir {work_dir}/child
+      {standard} {base_dir}
+    adapter: adapters/common/bolt-result.py
+
+  # ---- portability, per additional engine --------------------------------------
+
+  # Does the suite run under deno as well. Nothing else: no coverage minimum, no
+  # formatter, no linter, for the reasons in the header.
+  #
+  # `--no-check` because the type check belongs to the standard above and the
+  # two type checkers cannot both be satisfied over one `tsconfig.json`. Deno
+  # reads that file and applies its own bundled compiler to it, and the settings
+  # tsc needs for `@types/node` are the ones that hide deno's globals. Measured
+  # both ways in wrench's own pack, which records it in `just/lang.just`.
+  #
+  # No `evidence` and no adapter. The question is whether the suite ran, the
+  # exit status answers exactly that, and declaring evidence would fail the task
+  # whenever `deno_engine` is its default `true`, which writes nothing.
+  #
+  # It passes trivially while `deno_engine` is `true`, which is a green that
+  # means "not claimed" rather than "proven". That is the cost of a task that
+  # cannot be declared conditionally, and the run's manifest records the
+  # definition's value, so what actually ran is on disk rather than inferred.
+  - name: deno-suite
+    description: the same suite under deno, where the project claims deno
+    command: >-
+      {deno_engine} test --no-prompt
+      {deno_permission_one} {deno_permission_two} {deno_permission_three}
+      --no-check

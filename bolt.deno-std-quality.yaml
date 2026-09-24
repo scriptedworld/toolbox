@@ -1,0 +1,302 @@
+# The Deno toolchain's standard checks, over a TypeScript project.
+#
+#     bolt deno-std-quality .          flags before the positionals
+#
+# A jig is a toolchain contract rather than a language one, which is why this
+# file and `bolt.node-std-quality.yaml` both exist and neither is a runtime knob
+# of the other. Deno ships a formatter, a linter, a type checker, a test runner,
+# a coverage reporter and an auditor in one binary; Node reaches five npm
+# packages for the same ground. A single file spanning both would be a template
+# of placeholders standing in for the very things a standard is supposed to
+# state.
+#
+# `bolt.typescript-std-quality.yaml` is the composite that runs an adopter's
+# declared engines. This jig is what a Deno-first project adopts on its own.
+#
+# The standard, taken from the Python jig, which is the written statement of
+# what should be validated for every language, and which every engine jig here
+# is held to:
+#
+#     shape         a formatter that reports without writing, and a linter
+#     correctness   types, and a test suite with coverage
+#     security      known vulnerabilities, and the licences of what is linked
+#     hygiene       dead code, documentation, complexity
+#
+# This is the shorter jig and it is also the weaker one. Deno's built-ins cover
+# shape and correctness completely and leave four holes in security and hygiene
+# that the Node toolchain fills. Each is written down under "not here" at the
+# foot of this file with the measurement that established it, because a hole a
+# reader has to discover is worse than one the file admits to.
+#
+# Measured against deno 2.9.7 throughout. Where a figure decides whether a gate
+# exists at all, re-measure it on a newer deno rather than trusting the number.
+#
+# The path rule. A path resolves against {config_dir} if it travels with this
+# file. It stays relative to the base if it belongs to the project being
+# checked.
+#
+# Ordered cheapest first, so a failure surfaces before the slow checks run.
+
+version: "1.0.0"
+
+requires:
+  # One entry, which is the whole point of this toolchain. Every task below is a
+  # deno subcommand, so there is no second binary to check and no
+  # `node_modules/.bin` that PATH cannot see. The Node jig needs a `toolchain`
+  # task for exactly that reason and this one does not.
+  - deno
+
+definitions:
+  # What `docs` reads. `deno doc --lint` will not take a project and will not
+  # read `deno.json`'s `exports`: measured, `deno doc --lint` with no file
+  # argument exits 1 with `the following required arguments were not provided:
+  # [source_file]...`. So the entry point has to be named, and only the project
+  # knows it.
+  entry: src/mod.ts
+
+  # The lock file `vuln` reads, guarded by a `test -f` in that task. The guard
+  # is not optional here and the reason is on the task.
+  lock_file: deno.lock
+
+  # What the suite is allowed to do, as three slots.
+  #
+  # Three separate definitions and not one, because bolt holds a definition to a
+  # scalar and quotes it as a single shell word, so `--allow-read --allow-write`
+  # in one value would arrive as one argument named after the whole string. The
+  # Python jig's three exclusion slots exist for the same reason.
+  #
+  # `--no-prompt` is the default in all three because it is a harmless repeat: a
+  # suite that needs no permission is unaffected, and repeating the flag that
+  # turns a missing permission into an error rather than a prompt is the right
+  # thing to say twice. The command names it once more literally, so an adopter
+  # overriding all three slots cannot remove it.
+  #
+  # `--permission-set=<name>` is the alternative and it works: measured, a
+  # `"permissions": {"gate": {"read": true}}` block in `deno.json` with
+  # `deno test --permission-set=gate` ran a suite that needs read access, and a
+  # name no block defines exits 1 with `Could not find permission set`. It is
+  # not the default because deno prints
+  # `Permissions in the config file is an experimental feature and may change in
+  # the future`, and a shared standard should not rest on that. An adopter who
+  # wants its permissions in `deno.json` sets `permission_one` to
+  # `--permission-set=gate` and leaves the other two.
+  permission_one: --no-prompt
+  permission_two: --no-prompt
+  permission_three: --no-prompt
+
+  # Per-file coverage minima, read by the shared lcov adapter through the
+  # explicit `adapter-command` on the `tests` task. Lines and branches both,
+  # which deno can do: measured, `deno coverage --lcov` over wrench's pack
+  # produced 10 SF records and 222 BRDA records, and the adapter reported
+  # `branch_measured: true`.
+  min_line: "80"
+  min_branch: "80"
+
+  # What the coverage gate does not judge, as one regex over the shortened paths
+  # the adapter reports.
+  excluded_regex: (^|/)(\.ephemera|bin|adapters|node_modules)/
+
+tasks:
+  # ---- shape ------------------------------------------------------------------
+
+  # --check reports without writing. A formatter that reformats during a check
+  # is a check with a side effect, and in CI it produces a green run against a
+  # tree nobody has seen.
+  #
+  # Exclusions come from `deno.json`'s `exclude` and `fmt.exclude`, which are the
+  # project's, so this jig names none. That is deno's own convention and the same
+  # choice the Node jig makes about `.prettierignore`.
+  - name: format
+    description: every file is deno-fmt clean
+    command: deno fmt --check
+
+  # The project's own selection from deno's 124 rules, whatever it has enabled
+  # in `deno.json`. The jig states no rule here, exactly as the Node jig's `lint`
+  # runs the project's eslint config.
+  #
+  # Unlike the Node jig, no task after this one adds rules of its own, because
+  # deno lint has no complexity, documentation or security rules to add. See
+  # "not here" at the foot of the file.
+  - name: lint
+    description: the deno lint rule set, whatever the project has enabled
+    command: deno lint
+
+  # ---- correctness -------------------------------------------------------------
+
+  # The trailing `.` is load-bearing and its absence is a silent pass. Measured:
+  # `deno check` with no path argument exits 0 immediately having checked
+  # nothing, while `deno check .` checked ten files in the same tree. A task
+  # written without it would pass forever, which is the `test -f` failure the Go
+  # jig warns about wearing a different spelling.
+  - name: types
+    description: deno's type checker is satisfied over the whole tree
+    command: deno check .
+
+  # ---- documentation ------------------------------------------------------------
+  #
+  # Deno is the one engine here whose documentation check needs no plugin and no
+  # second tool. `deno doc --lint` reports every exported symbol reachable from
+  # the entry point that carries no JSDoc.
+  #
+  # What is lost is the number. interrogate reports a percentage and takes
+  # `--fail-under 80`; this is pass or fail at 100% of the exported surface, the
+  # same loss the Rust jig records for `missing_docs`. So this task is stricter
+  # than the Python standard rather than equal to it.
+  #
+  # Measured against wrench's TypeScript pack while it was Deno-first: 19
+  # `missing-jsdoc` errors, nine of them one-line class members, so the
+  # strictness is real and an adopter meets it or fails it.
+  - name: docs
+    description: every exported symbol reachable from the entry point is documented
+    command: deno doc --lint {entry}
+
+  # ---- security ------------------------------------------------------------------
+
+  # Advisories against what the lock file resolved.
+  #
+  # `test -f {lock_file}` first, and here it is load-bearing rather than
+  # belt-and-braces. Measured: `deno audit --lock <a path that does not exist>`
+  # printed `No known vulnerabilities found` and exited 0. So naming a lock file
+  # that is absent is a silent pass, and a project that lost its lock file would
+  # have a security gate that could never fail. npm is honest about this on its
+  # own and deno is not, which is why the Node jig's guard is cheap insurance
+  # and this one is the check.
+  #
+  # It reaches the network. A run with no route to deno's advisory service fails
+  # here, and that is an environment fault rather than a finding: a route or a
+  # restart, not a defect in the tree. `--ignore-registry-errors` would turn a
+  # check that could not run into a check that passed, so it is deliberately not
+  # set.
+  #
+  # Measured working: against wrench's pack while it was Deno-first, this
+  # reported four high-severity advisories against `fast-uri` reached through
+  # `ajv` and exited 1.
+  - name: vuln
+    description: no resolved dependency carries a known advisory
+    command: test -f {lock_file} && deno audit
+
+  # ---- tests -----------------------------------------------------------------
+
+  # The suite, and coverage judged per file for lines and branches.
+  #
+  # Two commands rather than one. `deno test --coverage=DIR` does write
+  # `DIR/lcov.info` by itself on deno 2.9.7, but relying on that would make the
+  # evidence a side effect of a default; `deno coverage --lcov --output` states
+  # what this task produces.
+  #
+  # Joined with `;` and an explicit `exit`, not with `&&`, and that is a
+  # correction rather than a style. With `&&` a failing suite skips the coverage
+  # step, no profile is written, and bolt reports
+  # `tests declared coverage.lcov and did not write it` — which is red for the
+  # right run and names the wrong thing, sending a reader after a jig fault when
+  # their suite failed. Measured both ways against a deliberately broken
+  # assertion:
+  #
+  #     &&                        evidence-missing, and no coverage at all
+  #     ; status=$?; …; exit $s   exit 1 preserved, lcov written with 3 SF
+  #                               records, so the adapter reports `tests-failed`
+  #                               with the coverage beside it as context
+  #
+  # The Node jig needs none of this: node's lcov reporter writes the profile
+  # during the run, so one command already leaves both the status and the
+  # evidence behind.
+  #
+  # `--no-prompt` literally as well as in the slots, so an adopter's overrides
+  # cannot remove it. Without it a missing permission becomes an interactive
+  # prompt, and a gate that waits for a keystroke is a gate that hangs.
+  #
+  # The adapter is the one the Rust, C++ and Node jigs share, and it is shared
+  # because it reads lcov rather than because it knows a language. It answers
+  # for the run as well: it reads the captured exit status, so a suite that
+  # failed while leaving a profile behind is a failure and not a coverage
+  # report.
+  #
+  # An explicit `adapter-command`, because the default invocation passes no
+  # `--min`, no `--min-branch` and no `--exclude`, and the adapter then runs on
+  # its own defaults. Everything the default passes is repeated here, because an
+  # explicit command replaces it rather than adding to it, and `{config_dir}` is
+  # in front of the adapter because an explicit command does not get the
+  # resolution the default one does.
+  #
+  # ---- the hole in this task, which the Node jig does not have ---------------
+  #
+  # Deno's coverage reports only modules something loaded. A file no test ever
+  # imports does not appear in the profile at all, so the per-file gate passes
+  # it by never seeing it.
+  #
+  # Measured on deno 2.9.7 against a fixture holding `src/orphan.ts`, which
+  # nothing imports: the coverage table listed three files and the lcov carried
+  # three SF records, none of them `orphan.ts`. Node's
+  # `--test-coverage-include-all` puts exactly that file in the report at 0% and
+  # fails the gate, and deno has no counterpart flag.
+  #
+  # This matters more than its size suggests, because hard rule 5's whole
+  # reason for judging coverage per file is that a well-tested file must not
+  # carry an untested one, and the file with no test at all is the case it is
+  # aimed at. A Deno-only adopter does not have that guarantee and should know
+  # it. `dead-code` would be the compensating check and deno has none of those
+  # either; see "not here".
+  - name: tests
+    description: the suite, and coverage judged per file for lines and branches
+    command: >-
+      deno test --no-prompt
+      {permission_one} {permission_two} {permission_three}
+      --coverage={work_dir}/coverage;
+      status=$?;
+      deno coverage {work_dir}/coverage --lcov --output={work_dir}/coverage.lcov;
+      exit $status
+    evidence:
+      - coverage.lcov
+    adapter: adapters/lcov/coverage.py
+    adapter-command: >-
+      {config_dir}/adapters/lcov/coverage.py
+      --min {min_line} --min-branch {min_branch}
+      --exclude {excluded_regex}
+      --stdout {work_dir}/stdout --stderr {work_dir}/stderr
+      --exitcode {work_dir}/exitcode
+      --project-root {project_root} --base-dir {base_dir}
+      --work-dir {work_dir}
+      --evidence {work_dir}/coverage.lcov
+
+# ---- not here, and why ---------------------------------------------------------
+#
+# Four categories the Python standard covers and this toolchain cannot. Each was
+# measured rather than assumed, and each is a reason to prefer the Node jig
+# where a project can run either.
+#
+# COMPLEXITY, cyclomatic and cognitive both. `deno lint --rules` listed 124
+# rules on deno 2.9.7 and not one measures complexity, nesting depth, parameter
+# count or statement count. The Node jig gets all four from eslint's core rules
+# and the cognitive number from eslint-plugin-sonarjs. A deno project that wants
+# a complexity gate installs eslint beside deno, which is a second toolchain and
+# therefore a second jig rather than a task here.
+#
+# DUPLICATE DETECTION, which the Python jig gets from pylint's `duplicate-code`
+# and the Node jig from `sonarjs/no-identical-functions`. Same reason: no deno
+# lint rule reports it.
+#
+# DEAD CODE. Deno has no knip, no ts-prune and no equivalent lint rule, and the
+# npm tool cannot be borrowed: measured, `deno run -A npm:knip@6.37.0` in a deno
+# project downloaded and then exited 2 with `ERROR: Unable to find
+# package.json`. knip reads a Node manifest, and a deno project has a
+# `deno.json` instead. `deno lint`'s `no-unused-vars` is file-local and is
+# already inside `lint`, which is the same coverage Rust gets from rustc's
+# `dead_code` warning and is not the same question.
+#
+# LICENCES. There is no `cargo deny` counterpart and no `license-checker`
+# counterpart. Measured: `deno list` reports package names, required ranges and
+# resolved versions and no licence field at all, and `deno.lock` carries
+# integrity hashes and no licences. So nothing in this toolchain can enumerate
+# what a dependency is licensed under. This is the same shape of gap the C++ jig
+# records, and unlike C++ it is not caused by a missing manifest: the manifest
+# exists and does not carry the field.
+#
+# STATIC SECURITY PATTERNS, the bandit counterpart that the Node jig gets from
+# eslint-plugin-security. Deno's sandbox answers a different and narrower
+# question: it constrains what a program may do at run time, which is worth
+# having and is not a review of what the source contains. No deno lint rule
+# reports an `eval`, a subprocess spawn or an unsafe regular expression.
+#
+# What is NOT missing, and is worth saying so nobody goes looking: a build task.
+# Deno runs TypeScript directly, so there is nothing to build ahead of time and
+# `types` above is what a Rust or C++ `build` task would be.
