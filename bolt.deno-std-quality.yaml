@@ -187,7 +187,7 @@ tasks:
   # Joined with `;` and an explicit `exit`, not with `&&`, and that is a
   # correction rather than a style. With `&&` a failing suite skips the coverage
   # step, no profile is written, and bolt reports
-  # `tests declared coverage.lcov and did not write it` — which is red for the
+  # `tests declared coverage.lcov and did not write it`, which is red for the
   # right run and names the wrong thing, sending a reader after a jig fault when
   # their suite failed. Measured both ways against a deliberately broken
   # assertion:
@@ -291,12 +291,12 @@ tasks:
 # records, and unlike C++ it is not caused by a missing manifest: the manifest
 # exists and does not carry the field.
 #
-# STATIC SECURITY PATTERNS, the bandit counterpart that the Node jig gets from
+# Static security patterns, the bandit counterpart that the Node jig gets from
 # eslint-plugin-security. Deno's sandbox answers a different and narrower
-# question: it constrains what a program may do at run time, which is worth
-# having and is not a review of what the source contains. No deno lint rule
+# question: it constrains what a program may do at run time, and does not review
+# what the source contains. No deno lint rule
 # reports an `eval`, a subprocess spawn or an unsafe regular expression.
 #
-# What is NOT missing, and is worth saying so nobody goes looking: a build task.
+# What is not missing, said here so nobody goes looking: a build task.
 # Deno runs TypeScript directly, so there is nothing to build ahead of time and
 # `types` above is what a Rust or C++ `build` task would be.

@@ -26,7 +26,7 @@
 #                                       alone under each further engine it
 #                                       claims
 #
-# Where a task here has a deno counterpart worth knowing it is named in that
+# Where a task here has a deno counterpart it is named in that
 # task's comment, so the two files can be read against each other. There is no
 # bun jig: bun is not installed on the machine this was measured on, and a jig
 # nobody can run is worse than an absent one.
@@ -130,7 +130,7 @@
 # it substituted, so the same JSON passes through untouched as a definition's
 # value and arrives as one shell word.
 #
-# The consequence for an adopter is worth stating: overriding one of these
+# The consequence for an adopter: overriding one of these
 # replaces a whole rule set rather than one number, because the value is the
 # whole JSON document.
 #

@@ -1,0 +1,16 @@
+{
+  "accepted": [
+    {
+      "file": "commit 6bcf7b65e8f0",
+      "rule": "worth-phrase",
+      "text": "coverage run is the one worth keeping: two dropped assertions gave",
+      "reason": "The commit is cited by clank/tasks/wrench/library/50-a-typescript-pack.complete/LANDED.md, so its SHA has to survive, and a message is not rewritten to pass."
+    },
+    {
+      "file": "commit 6bcf7b65e8f0",
+      "rule": "commit-length",
+      "text": "26 body lines, at most 20",
+      "reason": "Same commit, same reason. The body is six lines over the limit and the SHA is cited, so the entry stands where a reword cannot."
+    }
+  ]
+}
