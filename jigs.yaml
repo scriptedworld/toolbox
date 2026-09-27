@@ -91,7 +91,7 @@ sets:
   # The Ruby jig shipped with no set, so nothing could adopt it: `link-toolbox`
   # links what a set names, and no set named it. Its coverage task reads a
   # Cobertura report, which is the Python adapter's format, so the two sets
-  # share that file the way `rust` and `cpp` share the lcov one.
+  # share that file the way `rust` and `typescript` share the lcov one.
   ruby:
     includes: [common]
     files:
@@ -99,33 +99,14 @@ sets:
       - adapters/python/coverage.py
       - config/ruby-std-quality.rubocop.yml
 
-  # The lcov adapter is shared with `cpp` and `typescript` and belongs to none
-  # of the three. It lives in `adapters/lcov/` because it reads lcov, which
+  # The lcov adapter is shared with `typescript` and the two Node sets and
+  # belongs to none of them. It lives in `adapters/lcov/` because it reads lcov, which
   # cargo-llvm-cov, gcovr and node's own test reporter all emit. Every set lists
   # it, all of them symlink the same file, and a project adopting two gets one
   # copy.
   #
   # It moved from `adapters/rust/` while only this repository referenced that
   # path, so no adopter had to re-link.
-
-  # C++. Alone among the language sets in requiring the adopter to produce a
-  # compilation database, because C++ has no `cargo` and no `go`: nothing on a
-  # command line knows what a C++ project builds. `bear -- <any build>` or
-  # cmake's CMAKE_EXPORT_COMPILE_COMMANDS both produce one, which is why this
-  # jig mandates neither build system.
-  #
-  # Six tools where Rust has two and Go has three. That is C++, not an
-  # accident of this jig: there is no multi-tool, and the header check has no
-  # counterpart in any other language here because no other language here has
-  # textual inclusion to get wrong.
-  cpp:
-    includes: [common]
-    files:
-      - bolt.cpp-std-quality.yaml
-      - adapters/lcov/coverage.py
-      - bin/clang-format-check.py
-      - config/cpp/clang-format.yaml
-      - config/cpp/clang-tidy.yaml
 
   # The Node toolchain, over a TypeScript project. Named for the toolchain and
   # not the language, which is the one set here that has to be: deno and bun run
@@ -139,8 +120,8 @@ sets:
   # adopter pins in its own `devDependencies`, so there is nothing to symlink
   # except the jig and the shared adapter.
   #
-  # No linter configuration travels with it, where `go`, `ruby`, `rust` and
-  # `cpp` all ship one. It cannot. An eslint config imports its parser,
+  # No linter configuration travels with it, where `go`, `ruby` and `rust` all
+  # ship one. It cannot. An eslint config imports its parser,
   # `link-toolbox` places a file as a symlink, and node resolves a symlink to
   # its real path, so an eslint config linked from here would resolve
   # `typescript-eslint` against toolbox's `node_modules` and not the adopter's.
@@ -149,9 +130,8 @@ sets:
   #
   # The adopter supplies four files of its own: `tsconfig.json`,
   # `eslint.config.js`, `knip.json` and a `package-lock.json`. That is a longer
-  # contract than any other language set here asks for, and it is the same shape
-  # as the compilation database `cpp` requires: each states something only the
-  # project knows.
+  # contract than any other language set here asks for: it states something only
+  # the project knows.
   node-std-quality:
     includes: [common]
     files:
@@ -162,8 +142,8 @@ sets:
   # of the one above, because the two share no tool: every task in the deno jig
   # is a deno subcommand and every task in the node one reaches an npm package.
   #
-  # It shares the lcov adapter with `node-std-quality`, `rust` and `cpp`, which
-  # is four sets reading one file. That is what naming the adapter for its
+  # It shares the lcov adapter with `node-std-quality` and `rust`, which is three
+  # sets reading one file. That is what naming the adapter for its
   # format rather than for a language bought.
   #
   # Shorter than the Node set in what it gates, not in what it links. Deno's

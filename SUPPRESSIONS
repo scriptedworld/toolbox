@@ -12,7 +12,7 @@ about an empty set, and it said it would expire once something was.
 
 ## S-1, bandit's subprocess findings in the test tree
 
-Twenty marks, two rules, nine files, and every one is a test. `B404` for
+Sixteen marks, two rules, eight files, and every one is a test. `B404` for
 importing `subprocess`, `B603` for calling it without `shell=True`.
 
     tests/conftest.py                         # nosec B404    import subprocess
@@ -21,8 +21,6 @@ importing `subprocess`, `B603` for calling it without `shell=True`.
     tests/test_voice_review.py                # nosec B603    the script-runs-as-a-script case
     tests/test_voice_tells.py                 # nosec B404    import subprocess
     tests/test_voice_tells.py                 # nosec B603    the script-runs-as-a-script case
-    tests/test_clang_format_check.py          # nosec B404    import subprocess
-    tests/test_clang_format_check.py          # nosec B603    the script-runs-as-a-script case
     tests/test_bolt_result_adapter.py         # nosec B404    import subprocess
     tests/test_bolt_result_adapter.py         # nosec B603    running the adapter
     tests/test_coverage_adapter.py            # nosec B404    import subprocess
@@ -146,11 +144,9 @@ had copied a subprocess block, which was dissolved and not marked.
 
 ## S-4, bandit's subprocess findings in the checkers themselves
 
-Eight marks, two rules, three checkers. These are not tests: they are the
+Six marks, two rules, two checkers. These are not tests: they are the
 production path, where a checker runs the tool it is a checker for.
 
-    bin/clang-format-check.py                 # nosec B404    import subprocess
-    bin/clang-format-check.py                 # nosec B603    clang-format over the compilation database
     bin/voice-review.py                       # nosec B404    import subprocess
     bin/voice-tells.py                        # nosec B404    import subprocess
     bin/voice-tells.py                   ×4   # nosec B603    git: ls-files, show, rev-parse, log
