@@ -205,8 +205,8 @@ tasks:
   # cannot remove it. Without it a missing permission becomes an interactive
   # prompt, and a gate that waits for a keystroke is a gate that hangs.
   #
-  # The adapter is the one the Rust, C++ and Node jigs share, and it is shared
-  # because it reads lcov rather than because it knows a language. It answers
+  # The adapter is the one the Rust and Node jigs use too, and it is shared
+  # because it reads lcov, not because it knows a language. It answers
   # for the run as well: it reads the captured exit status, so a suite that
   # failed while leaving a profile behind is a failure and not a coverage
   # report.
@@ -260,22 +260,22 @@ tasks:
 
 # ---- not here, and why ---------------------------------------------------------
 #
-# Four categories the Python standard covers and this toolchain cannot. Each was
-# measured rather than assumed, and each is a reason to prefer the Node jig
-# where a project can run either.
+# Five categories the Python standard covers and this toolchain cannot. Each was
+# measured, and each is a reason to prefer the Node jig where a project can run
+# either.
 #
-# COMPLEXITY, cyclomatic and cognitive both. `deno lint --rules` listed 124
+# Complexity, cyclomatic and cognitive both. `deno lint --rules` listed 124
 # rules on deno 2.9.7 and not one measures complexity, nesting depth, parameter
 # count or statement count. The Node jig gets all four from eslint's core rules
 # and the cognitive number from eslint-plugin-sonarjs. A deno project that wants
 # a complexity gate installs eslint beside deno, which is a second toolchain and
 # therefore a second jig rather than a task here.
 #
-# DUPLICATE DETECTION, which the Python jig gets from pylint's `duplicate-code`
+# Duplicate detection, which the Python jig gets from pylint's `duplicate-code`
 # and the Node jig from `sonarjs/no-identical-functions`. Same reason: no deno
 # lint rule reports it.
 #
-# DEAD CODE. Deno has no knip, no ts-prune and no equivalent lint rule, and the
+# Dead code. Deno has no knip, no ts-prune and no equivalent lint rule, and the
 # npm tool cannot be borrowed: measured, `deno run -A npm:knip@6.37.0` in a deno
 # project downloaded and then exited 2 with `ERROR: Unable to find
 # package.json`. knip reads a Node manifest, and a deno project has a
@@ -283,13 +283,12 @@ tasks:
 # already inside `lint`, which is the same coverage Rust gets from rustc's
 # `dead_code` warning and is not the same question.
 #
-# LICENCES. There is no `cargo deny` counterpart and no `license-checker`
+# Licences. There is no `cargo deny` counterpart and no `license-checker`
 # counterpart. Measured: `deno list` reports package names, required ranges and
 # resolved versions and no licence field at all, and `deno.lock` carries
 # integrity hashes and no licences. So nothing in this toolchain can enumerate
-# what a dependency is licensed under. This is the same shape of gap the C++ jig
-# records, and unlike C++ it is not caused by a missing manifest: the manifest
-# exists and does not carry the field.
+# what a dependency is licensed under. The manifest exists and does not carry
+# the field.
 #
 # Static security patterns, the bandit counterpart that the Node jig gets from
 # eslint-plugin-security. Deno's sandbox answers a different and narrower
@@ -299,4 +298,4 @@ tasks:
 #
 # What is not missing, said here so nobody goes looking: a build task.
 # Deno runs TypeScript directly, so there is nothing to build ahead of time and
-# `types` above is what a Rust or C++ `build` task would be.
+# `types` above is what a Rust `build` task would be.

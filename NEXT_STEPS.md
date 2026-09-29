@@ -7,11 +7,10 @@ outside this repository; this file holds the questions, and the tasks live there
 
 ### How a common jig and a language jig compose
 
-Today they are separate jigs and a project wanting both runs both. Composition
-used to be an overlay where later files won and tasks merged by id, which let a
-language jig adjust a common task without restating it. The current runner has
-no overlay, and nesting does not replace it, because a nested jig has no id to
-override. So a language either accepts the common thresholds or declares a
+They are separate jigs and a project wanting both runs both. The runner has no
+overlay that merges tasks by id, so a language jig cannot adjust a common task
+without restating it, and nesting does not fill the gap, because a nested jig
+has no id to override. So a language either accepts the common thresholds or declares a
 second task that disagrees with them, and neither is right.
 
 ### Whether a maintainability index belongs in the standard
@@ -320,23 +319,3 @@ wrong ones:
 is command-line: bolt supplies `--evidence`, `--work-dir`, `--stdout` and
 `--exitcode` as paths, and `adapters/python/coverage.py` documents it. So
 gofmt.py is stale, not merely unwired.
-
-## Sixteen comments still explain a jig by comparing it to the C++ one
-
-The C++ set was removed by direction, so `bolt.cpp-std-quality.yaml`,
-`bin/clang-format-check.py` and `config/cpp/` are gone. What is left is prose in
-two jigs that reasons by comparison to it: twelve comments in
-`bolt.node-std-quality.yaml` and four in `bolt.deno-std-quality.yaml`, saying
-things like that npm has a real lock file where C++ has no manifest to read, or
-that an eslint config states something only the project knows the way a
-compilation database did.
-
-Each is a live argument about why the Node and Deno jigs are shaped as they are,
-and the comparison is what carries it, so deleting the mentions would cost the
-reasoning. Rewriting each to stand on its own is a judgment call per comment and
-it was not worth making inside jigs that gate four repositories in the same change
-that removed the set.
-
-They name a file this repository no longer holds, so a reader cannot check them.
-That is the defect. wrench's `a-cpp-pack-was-built-and-removed` is where the
-removal is recorded if one is needed.

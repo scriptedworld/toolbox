@@ -73,11 +73,9 @@ elsewhere.
 
 There is no `schema/`, and that is NFR-6 settled. wrench ships the jig and
 definitions schemas and bolt is built from them, so a copy here could only be a
-second description free to disagree with the one being enforced. The copy that
-used to live here disagreed twice, on `allow-empty` arriving and again on its
-rename to `optional`, and both times a test caught the copy while nothing else
-failed. `tests/test_jigs.py` imports `wrench` and validates against the
-validator wrench ships.
+second description free to disagree with the one being enforced.
+`tests/test_jigs.py` imports `wrench` and validates against the validator wrench
+ships.
 
 ## The gate
 

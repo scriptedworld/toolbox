@@ -19,7 +19,7 @@ linters:
   default: standard
 
   enable:
-    # -- complexity and size --
+    # Complexity and size.
     - gocognit           # cognitive complexity
     - gocyclo            # cyclomatic, per function
     - cyclop             # cyclomatic, per function and package average
@@ -29,7 +29,7 @@ linters:
     - dupl               # duplicate code
     - lll                # line length
 
-    # -- correctness and style --
+    # Correctness and style.
     - revive             # replaces golint; carries argument and result limits
     - mnd                # magic numbers
     - gosec              # security
@@ -41,26 +41,26 @@ linters:
     - wastedassign       # assignments never read
     - gochecknoinits     # no init(); pairs with the ban on global state
 
-    # -- concurrency and resource discipline. An orchestrator dispatching work
-    #    and watching files gets these wrong in ways tests rarely catch. --
+    # Concurrency and resources. An orchestrator dispatching work and watching
+    # files gets these wrong in ways tests rarely catch.
     - noctx              # requests issued without a context
     - contextcheck       # a function passed the wrong context
     - bodyclose          # response bodies never closed
     - durationcheck      # multiplying two durations, which is nearly always a bug
     - nilerr             # returning nil after checking err != nil
 
-    # -- error handling. Go's compiler cannot enforce any of this. --
+    # Error handling, none of which Go's compiler enforces.
     - errorlint          # correct use of errors.Is/As over == and type asserts
     - wrapcheck          # errors crossing a package boundary must be wrapped
     - err113             # no dynamic errors; sentinel errors or wrapped ones
     - errname            # sentinel errors named ErrFoo, types named FooError
 
-    # -- output discipline. In a Bubble Tea program a stray fmt.Println writes
-    #    straight to the terminal the renderer owns and corrupts the display.
-    #    This is a correctness gate here, not a style preference. --
+    # Output. In a Bubble Tea program a stray fmt.Println writes straight to
+    # the terminal the renderer owns and corrupts the display, so this gates
+    # correctness.
     - forbidigo
 
-    # -- things Python had no equivalent for --
+    # Checks the Python jig has no equivalent for.
     - exhaustive         # switch statements cover every enum value
     - gochecknoglobals   # no package-level mutable state
     - paralleltest       # tests that can be parallel are marked parallel
@@ -69,9 +69,9 @@ linters:
     - testpackage        # tests live in foo_test, exercising the public API
     - testableexamples   # Example functions actually assert output
 
-    # -- suppression policing. Without this the rest is advisory. --
+    # Every //nolint justified, or the rest is advisory.
     - nolintlint
-    # -- import bans. Enforces the no-mocks policy mechanically. --
+    # Import bans, which enforce the no-mocks rule.
     - depguard
 
   settings:

@@ -46,19 +46,18 @@ below reports false instead of letting a threshold pass quietly on a zero
 denominator. A check that looks like it could fail and cannot is worse than one
 that is plainly absent.
 
-This file is named for a format and not a language (it was `adapters/rust/`
-until the C++ jig needed it). lcov is what cargo-llvm-cov and gcovr both emit,
-so the Rust jig and the C++ jig read the same records with the same judgement,
-per file, and neither owns it.
+This file is named for a format and not a language. lcov is what
+cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno jigs read the
+same records with the same judgement, per file, and none of them owns it.
 
-The four languages are not level on branches, and the jigs say so. Python's
+The languages are not level on branches, and the jigs say so. Python's
 coverage.py measures branches on the stable toolchain, so the Python jig gates
-them. C++ does too: gcovr 7.2 emits `BRDA` by default with no flag. A fixture
-carrying one deliberately untaken branch reported `BRF:4 BRH:3` and reached this
-adapter as a per-file branch failure. Go has no branch mode at all. Rust could
-on nightly and does not, because the estate builds on stable. Holding all four
-to lines would discard a guarantee two of them have for free; reporting all four
-as though they had it would claim one that nothing established.
+them. Node and Deno do too: node's lcov reporter and `deno coverage --lcov` both
+write `BRDA` records with no extra flag. Go has no branch mode at all. Rust
+could on nightly and does not, because the estate builds on stable. Holding
+every language to lines would discard a guarantee most of them have for free;
+reporting them all as though they had it would claim one that nothing
+established.
 """
 
 # pylint: disable=duplicate-code

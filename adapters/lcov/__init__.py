@@ -12,8 +12,7 @@ three `coverage.py` adapters all report as "coverage.py" and merge into one
 entry.
 
 The directory is named for the format, not for a language. lcov is what
-cargo-llvm-cov and gcovr both emit, so the Rust and C++ jigs read the same
-file. The adapter was `adapters/rust/coverage.py` before the C++ jig existed,
-and a copy per language would be the fifth thing in this repository to exist
-twice with nothing detecting whether the copies agree.
+cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno jigs read the
+same file, and a copy per language would be one more thing in this repository
+to exist twice with nothing detecting whether the copies agree.
 """

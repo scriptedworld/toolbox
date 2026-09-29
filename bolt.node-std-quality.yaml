@@ -8,8 +8,7 @@
 # in, Node reaches prettier, eslint, tsc and its own test runner, and bun has a
 # runner of its own. One file spanning all three would be a template of
 # placeholders standing in for the very things the standard is supposed to
-# state, which is what the C++ jig refused to become when it mandated a
-# compilation database rather than guessing a build system.
+# state.
 #
 # So the commands here are Node's and nothing in this file is a runtime knob.
 #
@@ -51,10 +50,9 @@
 #     security      known vulnerabilities, and the licences of what is linked
 #     hygiene       dead code, documentation, complexity
 #
-# Every one of those is covered here. There is no absent category, which sets
-# this jig apart from the Rust and C++ ones: npm has a real lock file, so
+# Every one of those is covered here. npm has a real lock file, so
 # vulnerabilities and licences can both be answered from what is actually
-# resolved, where C++ has no manifest to read at all.
+# resolved.
 #
 # Ordered cheapest first, so a failure surfaces before the slow checks run.
 #
@@ -242,10 +240,8 @@ definitions:
   # emitted 4 BRDA records for a two-function fixture and the adapter reported
   # `branch_measured: true`.
   #
-  # These are wired rather than declared. The C++ jig declares `min_line` and
-  # `min_branch` and no task reads them, so its adapter runs on its own defaults
-  # and the two definitions change nothing; that is filed against that jig, not
-  # copied here.
+  # The `tests` task passes both to the adapter, so changing either one changes
+  # the verdict.
   min_line: "80"
   min_branch: "80"
 
@@ -360,7 +356,7 @@ tasks:
   # ---- correctness -----------------------------------------------------------
 
   # Node strips types to run TypeScript and does not check them, so unlike Rust
-  # and C++ there is a mypy-shaped gap here and this is what fills it. Running
+  # there is a mypy-shaped gap here and this is what fills it. Running
   # the tests proves nothing about the types.
   #
   # --noEmit, because the project is consumed as TypeScript. Emitting would
@@ -442,8 +438,8 @@ tasks:
     description: no function whose body is identical to another's
     command: npx --no-install eslint --plugin sonarjs --rule {duplication_rules} .
 
-  # Dead code, and unlike Rust and C++ this is a real task rather than a
-  # compiler warning. knip walks the module graph from the project's declared
+  # Dead code, and unlike Rust this is a task of its own and not a compiler
+  # warning. knip walks the module graph from the project's declared
   # entry points and reports what nothing reaches: unused files, unused exports,
   # and dependencies declared but never imported.
   #
@@ -453,9 +449,8 @@ tasks:
   # alone.
   #
   # `knip.json` is the adopter's and this jig does not supply it, because only
-  # the project knows what its entry points are. That is the same contract the
-  # C++ jig has with `compile_commands.json`, and it has the same consequence:
-  # measured on a fixture with no knip.json, knip reported all three of its
+  # the project knows what its entry points are. Leaving it out fails every
+  # file: measured on a fixture with no knip.json, knip reported all three of its
   # source files as unused, because with no entry point declared nothing is
   # reachable. With `entry` declared it reported exactly the one file nothing
   # imports.
@@ -541,8 +536,8 @@ tasks:
     command: npx --no-install eslint --plugin security --rule {security_rules} .
 
   # Advisories against what the lock file actually resolved, the cargo-audit
-  # counterpart. npm ships it, so unlike C++ this needs no extra tool and unlike
-  # Rust it needs no separately installed binary.
+  # counterpart. npm ships it, so unlike Rust it needs no separately installed
+  # binary.
   #
   # `test -f {lock_file}` first, for the reason the Go jig writes `test -z` round
   # gofmt: a check that cannot tell "nothing to audit" from "nothing was
@@ -575,9 +570,9 @@ tasks:
     description: no resolved dependency carries a known advisory
     command: test -f {lock_file} && npm audit --audit-level=low
 
-  # The licences of what is linked, the cargo-deny counterpart. This is the
-  # category C++ has to leave open, because C++ has no manifest; npm has one and
-  # a lock file beneath it, so the question is answerable.
+  # The licences of what is linked, the cargo-deny counterpart. npm has a
+  # manifest and a lock file beneath it, so the question is answerable from what
+  # was resolved.
   #
   # --production, so the set is what ships rather than what builds. A build tool
   # is not linked into the artifact and its licence does not travel with it. An
@@ -592,9 +587,8 @@ tasks:
   # tree with no runtime dependencies. Without this flag every private project
   # fails its own licence gate.
   #
-  # A project with no runtime dependencies passes this having judged nothing.
-  # That is the honest answer rather than a hole: nothing is linked, so no
-  # licence is carried. `cargo deny check` says the same of a crate with no
+  # A project with no runtime dependencies passes this having judged nothing,
+  # and passing is correct: nothing is linked, so no licence is carried. `cargo deny check` says the same of a crate with no
   # dependencies.
   #
   # license-checker-rseidelsohn and not license-checker, which is the rival and
@@ -648,17 +642,15 @@ tasks:
   # --experimental-test-coverage is still the spelling on node v26.9.0. It is
   # the flag name, not a statement that the numbers are provisional.
   #
-  # The adapter is the one the Rust and C++ jigs share, and it is shared because
-  # it reads lcov rather than because it knows a language. It answers for the
+  # The adapter is the one the Rust jig uses too, and it is shared because it
+  # reads lcov, not because it knows a language. It answers for the
   # test run as well: it reads the captured exit status, so a suite that failed
   # while leaving a profile behind is a failure and not a coverage report.
   #
   # An explicit `adapter-command`, unlike every other jig here, because the
   # default invocation passes no `--min`, no `--min-branch` and no `--exclude`,
-  # and the adapter then runs on its own defaults. The C++ jig declares
-  # `min_line` and `min_branch` and does not wire them, so changing those two
-  # values there changes nothing. Wiring them is what makes them definitions
-  # rather than documentation. Everything the default invocation passes is
+  # and the adapter then runs on its own defaults, so `min_line` and
+  # `min_branch` would change nothing. Everything the default invocation passes is
   # repeated here, because an explicit command replaces it rather than adding
   # to it.
   #
@@ -711,8 +703,8 @@ tasks:
 #
 # A build task. Node 26 runs TypeScript by stripping types, so there is nothing
 # to build ahead of time and no emitted artifact to check. `types` above is what
-# a Rust or C++ `build` task would be, and it is filed under correctness for
-# that reason.
+# a Rust `build` task would be, and it is filed under correctness for that
+# reason.
 #
 # A lock-file freshness task, the counterpart to the Go jig's `go mod tidy
 # -diff`. `npm ci` fails when `package-lock.json` disagrees with `package.json`,
