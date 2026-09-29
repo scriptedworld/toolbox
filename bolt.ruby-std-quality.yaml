@@ -112,12 +112,14 @@ tasks:
   #
   # Piped, because flay cannot gate. It has no structured output either, so the
   # filter reads the text: a total score line, then one block per match carrying
-  # `(mass = N)` and the file:line pairs sharing the structure. `-m` sets what
-  # flay reports; the filter decides what fails, because a tool that reports at
-  # 16 and fails at nothing has left the decision to whoever reads the log.
+  # `(mass = N)` and the file:line pairs sharing the structure. flay runs at its
+  # default and the filter's `--max-mass` decides what fails. flay's `-m`
+  # filters on one node's mass while the report prints the whole match's, so
+  # `-m 25` drops a match reporting `mass = 40`; `bin/flay-envelope` has the
+  # measurement.
   - name: duplication
     description: no duplicated structure above the mass threshold
-    command: flay -m 25 . | flay-envelope --out {work_dir}/output.yaml
+    command: flay . | flay-envelope --out {work_dir}/output.yaml
 
   # ---- security -------------------------------------------------------------
 
@@ -155,12 +157,6 @@ tasks:
     adapter: adapters/python/coverage.py
 
 # ---- what still has to be written --------------------------------------------
-#
-#   bin/flay-envelope             reads flay's text on stdin, writes an envelope
-#                                 to --out. One reason per match above the mass
-#                                 threshold, listing every location sharing the
-#                                 structure. The only text-scraping filter here,
-#                                 because flay offers nothing else.
 #
 #   bin/bundle-audit-envelope     reads bundle-audit's text on stdin, writes an
 #                                 envelope to --out. One reason per advisory,

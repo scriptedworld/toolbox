@@ -73,12 +73,20 @@ _verdict jig *flags:
 # The secrets scan arrives through common-quality, which composes it as a child
 # so `bolt.secrets.yaml` stays the one definition of what a scan is. Do not add
 # `leak-scan` here: it would run the same jig a second time.
+#
+# Each step runs whether or not the one before it failed, and the recipe fails
+# at the end if any did. As consecutive `@just` lines, the first failing verdict
+# would stop the recipe and every later step would go unrun and unreported.
 
 # everything: quality, tests, coverage, secrets
 checks:
-    @just _verdict common-quality
-    @just test
-    @just coverage
+    #!/usr/bin/env bash
+    set -uo pipefail
+    status=0
+    just _verdict common-quality || status=1
+    just test || status=1
+    just coverage || status=1
+    exit "$status"
 
 # the suite
 test:
