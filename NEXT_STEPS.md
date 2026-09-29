@@ -36,6 +36,13 @@ full paths. Ordering has to stay explicit, because a directory glob has no order
 and order is semantics here. It needs a change to the runner, so it is not a
 change this repository can make alone.
 
+### Whether to rewrite the commit messages before `06ec6c3`
+
+The wording check reads commits from `06ec6c3` on. Before it, from 2026-08-18
+to 2026-09-14, the messages carry nearly every tell the check names: long
+bodies, capitals leads, em-dashes, dates and third-person narration. Rewriting
+them means a force push, and clank cites several of those SHAs.
+
 ### Task ordering, for `entrypoint`
 
 The runner has no ordering between tasks by design, and giving `entrypoint` a
