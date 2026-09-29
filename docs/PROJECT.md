@@ -117,8 +117,13 @@ it had adopted instead of on its own source.
 One gap remains in what `complexity` reads: it misses a script with no file
 extension, which is how one adopter's only source file went unread.
 
-Every settled requirement is cited by a test, 100 of 100, and two rows carry
-`[?]`: `FR-6.2` and `NFR-5`.
+Every settled requirement is cited by a test, 101 of 101 at `4997fb3`, and two
+rows carry `[?]`: `FR-6.2` and `NFR-5`.
+
+A COVERS mark is written `# COVERS FR-1.2 | kind`, with no colon; the colon
+form fails (FR-4.26). A repository whose requirements are a directory runs
+common-quality with `--definitions requirements-directory`, and the jig's
+default flips to `docs/REQUIREMENTS` once no repository holds a single file.
 
 Nine of those citations were written by holding the jig documents and the scripts
 themselves to what the requirement says, which is how a property that reads like
