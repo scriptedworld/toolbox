@@ -100,9 +100,18 @@ tasks:
   #
   # The config travels with this file: the pair is the definition, and neither
   # half means anything without the other.
+  #
+  # The three output limits are off, so the task prints every finding. By
+  # default golangci-lint keeps 50 per linter, 3 per identical message and one
+  # per line. Measured on infobot: 102 findings with the defaults, 162 with all
+  # three off. Which findings a capped run keeps shifts as the tree changes, so
+  # two capped runs one file apart reported different findings in files the
+  # change never touched.
   - name: lint
-    description: the golangci-lint aggregator, 42 analysers
-    command: golangci-lint run --config {config_dir}/config/go-std-quality.golangci.yml
+    description: the golangci-lint aggregator, 42 analysers, every finding printed
+    command: >-
+      golangci-lint run --config {config_dir}/config/go-std-quality.golangci.yml
+      --max-issues-per-linter 0 --max-same-issues 0 --uniq-by-line=false
 
   # ---- tests ----------------------------------------------------------------
 

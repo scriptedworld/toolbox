@@ -294,6 +294,11 @@ tasks:
   # to everything except the rule they exist to break. The limit is on the
   # command line, not in a config file, so a reader of the jig sees it.
   #
+  # An adopter's `[tool.bandit]` block binds nothing here. bandit reads a config
+  # only when `-c` names one, and neither task passes it, so a `skips` entry in
+  # `pyproject.toml` leaves the gate exactly as red as before. Whether it should
+  # bind is an open decision in `NEXT_STEPS.md`.
+  #
   # `./.venv,./venv` for the same reason as `analyse`, and it matters more here
   # than anywhere: bandit over a dependency tree reports other people's
   # security findings as this project's, and there is nothing an adopter can do

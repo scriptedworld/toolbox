@@ -36,6 +36,23 @@ full paths. Ordering has to stay explicit, because a directory glob has no order
 and order is semantics here. It needs a change to the runner, so it is not a
 change this repository can make alone.
 
+### Whether every language exposes the same `just` verbs
+
+`checks test format format-check build clean install`, with the language's tools
+behind them, would make `just checks` mean one thing in every tree. A gate goes
+through bolt and writes evidence; `format` writes and is never a jig task. It
+was proposed on Rust's evidence alone, so the question is whether the verbs
+survive Go and Python, where the tool sets differ most.
+
+### Whether the adapters share one vocabulary of reason kinds
+
+Comparable output across languages is an adapter question, not a tool question:
+two languages report alike when their adapters emit the same reason kinds and
+metadata keys, such as `coverage-below` with `{file, value, threshold, mode}`.
+wrench's envelope schema is where that vocabulary could be enforced rather than
+agreed. Thresholds stay per language, because 15 from one tool is not 15 from
+another.
+
 ### Whether to rewrite the commit messages before `06ec6c3`
 
 The wording check reads commits from `06ec6c3` on. Before it, from 2026-08-18
