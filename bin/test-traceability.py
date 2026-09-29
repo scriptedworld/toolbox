@@ -14,8 +14,8 @@ above it, a line of the form:
 
 No colon after COVERS. With one, a Python mark citing a single id is a valid
 annotated statement once the `#` is removed, so a commented-out-code lint flags
-every such line. The colon form is still read, so an adopter's gate does not
-break while its marks move, and it will be refused once every adopter has moved.
+every such line. A mark written with the colon fails and says which form to
+write, which is louder than reading it as no mark at all.
 
 Rust writes it `//` and never `///`. A doc comment is not a comment for this
 purpose: the pattern wants whitespace or `COVERS` where the third slash sits,
@@ -170,11 +170,15 @@ class Language:
         doc comment is stepped over as continuation rather than read as an
         annotation carrying nothing.
 
-        `COVERS` is followed by whitespace, or by the colon of the older form.
-        Either separates it from the ids, so `COVERSFR-1.1` is not a mark.
+        `COVERS` is followed by whitespace, so `COVERSFR-1.1` is not a mark.
         """
         marker = re.escape(self.comment)
-        return re.compile(rf"^\s*{marker}\s*COVERS(?::\s*|\s+)(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$")
+        return re.compile(rf"^\s*{marker}\s*COVERS\s+(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$")
+
+    @property
+    def colon_covers(self) -> re.Pattern[str]:
+        """A mark in the refused `COVERS:` form, found so it can be named."""
+        return re.compile(rf"^\s*{re.escape(self.comment)}\s*COVERS:")
 
     @property
     def continuation(self) -> re.Pattern[str]:
@@ -624,6 +628,14 @@ def annotation_of(block: list[str], language: Language) -> re.Match[str] | None:
     return None
 
 
+def missing_mark(block: list[str], language: Language) -> str:
+    """Why a test's block holds no usable mark, naming the fix for the refused colon form."""
+    form = f"`{language.comment} COVERS <ids> | <kind>`"
+    if any(language.colon_covers.match(line) for line in block):
+        return f"writes `COVERS:`; drop the colon: {form}"
+    return f"has no {form} line"
+
+
 def check_annotation(found: re.Match[str], declared: dict[str, str], retired: dict[str, str], source: str) -> list[str]:
     """Validate one COVERS annotation against the requirements document.
 
@@ -667,7 +679,7 @@ def scan_file(path: Path, language: Language, declared: dict[str, str], retired:
         where = f"{path}:{number + 1}: {test.group(1)}"
         found = annotation_of(block, language)
         if not found:
-            failures.append(f"{where} has no `{language.comment} COVERS <ids> | <kind>` line")
+            failures.append(f"{where} {missing_mark(block, language)}")
             continue
         cited.update(REQ_ID.findall(found.group("ids")))
         failures.extend(f"{where} {problem}" for problem in check_annotation(found, declared, retired, source))
