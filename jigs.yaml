@@ -57,6 +57,10 @@ sets:
       - bin/voice-tells.py
       - bin/voice-review.py
       - config/prompts/voice-findings.md
+      # Named with `--definitions requirements-directory` by a repository whose
+      # requirements are a directory. Linked so a linking adopter can name it
+      # too; one gated from a checkout reads it here.
+      - bolt.requirements-directory.definitions.yaml
 
   go:
     includes: [common]

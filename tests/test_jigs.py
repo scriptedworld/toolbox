@@ -231,10 +231,12 @@ def test_every_slot_a_jig_uses_has_a_default_and_an_override():
 
     The override matters as much: this repository holds the real checkers
     where every other adopter holds links to them, so a missing entry there
-    would silently stop it gating its own code.
+    would silently stop it gating its own code. Only toolbox's own file is held
+    to every slot; a shared one such as `requirements-directory` overrides one
+    placeholder and leaves the rest at the jig's default.
     """
-    overrides = {path.name: yaml.safe_load(path.read_text(encoding="utf-8")) or {} for path in DEFINITIONS}
-    assert overrides, "no definitions file found; the override is untested"
+    own = ROOT / "bolt.toolbox.definitions.yaml"
+    overrides = {own.name: yaml.safe_load(own.read_text(encoding="utf-8")) or {}}
 
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))

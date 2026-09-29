@@ -1,0 +1,19 @@
+# Points common-quality's traceability at a requirements directory.
+#
+#     bolt --definitions requirements-directory common-quality .
+#     bolt --config-dir ../toolbox --definitions requirements-directory common-quality .
+#
+# `docs/REQUIREMENTS/`, one file per requirement, is the estate's layout, and a
+# single `REQUIREMENTS.md` is a repository that has not split yet. The jig's
+# default stays `REQUIREMENTS.md` while repositories are still on one file,
+# because flipping it would fail each of their gates at once. It flips when the
+# last one has split, and this file goes with it.
+#
+# It lives here, not in each adopter, because bolt reads a definitions file from
+# the config directory alone. An adopter gated from a toolbox checkout with
+# `--config-dir` has no other place to put one.
+#
+# Only `requirements` is overridden. Every other placeholder keeps the jig's
+# default.
+
+requirements: docs/REQUIREMENTS
