@@ -11,7 +11,7 @@ run and not how the code is arranged. Mechanism appears only where the
 mechanism is itself the requirement.
 
 The chain is followed in both directions. A requirement says what must be true; a
-test says `COVERS:` and names the requirement it discharges. The `traceability`
+test says `COVERS` and names the requirement it discharges. The `traceability`
 task in this repository's own `bolt.common-quality.yaml` enforces that link
 mechanically.
 

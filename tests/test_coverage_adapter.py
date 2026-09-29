@@ -63,7 +63,7 @@ def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
     return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     """Per file, so a well-covered file cannot carry an uncovered one."""
     envelope = run(tmp_path, "--min", "80")
@@ -73,7 +73,7 @@ def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     assert "c.go" not in below
 
 
-# COVERS: FR-3.5 | positive
+# COVERS FR-3.5 | positive
 def test_every_file_above_the_minimum_passes(tmp_path):
     """A pass carries no reasons and still reports what it measured."""
     envelope = run(tmp_path, "--min", "80", profile=COVERED)
@@ -83,7 +83,7 @@ def test_every_file_above_the_minimum_passes(tmp_path):
     assert envelope["metadata"]["statistics"]["below_minimum"] == 0
 
 
-# COVERS: FR-3.4 | property
+# COVERS FR-3.4 | property
 def test_the_statistic_counts_files_and_not_reasons(tmp_path):
     """`below_minimum` is counted before a test failure joins the list.
 
@@ -95,7 +95,7 @@ def test_the_statistic_counts_files_and_not_reasons(tmp_path):
     assert len(envelope["reasons"]) == 3
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_failing_suite_fails_even_where_coverage_is_met(tmp_path):
     """The profile exists and the suite failed, so the run has not passed.
 
@@ -108,7 +108,7 @@ def test_a_failing_suite_fails_even_where_coverage_is_met(tmp_path):
     assert envelope["reasons"][0]["kind"] != "coverage-below-minimum"
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_declaring_no_evidence_fails_rather_than_passing(tmp_path):
     """Measuring nothing is not measuring zero problems."""
     envelope = run(tmp_path, profile=None)
@@ -116,14 +116,14 @@ def test_declaring_no_evidence_fails_rather_than_passing(tmp_path):
     assert envelope["reasons"][0]["kind"] == "evidence-missing"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_an_excluded_file_is_not_judged_and_not_counted(tmp_path):
     """Exclusion drops the file from the verdict and from the totals."""
     envelope = run(tmp_path, "--min", "80", "--exclude", r"^b\.go$")
     assert [r["file"] for r in envelope["reasons"]] == ["a.go"]
 
 
-# COVERS: FR-3.4 | regression
+# COVERS FR-3.4 | regression
 def test_two_profiles_merge_by_taking_the_higher_count(tmp_path):
     """The entry point is measured in a second run and counted with the first.
 

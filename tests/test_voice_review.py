@@ -97,7 +97,7 @@ def one_finding(rule: str, line: int, quote: str):
     return lambda where, user: {"findings": [{"line": line, "rule": rule, "quote": quote}]}
 
 
-# COVERS: FR-10.1 | positive
+# COVERS FR-10.1 | positive
 def test_every_text_is_sent_whole_in_its_own_request(tmp_path, capsys):
     """A long document's last line reaches the model, and the comments go in a request of their own."""
     lines = [f"Line number {n} of a long document." for n in range(1, 401)]
@@ -112,7 +112,7 @@ def test_every_text_is_sent_whole_in_its_own_request(tmp_path, capsys):
     assert "402| Line number 400 of a long document." in sent["text: README.md"]
 
 
-# COVERS: FR-10.2 | positive
+# COVERS FR-10.2 | positive
 def test_the_prompt_file_is_sent_unchanged(tmp_path, capsys):
     """Every request carries the prompt as its system text."""
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})
@@ -123,7 +123,7 @@ def test_the_prompt_file_is_sent_unchanged(tmp_path, capsys):
     assert api.requests and all(request["system"] == PROMPT.read_text(encoding="utf-8") for request in api.requests)
 
 
-# COVERS: FR-10.2 | negative
+# COVERS FR-10.2 | negative
 def test_a_finding_under_a_rule_not_asked_for_is_dropped(tmp_path, capsys):
     """The model does not get to invent a rule."""
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
@@ -133,7 +133,7 @@ def test_a_finding_under_a_rule_not_asked_for_is_dropped(tmp_path, capsys):
     assert report["findings"] == [] and report["dropped"] == 1
 
 
-# COVERS: FR-10.3 | positive
+# COVERS FR-10.3 | positive
 def test_a_quote_on_its_line_stands_and_may_wrap(tmp_path, capsys):
     """A quote on the named line, and one that runs onto the next, both stand."""
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n\nA sentence that\nwraps onto the next line.\n"})
@@ -153,7 +153,7 @@ def test_a_quote_on_its_line_stands_and_may_wrap(tmp_path, capsys):
     assert f"README.md:3: closing-aphorism: {APHORISM}" in output
 
 
-# COVERS: FR-10.3 | negative
+# COVERS FR-10.3 | negative
 @pytest.mark.parametrize(
     ("line", "quote"),
     [(3, "Words that appear nowhere in the file."), (1, APHORISM), (99, APHORISM), ("3", APHORISM)],
@@ -168,7 +168,7 @@ def test_a_quote_not_starting_on_its_line_is_dropped(tmp_path, capsys, line, quo
     assert "0 findings, 1 dropped by verification" in output
 
 
-# COVERS: FR-10.4 | positive
+# COVERS FR-10.4 | positive
 def test_findings_never_fail_the_run(tmp_path, capsys):
     """Findings are reported and the exit is still 0."""
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
@@ -178,7 +178,7 @@ def test_findings_never_fail_the_run(tmp_path, capsys):
     assert code == 0 and len(report["findings"]) == 1
 
 
-# COVERS: FR-10.4 | negative
+# COVERS FR-10.4 | negative
 def test_a_wrong_command_or_repository_exits_two(tmp_path, capsys):
     """Two modes at once, a start that is not a commit, and a prompt that cannot be read."""
     tree = repository(tmp_path, {"README.md": "# r\n"})
@@ -193,7 +193,7 @@ def test_a_wrong_command_or_repository_exits_two(tmp_path, capsys):
     assert "voice review:" in capsys.readouterr().out
 
 
-# COVERS: FR-10.5 | positive
+# COVERS FR-10.5 | positive
 @pytest.mark.parametrize(
     ("access", "why"),
     [
@@ -217,7 +217,7 @@ def test_an_unreachable_model_is_reported_as_not_run(tmp_path, capsys, access, w
     assert "NOT RUN" in output
 
 
-# COVERS: FR-10.5 | edge
+# COVERS FR-10.5 | edge
 def test_an_answer_that_is_not_a_findings_list_leaves_only_that_text_unreviewed(tmp_path, capsys):
     """One text's answer is prose; the other text is still reviewed."""
     tree = repository(tmp_path, {"a.md": f"# a\n\n{APHORISM}\n", "b.md": "# b\n\nA sentence.\n"})
@@ -233,7 +233,7 @@ def test_an_answer_that_is_not_a_findings_list_leaves_only_that_text_unreviewed(
     assert "b.md: not reviewed:" in output
 
 
-# COVERS: FR-10.1 | positive
+# COVERS FR-10.1 | positive
 def test_a_commit_message_file_is_reviewed_through_the_wording_modes(tmp_path, capsys):
     """The commit-msg mode sends the one message and nothing from the tree."""
     message = tmp_path / "COMMIT_EDITMSG"
@@ -247,7 +247,7 @@ def test_a_commit_message_file_is_reviewed_through_the_wording_modes(tmp_path, c
     assert "one commit message" in capsys.readouterr().out
 
 
-# COVERS: FR-10.6 | positive
+# COVERS FR-10.6 | positive
 def test_the_api_request_carries_no_sampling_parameter(tmp_path, capsys):
     """The current models refuse temperature, so it is never sent."""
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})
@@ -259,7 +259,7 @@ def test_the_api_request_carries_no_sampling_parameter(tmp_path, capsys):
     assert not {"temperature", "top_p", "top_k"} & set(api.requests[0])
 
 
-# COVERS: FR-10.6 | positive
+# COVERS FR-10.6 | positive
 def test_without_a_key_the_cli_is_asked_with_no_tools_or_settings(tmp_path, capsys):
     """The CLI fallback passes the prompt as the system prompt and the text on stdin."""
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
@@ -280,7 +280,7 @@ def test_without_a_key_the_cli_is_asked_with_no_tools_or_settings(tmp_path, caps
     assert stdin.startswith("text: README.md") and "through the cli" in output
 
 
-# COVERS: FR-10.6 | negative
+# COVERS FR-10.6 | negative
 @pytest.mark.parametrize(
     ("returned", "why"),
     [
@@ -305,7 +305,7 @@ def test_a_cli_that_cannot_answer_is_unreachable(tmp_path, capsys, returned, why
     assert code == 0 and report["status"] == "unreachable" and report["why"] == why
 
 
-# COVERS: FR-10.6 | edge
+# COVERS FR-10.6 | edge
 def test_an_api_body_that_is_not_a_message_leaves_the_text_unanswered(tmp_path, capsys):
     """A 200 whose body cannot be read is an answer problem, not an outage."""
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})
@@ -319,7 +319,7 @@ def test_an_api_body_that_is_not_a_message_leaves_the_text_unanswered(tmp_path, 
     assert code == 0 and [item["where"] for item in report["unanswered"]] == ["README.md"]
 
 
-# COVERS: FR-10.6 | edge
+# COVERS FR-10.6 | edge
 def test_a_connection_failure_is_offline(tmp_path, capsys):
     """A socket error before any response is reported as offline."""
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})
@@ -332,7 +332,7 @@ def test_a_connection_failure_is_offline(tmp_path, capsys):
     assert code == 0 and report["why"] == "offline"
 
 
-# COVERS: FR-10.7 | positive
+# COVERS FR-10.7 | positive
 def test_the_report_names_the_model_backend_findings_and_counts(tmp_path, capsys):
     """Everything a later reader needs is in the JSON."""
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
@@ -344,7 +344,7 @@ def test_the_report_names_the_model_backend_findings_and_counts(tmp_path, capsys
     assert report["dropped"] == 0 and report["unanswered"] == []
 
 
-# COVERS: FR-10.4 | positive
+# COVERS FR-10.4 | positive
 def test_the_script_runs_by_path_and_says_not_run_without_a_model(tmp_path):
     """Spawned as a hook would spawn it, with no fallback, it exits 0 and says why nothing ran."""
     tree = repository(tmp_path, {"README.md": "# r\n\nA sentence.\n"})

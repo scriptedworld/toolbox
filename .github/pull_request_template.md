@@ -33,8 +33,8 @@ adopted it, with no version pin in between. State which of these applies:
 ## Requirements
 
 A change to behaviour names the requirement it serves. A new test carries a
-`COVERS:` mark, and the kinds are `positive`, `negative`, `edge`, `property` and
+`COVERS` mark, and the kinds are `positive`, `negative`, `edge`, `property` and
 `regression`.
 
-If this retires a requirement, its `COVERS:` marks are repointed or removed in
+If this retires a requirement, its `COVERS` marks are repointed or removed in
 this same change, and the ID is not reused.

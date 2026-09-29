@@ -55,7 +55,9 @@ SLASH_SUFFIXES = frozenset(
 )
 
 # Comment lines a program reads rather than a person.
-DIRECTIVE = re.compile(r"COVERS:|^#!|-\*-|noqa|nosec|nolint|pylint:|type:\s*ignore|go:build|go:generate|eslint-|clippy::|rustfmt::|fmt:\s*(off|on)")
+DIRECTIVE = re.compile(
+    r"COVERS[:\s]|^#!|-\*-|noqa|nosec|nolint|pylint:|type:\s*ignore|go:build|go:generate|eslint-|clippy::|rustfmt::|fmt:\s*(off|on)"
+)
 FENCE = re.compile(r"^\s*(```|~~~)")
 # Single quotes count only standing apart from letters, so `don't` and `the file's` are not spans.
 QUOTED = re.compile(r"`[^`\n]*`|\"[^\"\n]*\"|“[^”\n]*”|(?<![A-Za-z])'[^'\n]*'(?![A-Za-z])")

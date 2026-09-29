@@ -21,7 +21,7 @@ def record(stdout: str = "", stderr: str = "", exitcode: int = 0) -> dict[str, o
     return {"captures": {"stdout": stdout, "stderr": stderr, "exitcode": exitcode}}
 
 
-# COVERS: FR-3.5 | positive
+# COVERS FR-3.5 | positive
 def test_a_clean_tree_succeeds(adapter):
     """gofmt printing nothing is the pass, and the envelope carries no reasons."""
     envelope = adapter(gofmt, record(fixture_text("gofmt/clean.txt")))
@@ -29,7 +29,7 @@ def test_a_clean_tree_succeeds(adapter):
     assert "reasons" not in envelope
 
 
-# COVERS: FR-3.2, FR-3.4 | positive
+# COVERS FR-3.2, FR-3.4 | positive
 def test_each_unformatted_file_becomes_one_reason(adapter):
     """Captured output from a real run: two files, two reasons, in order."""
     envelope = adapter(gofmt, record(fixture_text("gofmt/unformatted.txt")))
@@ -40,7 +40,7 @@ def test_each_unformatted_file_becomes_one_reason(adapter):
     ]
 
 
-# COVERS: FR-3.4 | property
+# COVERS FR-3.4 | property
 def test_a_reason_names_its_checker_and_how_to_fix_it(adapter):
     """A reason nobody can act on is a reason nobody acts on."""
     envelope = adapter(gofmt, record(fixture_text("gofmt/unformatted.txt")))
@@ -50,14 +50,14 @@ def test_a_reason_names_its_checker_and_how_to_fix_it(adapter):
     assert first["fix"].startswith("gofmt -w ")
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_leading_dot_slash_is_stripped_from_the_file(adapter):
     """gofmt echoes the path it was given; the reason names the file, not the walk."""
     envelope = adapter(gofmt, record("./cmd/bolt/main.go\n"))
     assert envelope["reasons"][0]["file"] == "cmd/bolt/main.go"
 
 
-# COVERS: FR-3.1 | edge
+# COVERS FR-3.1 | edge
 def test_an_empty_record_succeeds_rather_than_raising(adapter):
     """A record with no captures at all is the shape bolt writes for a task that
     produced no output, and it must not be read as a finding."""
@@ -65,7 +65,7 @@ def test_an_empty_record_succeeds_rather_than_raising(adapter):
     assert envelope["success"] is True
 
 
-# COVERS: NFR-3 | positive
+# COVERS NFR-3 | positive
 def test_the_adapter_runs_as_a_script():
     """In-process tests cannot catch a broken shebang or a missing import."""
     result = subprocess.run(  # nosec B603

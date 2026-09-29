@@ -61,7 +61,7 @@ def reasons_of(envelope, kind):
 # ---- lines -------------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     """Per file, so a well-covered file cannot carry an uncovered one."""
     envelope = run(tmp_path, "--min", "80", "--min-branch", "0")
@@ -70,7 +70,7 @@ def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     assert envelope["success"] is False
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_the_aggregate_never_rescues_a_file(tmp_path):
     """b.rs is at 0% while the tree is at 50%, and the file is what is judged."""
     envelope = run(tmp_path, "--min", "40", "--min-branch", "0")
@@ -79,7 +79,7 @@ def test_the_aggregate_never_rescues_a_file(tmp_path):
     assert envelope["metadata"]["statistics"]["total_percent"] > 40
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_reason_carries_the_counts_it_judged(tmp_path):
     """The numbers are in the reason, so nobody has to re-derive them."""
     envelope = run(tmp_path, "--min", "80", "--min-branch", "0")
@@ -90,7 +90,7 @@ def test_a_reason_carries_the_counts_it_judged(tmp_path):
 # ---- branches ----------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_file_below_the_branch_minimum_is_its_own_reason_kind(tmp_path):
     """Branches fail separately from lines, so the two are never conflated."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "80")
@@ -99,7 +99,7 @@ def test_a_file_below_the_branch_minimum_is_its_own_reason_kind(tmp_path):
     assert (below[0]["covered"], below[0]["branches"]) == (1, 2)
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_branch_never_taken_is_read_as_zero_not_skipped(tmp_path):
     """`-` is lcov's never-taken marker; dropping it would flatter the file."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "100")
@@ -108,14 +108,14 @@ def test_a_branch_never_taken_is_read_as_zero_not_skipped(tmp_path):
     assert a["covered"] == 1
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_file_with_no_branches_is_not_judged_on_branches(tmp_path):
     """Straight-line code has no arms to take, so the question does not apply."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "100")
     assert "b.rs" not in {r["file"] for r in reasons_of(envelope, "branch-coverage-below-minimum")}
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_lines_and_branches_are_judged_independently(tmp_path):
     """A file can pass one and fail the other, and both are reported."""
     envelope = run(tmp_path, "--min", "60", "--min-branch", "80")
@@ -127,7 +127,7 @@ def test_lines_and_branches_are_judged_independently(tmp_path):
 # ---- merging -----------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_line_is_covered_if_any_record_reached_it(tmp_path):
     """cargo-llvm-cov writes a record per binary; merging takes the maximum."""
     profile = "SF:/repo/src/a.rs\nDA:1,0\nend_of_record\nSF:/repo/src/a.rs\nDA:1,7\nend_of_record\n"
@@ -135,7 +135,7 @@ def test_a_line_is_covered_if_any_record_reached_it(tmp_path):
     assert envelope["success"] is True, envelope
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_branch_is_taken_if_any_record_took_it(tmp_path):
     """The same merge, on the records a summing implementation would double."""
     profile = (
@@ -145,7 +145,7 @@ def test_a_branch_is_taken_if_any_record_took_it(tmp_path):
     assert envelope["success"] is True, envelope
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_several_evidence_files_compose_as_one_document(tmp_path):
     """Two profiles merge exactly as one profile's repeated records do.
 
@@ -173,7 +173,7 @@ def test_several_evidence_files_compose_as_one_document(tmp_path):
 # ---- the test run it answers for ---------------------------------------------
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_failed_suite_is_a_failure_even_with_a_clean_profile(tmp_path):
     """A profile from a failed run measures what ran, not what passed."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", profile=COVERED, exitcode="1")
@@ -181,7 +181,7 @@ def test_a_failed_suite_is_a_failure_even_with_a_clean_profile(tmp_path):
     assert reasons_of(envelope, "tests-failed")
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_an_unreadable_exit_status_is_a_failure(tmp_path):
     """Not knowing whether the suite passed is not the same as it passing."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", profile=COVERED, exitcode=None)
@@ -189,7 +189,7 @@ def test_an_unreadable_exit_status_is_a_failure(tmp_path):
     assert reasons_of(envelope, "exit-status-unreadable")
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_no_evidence_is_a_failure_rather_than_an_empty_pass(tmp_path):
     """Measuring nothing must not report as having found nothing wrong."""
     envelope = run(tmp_path, profile=None)
@@ -200,7 +200,7 @@ def test_no_evidence_is_a_failure_rather_than_an_empty_pass(tmp_path):
 # ---- statistics and the shape of a pass --------------------------------------
 
 
-# COVERS: FR-3.7 | positive
+# COVERS FR-3.7 | positive
 def test_statistics_are_emitted_on_a_pass(tmp_path):
     """A number is only useful as a series, so a pass reports one too."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", profile=COVERED)
@@ -212,14 +212,14 @@ def test_statistics_are_emitted_on_a_pass(tmp_path):
     assert stats["branch_below_minimum"] == 0
 
 
-# COVERS: FR-3.5 | positive
+# COVERS FR-3.5 | positive
 def test_a_pass_omits_the_reasons_block_rather_than_emitting_it_empty(tmp_path):
     """`reasons: []` is a different claim from having nothing to report."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", profile=COVERED)
     assert "reasons" not in envelope
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_an_exclusion_removes_a_file_from_both_judgements(tmp_path):
     """One flag, both metrics, so an exclusion cannot half-apply."""
     envelope = run(tmp_path, "--min", "80", "--min-branch", "80", "--exclude", r"^b\.rs$", "--exclude", r"^a\.rs$")
@@ -229,14 +229,14 @@ def test_an_exclusion_removes_a_file_from_both_judgements(tmp_path):
 # ---- paths, encoding, and the shapes a real profile arrives in ---------------
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_shared_prefix_is_stripped_so_reasons_name_repository_paths(tmp_path):
     """lcov names files absolutely; without this every reason carries a layout."""
     envelope = run(tmp_path, "--min", "80", "--min-branch", "0")
     assert {r["file"] for r in reasons_of(envelope, "coverage-below-minimum")} == {"a.rs", "b.rs"}
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_single_file_profile_keeps_its_whole_path(tmp_path):
     """With one entry there is no common prefix to derive, so nothing is cut."""
     profile = "SF:/repo/src/only.rs\nDA:1,0\nend_of_record\n"
@@ -244,7 +244,7 @@ def test_a_single_file_profile_keeps_its_whole_path(tmp_path):
     assert reasons_of(envelope, "coverage-below-minimum")[0]["file"] == "/repo/src/only.rs"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_non_ascii_path_survives_into_the_reason(tmp_path):
     """A source tree may be named in any language, and the file is the reason's
     whole identity. Latin-1-range, CJK and an astral-plane character together,
@@ -263,7 +263,7 @@ def test_a_non_ascii_path_survives_into_the_reason(tmp_path):
     }
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_non_ascii_path_round_trips_through_the_envelope(tmp_path):
     """The envelope is YAML that bolt reads back, so the escaping has to survive
     a load rather than merely be written without raising."""
@@ -274,7 +274,7 @@ def test_a_non_ascii_path_round_trips_through_the_envelope(tmp_path):
     assert "caf\\xe9.rs" not in names, "an escape that survived the load is a corrupted name"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_common_prefix_is_counted_in_path_segments_not_characters(tmp_path):
     """`src/a.rs` and `src/ab.rs` share the segment `src` and nothing more, so a
     character-wise prefix would cut the `a` off `ab.rs`."""
@@ -283,7 +283,7 @@ def test_a_common_prefix_is_counted_in_path_segments_not_characters(tmp_path):
     assert {r["file"] for r in reasons_of(envelope, "coverage-below-minimum")} == {"a.rs", "ab.rs"}
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_crlf_line_endings_parse(tmp_path):
     """A profile written on Windows, or copied through something that rewrote its
     endings, must not read as a profile with no records at all."""
@@ -291,7 +291,7 @@ def test_crlf_line_endings_parse(tmp_path):
     assert {r["file"] for r in reasons_of(envelope, "coverage-below-minimum")} == {"a.rs", "b.rs"}
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_profile_that_parses_to_nothing_does_not_report_a_pass(tmp_path):
     """Silence plus a suite that failed is not success. An empty profile with a
     clean exit is the one case that legitimately has nothing to say."""
@@ -300,7 +300,7 @@ def test_a_profile_that_parses_to_nothing_does_not_report_a_pass(tmp_path):
     assert reasons_of(envelope, "tests-failed")
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_records_before_any_source_line_are_ignored(tmp_path):
     """A `DA` with no `SF` above it belongs to no file. Attributing it to the
     next one would move coverage between files."""
@@ -310,7 +310,7 @@ def test_records_before_any_source_line_are_ignored(tmp_path):
     assert below[0]["lines"] == 1 and below[0]["covered"] == 0
 
 
-# COVERS: FR-3.7 | edge
+# COVERS FR-3.7 | edge
 def test_a_profile_with_no_branch_records_reads_as_unmeasured(tmp_path):
     """cargo-llvm-cov on a stable toolchain writes BRF:0 and BRH:0 and not one
     BRDA record, so the branch threshold has nothing to judge. That has to read
@@ -322,7 +322,7 @@ def test_a_profile_with_no_branch_records_reads_as_unmeasured(tmp_path):
     assert envelope["success"] is True, "an unmeasured branch is not a failed one"
 
 
-# COVERS: FR-3.7 | positive
+# COVERS FR-3.7 | positive
 def test_branch_measured_is_true_once_records_arrive(tmp_path):
     """The same statistic on a profile from a toolchain that does emit them."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0")

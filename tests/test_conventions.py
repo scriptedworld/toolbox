@@ -23,7 +23,7 @@ FIXTURES = ROOT / "tests" / "fixtures"
 PROVENANCE = re.compile(r"^#\s*\S+.*\d+\.\d+.*captured \d{4}-\d{2}-\d{2}")
 
 
-# COVERS: NFR-4 | property
+# COVERS NFR-4 | property
 def test_every_fixture_records_the_tool_version_and_the_date():
     """A fixture composed by hand tests whoever composed it.
 
@@ -38,7 +38,7 @@ def test_every_fixture_records_the_tool_version_and_the_date():
         assert PROVENANCE.match(first), f"{path.relative_to(ROOT)} opens with {first!r}, which names no tool version and no capture date"
 
 
-# COVERS: NFR-2 | property
+# COVERS NFR-2 | property
 def test_a_spawned_script_is_measured_when_the_parent_is_under_coverage():
     """The guarantee that replaced 'tests must run in-process'.
 
@@ -56,7 +56,7 @@ def test_a_spawned_script_is_measured_when_the_parent_is_under_coverage():
         assert argv == [sys.executable, str(ROOT / "adapters" / "go" / "gofmt.py"), "--flag"]
 
 
-# COVERS: NFR-2 | edge
+# COVERS NFR-2 | edge
 def test_the_routing_is_decided_by_the_parent_and_not_by_a_flag():
     """`coverage` in `sys.modules` is the whole condition.
 
@@ -89,7 +89,7 @@ def source(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-# COVERS: FR-2.1 | property
+# COVERS FR-2.1 | property
 def test_every_checker_exits_with_its_verdict_and_needs_no_adapter():
     """A checker's exit code is the verdict, which is why no task here names one for a checker."""
     assert CHECKERS, "no checkers found, so the contract is untested"
@@ -105,7 +105,7 @@ def test_every_checker_exits_with_its_verdict_and_needs_no_adapter():
             assert not (runs_checker and task.get("adapter")), f"{jig.name}:{task['name']} runs a checker and names an adapter"
 
 
-# COVERS: FR-3.8 | property
+# COVERS FR-3.8 | property
 def test_no_adapter_reads_a_clock_a_network_or_anything_it_was_not_handed():
     """An adapter takes a record or the evidence it is named, and writes its envelope.
 
@@ -122,7 +122,7 @@ def test_no_adapter_reads_a_clock_a_network_or_anything_it_was_not_handed():
                 assert module not in IMPURE, f"{path.relative_to(ROOT)} imports {module}"
 
 
-# COVERS: NFR-1 | property
+# COVERS NFR-1 | property
 def test_the_suite_spawns_only_the_interpreter_and_git():
     """No test runs a tool a jig names, so the suite runs where none of them are installed."""
     calls = 0

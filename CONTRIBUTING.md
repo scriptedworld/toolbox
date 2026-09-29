@@ -98,7 +98,7 @@ every requirement at once, so the entry lands in the same change as the jig.
 discharges, in a comment directly above it:
 
 ```python
-# COVERS: FR-1.2 | property
+# COVERS FR-1.2 | property
 ```
 
 The kinds are `positive`, `negative`, `edge`, `property` and `regression`, and
@@ -107,7 +107,7 @@ cites nothing, and fails a settled requirement that no test cites.
 
 A requirement can be retired or superseded, and its ID is never reused, because
 reuse silently rewrites what every existing reference to that ID means. Retiring
-one leaves its `COVERS:` marks pointing at nothing, and they are repointed or
+one leaves its `COVERS` marks pointing at nothing, and they are repointed or
 removed in the same change.
 
 `[?]` in a requirement's status cell marks an open decision that cannot have a

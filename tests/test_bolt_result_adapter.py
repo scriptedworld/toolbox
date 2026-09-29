@@ -48,7 +48,7 @@ def child(tmp_path, document) -> str:
     return f"{result}\n"
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_failing_childs_own_reasons_come_up(tmp_path):
     """A path going down is what this replaces.
 
@@ -77,7 +77,7 @@ def test_a_failing_childs_own_reasons_come_up(tmp_path):
     assert all("child" in r for r in envelope["reasons"])
 
 
-# COVERS: FR-3.5 | positive
+# COVERS FR-3.5 | positive
 def test_a_passing_child_passes_and_says_nothing(tmp_path):
     """An adapter omits an optional block instead of emitting it empty."""
     envelope = run(tmp_path, child(tmp_path, {"success": True}))
@@ -85,7 +85,7 @@ def test_a_passing_child_passes_and_says_nothing(tmp_path):
     assert "reasons" not in envelope
 
 
-# COVERS: FR-3.6 | regression
+# COVERS FR-3.6 | regression
 def test_the_result_path_is_the_last_line_not_the_first(tmp_path):
     """The Go build prints a transcript first and the path last.
 
@@ -104,7 +104,7 @@ def test_the_result_path_is_the_last_line_not_the_first(tmp_path):
     assert envelope["reasons"][0]["message"] == "no"
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_an_empty_stdout_is_a_child_that_wrote_nothing(tmp_path):
     """Died before writing a result, which is not the same as writing a bad one.
 
@@ -117,7 +117,7 @@ def test_an_empty_stdout_is_a_child_that_wrote_nothing(tmp_path):
     assert envelope["reasons"][0]["kind"] == "child-wrote-nothing"
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_named_result_that_is_not_there_fails(tmp_path):
     """Naming a result and not writing one is its own failure."""
     envelope = run(tmp_path, f"{tmp_path / 'absent.yaml'}\n")
@@ -125,7 +125,7 @@ def test_a_named_result_that_is_not_there_fails(tmp_path):
     assert envelope["reasons"][0]["kind"] == "child-result-missing"
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_result_that_does_not_validate_is_refused(tmp_path):
     """Reading `success` off a document that does not validate would let a
     truncated write read as a pass."""
@@ -136,7 +136,7 @@ def test_a_result_that_does_not_validate_is_refused(tmp_path):
     assert envelope["reasons"][0]["kind"] == "child-result-invalid"
 
 
-# COVERS: FR-3.6 | edge
+# COVERS FR-3.6 | edge
 def test_a_failure_claiming_no_reasons_is_refused_as_invalid(tmp_path):
     """The schema makes a silent failure impossible, so this is not a fold.
 
@@ -150,7 +150,7 @@ def test_a_failure_claiming_no_reasons_is_refused_as_invalid(tmp_path):
     assert envelope["reasons"][0]["kind"] == "child-result-invalid"
 
 
-# COVERS: FR-3.6 | edge
+# COVERS FR-3.6 | edge
 def test_an_empty_reasons_list_is_refused_too(tmp_path):
     """The other spelling of a silent failure, and the schema refuses it as well."""
     envelope = run(tmp_path, child(tmp_path, {"success": False, "reasons": []}))

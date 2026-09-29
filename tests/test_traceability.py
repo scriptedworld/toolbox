@@ -39,7 +39,7 @@ def project(tmp_path: Path, document: str, files: dict[str, str] | None = None) 
 # ---- the verdict ------------------------------------------------------------
 
 
-# COVERS: FR-4.5 | positive
+# COVERS FR-4.5 | positive
 def test_every_settled_requirement_covered_passes(checker, tmp_path):
     """A document whose settled requirements all have tests exits 0 and says so."""
     tree = project(
@@ -52,7 +52,7 @@ def test_every_settled_requirement_covered_passes(checker, tmp_path):
     assert "2 of 2" in out
 
 
-# COVERS: FR-4.5, FR-2.2 | negative
+# COVERS FR-4.5, FR-2.2 | negative
 def test_uncovered_settled_requirement_fails_and_is_named(checker, tmp_path):
     """An uncovered settled requirement is the failure this change exists for."""
     tree = project(
@@ -66,7 +66,7 @@ def test_uncovered_settled_requirement_fails_and_is_named(checker, tmp_path):
     assert "FR-2.1 [D]" in out
 
 
-# COVERS: FR-4.6 | edge
+# COVERS FR-4.6 | edge
 def test_uncovered_open_requirement_is_context_not_failure(checker, tmp_path):
     """`[?]` marks a decision that cannot have a test yet, so it does not fail."""
     tree = project(
@@ -81,7 +81,7 @@ def test_uncovered_open_requirement_is_context_not_failure(checker, tmp_path):
     assert "settled requirement(s) have no test" not in out
 
 
-# COVERS: FR-4.6 | edge
+# COVERS FR-4.6 | edge
 def test_a_row_with_no_marker_claims_no_exemption(checker, tmp_path):
     """Exemption is claimed with `[?]`, never granted by an absent marker column."""
     tree = project(
@@ -97,7 +97,7 @@ def test_a_row_with_no_marker_claims_no_exemption(checker, tmp_path):
 # ---- what a test must say ---------------------------------------------------
 
 
-# COVERS: FR-4.1 | negative
+# COVERS FR-4.1 | negative
 def test_a_test_without_a_covers_line_fails(checker, tmp_path):
     """The other direction: a test that does not say what it discharges."""
     tree = project(
@@ -156,7 +156,7 @@ def test_covers_run_into_an_id_is_not_a_mark(checker, tmp_path):
     assert "test_run_on has no" in out
 
 
-# COVERS: FR-4.2 | negative
+# COVERS FR-4.2 | negative
 def test_citing_an_undeclared_requirement_fails(checker, tmp_path):
     """A renamed or deleted requirement fails here rather than rotting in a comment."""
     tree = project(
@@ -170,7 +170,7 @@ def test_citing_an_undeclared_requirement_fails(checker, tmp_path):
     assert "does not define" in out
 
 
-# COVERS: FR-4.3 | negative
+# COVERS FR-4.3 | negative
 def test_an_unknown_kind_fails(checker, tmp_path):
     """The kind says which path through the requirement the test walks."""
     tree = project(
@@ -183,7 +183,7 @@ def test_an_unknown_kind_fails(checker, tmp_path):
     assert "'vibes'" in out
 
 
-# COVERS: FR-4.4 | negative
+# COVERS FR-4.4 | negative
 def test_a_covers_line_citing_no_id_at_all_fails(checker, tmp_path):
     """`COVERS: whatever | positive` parses as an annotation and cites nothing."""
     tree = project(
@@ -199,7 +199,7 @@ def test_a_covers_line_citing_no_id_at_all_fails(checker, tmp_path):
 # ---- the empty cases, where false greens live -------------------------------
 
 
-# COVERS: FR-2.3 | edge
+# COVERS FR-2.3 | edge
 def test_a_missing_document_fails_without_a_traceback(checker, tmp_path):
     """An adopter with no REQUIREMENTS.md gets an instruction, not a stack trace."""
     code, out = checker(traceability, ARGV, tmp_path)
@@ -208,7 +208,7 @@ def test_a_missing_document_fails_without_a_traceback(checker, tmp_path):
     assert "Traceback" not in out
 
 
-# COVERS: FR-2.4 | edge
+# COVERS FR-2.4 | edge
 def test_a_document_declaring_nothing_refuses_to_pass(checker, tmp_path):
     """Zero requirements and zero citations agree with each other and mean nothing."""
     tree = project(tmp_path, "# Fixture\n\nProse, and no table.\n")
@@ -217,7 +217,7 @@ def test_a_document_declaring_nothing_refuses_to_pass(checker, tmp_path):
     assert "refusing to pass vacuously" in out
 
 
-# COVERS: FR-4.5, FR-4.7 | edge
+# COVERS FR-4.5, FR-4.7 | edge
 def test_a_tree_with_no_tests_fails_every_settled_requirement(checker, tmp_path):
     """Finding no tests is not the same as finding nothing wrong."""
     tree = project(tmp_path, requirements(("FR-1.1", "[A]"), ("FR-1.2", "[D]")))
@@ -229,7 +229,7 @@ def test_a_tree_with_no_tests_fails_every_settled_requirement(checker, tmp_path)
 # ---- finding the tests ------------------------------------------------------
 
 
-# COVERS: FR-4.7 | positive
+# COVERS FR-4.7 | positive
 def test_go_and_python_tests_are_both_found(checker, tmp_path):
     """The task is in the language-agnostic jig, so it reads both languages."""
     tree = project(
@@ -244,7 +244,7 @@ def test_go_and_python_tests_are_both_found(checker, tmp_path):
     assert code == 0, out
 
 
-# COVERS: FR-4.8 | edge
+# COVERS FR-4.8 | edge
 def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
     """A parametrised test keeps its COVERS line above the decorator."""
     tree = project(
@@ -256,7 +256,7 @@ def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
     assert code == 0, out
 
 
-# COVERS: FR-4.8 | regression
+# COVERS FR-4.8 | regression
 def test_a_decorator_wrapped_onto_a_second_line_does_not_hide_it(checker, tmp_path):
     """`ruff format` wraps a long decorator, so this is reachable by formatting.
 
@@ -286,7 +286,7 @@ def test_a_decorator_wrapped_onto_a_second_line_does_not_hide_it(checker, tmp_pa
     assert code == 0, out
 
 
-# COVERS: FR-4.8 | negative
+# COVERS FR-4.8 | negative
 def test_an_ordinary_statement_still_ends_the_block(checker, tmp_path):
     """The bracket rule must not swallow code between a mark and a test.
 
@@ -304,7 +304,7 @@ def test_an_ordinary_statement_still_ends_the_block(checker, tmp_path):
     assert "test_unmarked" in out
 
 
-# COVERS: FR-4.8 | edge
+# COVERS FR-4.8 | edge
 def test_indented_and_async_tests_are_found(checker, tmp_path):
     """A method on a test class and an async test are both tests."""
     tree = project(
@@ -335,7 +335,7 @@ RUST_TEST = (
 )
 
 
-# COVERS: FR-4.7, FR-4.8 | positive
+# COVERS FR-4.7, FR-4.8 | positive
 def test_a_rust_test_is_found_through_its_attribute_and_doc_comment(checker, tmp_path):
     """`#[test]` and `///` both sit between the COVERS line and the `fn`.
 
@@ -347,7 +347,7 @@ def test_a_rust_test_is_found_through_its_attribute_and_doc_comment(checker, tmp
     assert code == 0, out
 
 
-# COVERS: FR-4.16 | negative
+# COVERS FR-4.16 | negative
 def test_a_rust_helper_without_the_attribute_is_not_a_test(checker, tmp_path):
     """A test file's helpers outnumbered its tests 5 to 20 in bolt.
 
@@ -364,7 +364,7 @@ def test_a_rust_helper_without_the_attribute_is_not_a_test(checker, tmp_path):
     assert "write_jig" not in out
 
 
-# COVERS: FR-4.16 | edge
+# COVERS FR-4.16 | edge
 def test_a_rust_test_still_has_to_cite_something(checker, tmp_path):
     """The attribute selects what is a test; it does not exempt one."""
     tree = project(
@@ -378,7 +378,7 @@ def test_a_rust_test_still_has_to_cite_something(checker, tmp_path):
     assert "// COVERS <ids>" in out
 
 
-# COVERS: FR-4.7 | edge
+# COVERS FR-4.7 | edge
 def test_a_rust_unit_test_inside_src_is_found(checker, tmp_path):
     """A Rust unit test lives in the file it covers, not under tests/."""
     tree = project(
@@ -398,7 +398,7 @@ def test_a_rust_unit_test_inside_src_is_found(checker, tmp_path):
     assert code == 0, out
 
 
-# COVERS: FR-2.5 | regression
+# COVERS FR-2.5 | regression
 def test_cargo_build_output_is_not_scanned(checker, tmp_path):
     """`target/` carries vendored `.rs` sources, and bolt's held twelve."""
     tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"tests/skeleton.rs": RUST_TEST})
@@ -410,7 +410,7 @@ def test_cargo_build_output_is_not_scanned(checker, tmp_path):
     assert "theirs" not in out
 
 
-# COVERS: FR-2.5 | edge
+# COVERS FR-2.5 | edge
 def test_someone_elses_tests_are_not_scanned(checker, tmp_path):
     """A virtualenv full of unannotated tests must not fail this project."""
     tree = project(
@@ -426,7 +426,7 @@ def test_someone_elses_tests_are_not_scanned(checker, tmp_path):
     assert "test_not_ours" not in out
 
 
-# COVERS: FR-2.5 | regression
+# COVERS FR-2.5 | regression
 def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
     """`.ephemera` is gitignored working space every repository here has.
 
@@ -449,7 +449,7 @@ def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
 # ---- the regression ---------------------------------------------------------
 
 
-# COVERS: FR-4.9 | regression
+# COVERS FR-4.9 | regression
 def test_a_lettered_requirement_id_sorts_without_raising():
     """FR-4.13a compared against FR-4.13 once raised TypeError.
 
@@ -463,7 +463,7 @@ def test_a_lettered_requirement_id_sorts_without_raising():
     assert ordered == ["FR-4.9", "FR-4.9a", "FR-4.13", "FR-4.13a", "FR-10.1", "NFR-1"]
 
 
-# COVERS: FR-4.9 | property
+# COVERS FR-4.9 | property
 def test_requirements_sort_numerically_not_lexically():
     """FR-7.10 comes after FR-7.3, which a string sort gets backwards."""
     assert traceability.requirement_key("FR-7.3") < traceability.requirement_key("FR-7.10")
@@ -472,7 +472,7 @@ def test_requirements_sort_numerically_not_lexically():
 # ---- the wiring -------------------------------------------------------------
 
 
-# COVERS: NFR-3 | positive
+# COVERS NFR-3 | positive
 def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or an import that fails."""
     (tmp_path / "REQUIREMENTS.md").write_text(requirements(("FR-1.1", "[?]")), encoding="utf-8")
@@ -493,7 +493,7 @@ def test_the_script_runs_as_a_script(tmp_path):
 RETIRED = "\n## Retired\n\n| ID | Retired | Superseded by |\n|---|---|---|\n| FR-9.9 | 2026-08-26 | FR-1.1, which says it better. |\n"
 
 
-# COVERS: FR-4.10 | positive
+# COVERS FR-4.10 | positive
 def test_a_retired_requirement_is_not_held_to_coverage(checker, tmp_path):
     """It has gone. Holding it to coverage would make retiring one impossible."""
     tree = project(
@@ -506,7 +506,7 @@ def test_a_retired_requirement_is_not_held_to_coverage(checker, tmp_path):
     assert "FR-9.9" not in out
 
 
-# COVERS: FR-4.10 | negative
+# COVERS FR-4.10 | negative
 def test_citing_a_retired_requirement_says_where_it_went(checker, tmp_path):
     """A bare "does not define" leaves the reader to find the replacement."""
     tree = project(
@@ -521,7 +521,7 @@ def test_citing_a_retired_requirement_says_where_it_went(checker, tmp_path):
     assert "FR-1.1, which says it better" in out
 
 
-# COVERS: FR-4.11 | negative
+# COVERS FR-4.11 | negative
 def test_an_id_that_is_both_live_and_retired_fails(checker, tmp_path):
     """Reuse rewrites what every existing reference to that id meant."""
     tree = project(
@@ -535,7 +535,7 @@ def test_an_id_that_is_both_live_and_retired_fails(checker, tmp_path):
     assert "FR-9.9" in out
 
 
-# COVERS: FR-4.11 | edge
+# COVERS FR-4.11 | edge
 def test_reuse_is_reported_before_anything_else(checker, tmp_path):
     """Every other finding is downstream of an id meaning two things at once,
     so reporting them alongside would bury the one that explains them."""
@@ -550,7 +550,7 @@ def test_reuse_is_reported_before_anything_else(checker, tmp_path):
     assert "test_silent" not in out
 
 
-# COVERS: FR-4.10 | edge
+# COVERS FR-4.10 | edge
 def test_a_heading_after_retired_returns_to_live_rows(checker, tmp_path):
     """Only the rows under the heading are retired. A section following it
     declares live requirements like any other."""
@@ -586,7 +586,7 @@ def split(tmp_path: Path, files: dict[str, str], sources: dict[str, str]) -> Pat
     return tmp_path
 
 
-# COVERS: FR-4.12 | positive
+# COVERS FR-4.12 | positive
 def test_a_directory_reaches_the_same_verdict_as_one_document(checker, tmp_path):
     """The split is a path change, so the verdict may not move with it.
 
@@ -617,7 +617,7 @@ def test_a_directory_reaches_the_same_verdict_as_one_document(checker, tmp_path)
     assert "2 of 2" in parts_out
 
 
-# COVERS: FR-4.12 | edge
+# COVERS FR-4.12 | edge
 def test_a_readme_preamble_is_read_like_any_other_file(checker, tmp_path):
     """A category README carries the preamble, and a row in one still counts.
 
@@ -637,7 +637,7 @@ def test_a_readme_preamble_is_read_like_any_other_file(checker, tmp_path):
     assert "FR-5.5" in out
 
 
-# COVERS: FR-4.13 | negative
+# COVERS FR-4.13 | negative
 def test_one_id_declared_in_two_files_fails(checker, tmp_path):
     """Both files read correctly alone; merged, the later silently wins."""
     tree = split(
@@ -655,7 +655,7 @@ def test_one_id_declared_in_two_files_fails(checker, tmp_path):
     assert "FR-1.1-again.md" in out
 
 
-# COVERS: FR-4.14 | regression
+# COVERS FR-4.14 | regression
 def test_a_retired_heading_does_not_reach_the_next_file(checker, tmp_path):
     """Concatenating the tree would retire every row after the section.
 
@@ -676,7 +676,7 @@ def test_a_retired_heading_does_not_reach_the_next_file(checker, tmp_path):
     assert "declares no requirements" not in out
 
 
-# COVERS: FR-4.17 | positive
+# COVERS FR-4.17 | positive
 def test_a_retired_filename_retires_without_any_heading(checker, tmp_path):
     """The name carries it, so there is no switch for a row to fall under.
 
@@ -699,7 +699,7 @@ def test_a_retired_filename_retires_without_any_heading(checker, tmp_path):
     assert "FR-3.3" not in out
 
 
-# COVERS: FR-4.17 | regression
+# COVERS FR-4.17 | regression
 def test_a_heading_does_not_un_retire_the_rows_below_it(checker, tmp_path):
     """`whatever it contains` includes its headings.
 
@@ -722,7 +722,7 @@ def test_a_heading_does_not_un_retire_the_rows_below_it(checker, tmp_path):
     assert "FR-3.3" not in out
 
 
-# COVERS: FR-4.17 | regression
+# COVERS FR-4.17 | regression
 def test_an_id_below_a_heading_in_a_retired_file_cannot_be_reused(checker, tmp_path):
     """An escaped row is still caught, and named as the wrong thing.
 
@@ -748,7 +748,7 @@ def test_an_id_below_a_heading_in_a_retired_file_cannot_be_reused(checker, tmp_p
     assert "FR-9.9" in out
 
 
-# COVERS: FR-4.18 | regression
+# COVERS FR-4.18 | regression
 def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     """A `.retired` document the glob misses holds no id at all.
 
@@ -770,7 +770,7 @@ def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     assert "FR-1.1" in out
 
 
-# COVERS: FR-4.17 | positive
+# COVERS FR-4.17 | positive
 def test_a_superseded_filename_retires_without_any_heading(checker, tmp_path):
     """An id replaced by another is gone the same way one simply dropped is.
 
@@ -795,7 +795,7 @@ def test_a_superseded_filename_retires_without_any_heading(checker, tmp_path):
     assert "FR-3.3" not in out
 
 
-# COVERS: FR-4.17 | regression
+# COVERS FR-4.17 | regression
 def test_a_superseded_md_document_does_not_read_as_live(checker, tmp_path):
     """A suffix ending `.md` is one the ordinary glob already collects.
 
@@ -822,7 +822,7 @@ def test_a_superseded_md_document_does_not_read_as_live(checker, tmp_path):
     assert "FR-9.9" in out
 
 
-# COVERS: FR-4.18 | regression
+# COVERS FR-4.18 | regression
 def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     """The bare suffix fails the other way: the glob does not collect it.
 
@@ -854,7 +854,7 @@ def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path)
 # was renamed, which is the one operation the shape exists to make cheap.
 
 
-# COVERS: FR-4.19 | positive
+# COVERS FR-4.19 | positive
 def test_a_requirement_directory_declares_from_its_note_alone(checker, tmp_path):
     """`requirement.md` is the requirement. What sits beside it is not.
 
@@ -876,7 +876,7 @@ def test_a_requirement_directory_declares_from_its_note_alone(checker, tmp_path)
     assert "FR-8.8" not in out
 
 
-# COVERS: FR-4.19 | negative
+# COVERS FR-4.19 | negative
 def test_a_directory_without_a_note_still_reads_every_document(checker, tmp_path):
     """Tier 2 is unchanged, and that is what makes the tier 3 rule safe.
 
@@ -897,7 +897,7 @@ def test_a_directory_without_a_note_still_reads_every_document(checker, tmp_path
     assert "FR-8.8" in out
 
 
-# COVERS: FR-4.20 | positive
+# COVERS FR-4.20 | positive
 def test_a_retired_directory_retires_the_note_inside_it(checker, tmp_path):
     """Retiring tier 3 is renaming the directory, so the suffix lands there.
 
@@ -921,7 +921,7 @@ def test_a_retired_directory_retires_the_note_inside_it(checker, tmp_path):
     assert "FR-3.3" not in out
 
 
-# COVERS: FR-4.20 | regression
+# COVERS FR-4.20 | regression
 def test_a_retired_directory_still_holds_its_id_against_reuse(checker, tmp_path):
     """The tier 3 form of the inversion job 1 closed for filenames.
 
@@ -944,7 +944,7 @@ def test_a_retired_directory_still_holds_its_id_against_reuse(checker, tmp_path)
     assert "FR-9.9" in out
 
 
-# COVERS: FR-4.20 | edge
+# COVERS FR-4.20 | edge
 def test_a_retired_directory_reaches_its_supporting_material(checker, tmp_path):
     """A retired directory has gone entire, not down to its note.
 
@@ -967,7 +967,7 @@ def test_a_retired_directory_reaches_its_supporting_material(checker, tmp_path):
     assert "FR-8.8" not in out
 
 
-# COVERS: FR-4.19 | regression
+# COVERS FR-4.19 | regression
 def test_a_note_at_the_root_does_not_swallow_the_tree(checker, tmp_path):
     """The requirements root is the tree, never one requirement in it.
 
@@ -994,7 +994,7 @@ def test_a_note_at_the_root_does_not_swallow_the_tree(checker, tmp_path):
     assert "1 of 2" in out
 
 
-# COVERS: FR-4.21 | negative
+# COVERS FR-4.21 | negative
 def test_a_requirement_directory_inside_another_is_reported(checker, tmp_path):
     """Dropping the inner id silently is the misleading remedy a third time.
 
@@ -1022,7 +1022,7 @@ def test_a_requirement_directory_inside_another_is_reported(checker, tmp_path):
     assert "does not define" not in out
 
 
-# COVERS: FR-4.22 | regression
+# COVERS FR-4.22 | regression
 def test_an_undefined_id_names_the_requirements_path_it_was_given(checker, tmp_path):
     """`REQUIREMENTS.md` is not where a tier 2 or tier 3 repository looks.
 
@@ -1041,7 +1041,7 @@ def test_an_undefined_id_names_the_requirements_path_it_was_given(checker, tmp_p
     assert "REQUIREMENTS.md does not define" not in out
 
 
-# COVERS: FR-4.20 | negative
+# COVERS FR-4.20 | negative
 def test_a_retired_directory_above_the_root_retires_nothing(checker, tmp_path):
     """The search for a retired ancestor stops at the requirements root.
 
@@ -1065,7 +1065,7 @@ def test_a_retired_directory_above_the_root_retires_nothing(checker, tmp_path):
     assert "1 settled requirement(s) have no test citing them" in out
 
 
-# COVERS: FR-4.17 | edge
+# COVERS FR-4.17 | edge
 def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
     """Retired is not deleted. A test citing one is told, not left guessing."""
     tree = split(
@@ -1082,7 +1082,7 @@ def test_a_retired_file_still_tells_a_test_where_the_id_went(checker, tmp_path):
     assert "retired" in out
 
 
-# COVERS: FR-2.4 | edge
+# COVERS FR-2.4 | edge
 def test_a_directory_holding_no_rows_refuses_to_pass(checker, tmp_path):
     """An empty tree is zero requirements agreeing with zero citations."""
     tree = split(tmp_path, {"core/notes.md": "# Prose, and no table.\n"}, {})
@@ -1091,7 +1091,7 @@ def test_a_directory_holding_no_rows_refuses_to_pass(checker, tmp_path):
     assert "declares no requirements" in out
 
 
-# COVERS: FR-4.15 | negative
+# COVERS FR-4.15 | negative
 def test_an_unreadable_document_reports_why_and_does_not_raise(checker, tmp_path):
     """Absent and unreadable are different, and neither is a traceback."""
     tree = project(tmp_path, requirements(("FR-1.1", "[A]")))
@@ -1117,7 +1117,7 @@ SCOPED = requirements(
 )
 
 
-# COVERS: FR-4.23 | positive
+# COVERS FR-4.23 | positive
 def test_a_scoped_run_holds_only_the_rows_naming_it(checker, tmp_path):
     """A tree covering the rows that are its own passes, whatever its siblings
     hold. Without this, one tree covering a row passes the whole repository and
@@ -1133,7 +1133,7 @@ def test_a_scoped_run_holds_only_the_rows_naming_it(checker, tmp_path):
     assert "1 scoped elsewhere" in out
 
 
-# COVERS: FR-4.23 | negative
+# COVERS FR-4.23 | negative
 def test_a_scoped_run_still_fails_for_a_row_it_does_hold(checker, tmp_path):
     """Scoping excuses the rows naming another tree and nothing else. A filter
     that quietly excused everything would pass this."""
@@ -1148,7 +1148,7 @@ def test_a_scoped_run_still_fails_for_a_row_it_does_hold(checker, tmp_path):
     assert "FR-1.2" not in out.split("settled requirement(s) have no test citing them")[1]
 
 
-# COVERS: FR-4.23 | edge
+# COVERS FR-4.23 | edge
 def test_a_row_scoping_kinds_stays_in_scope_everywhere(checker, tmp_path):
     """`[A go,python:edge,negative]` scopes two KINDS and leaves the rest of the
     row expected in every tree. This checker never asks by which kind, so the
@@ -1163,7 +1163,7 @@ def test_a_row_scoping_kinds_stays_in_scope_everywhere(checker, tmp_path):
     assert "FR-1.3" in out
 
 
-# COVERS: FR-4.23 | edge
+# COVERS FR-4.23 | edge
 def test_an_unscoped_run_holds_every_row(checker, tmp_path):
     """The flag is opt-in. Absent, the checker holds the whole document as it
     always did, so a repository with one tree is unaffected."""
@@ -1178,7 +1178,7 @@ def test_an_unscoped_run_holds_every_row(checker, tmp_path):
     assert "scoped elsewhere" not in out
 
 
-# COVERS: FR-4.24 | positive
+# COVERS FR-4.24 | positive
 def test_the_tree_can_be_named_rather_than_positional(checker, tmp_path):
     """`--scope go --dir ./go` says which rows and which tree separately, where
     `--scope go go` reads as one word written twice."""
@@ -1192,7 +1192,7 @@ def test_the_tree_can_be_named_rather_than_positional(checker, tmp_path):
     assert "2 of 2" in out
 
 
-# COVERS: FR-4.24 | negative
+# COVERS FR-4.24 | negative
 def test_naming_the_tree_twice_is_refused(checker, tmp_path):
     """A caller who wrote two directories meant one of them, and picking one for
     them reads whichever tree they did not mean."""
@@ -1206,7 +1206,7 @@ def test_naming_the_tree_twice_is_refused(checker, tmp_path):
     assert "not both" in out
 
 
-# COVERS: FR-4.24 | edge
+# COVERS FR-4.24 | edge
 def test_the_positional_tree_still_works(checker, tmp_path):
     """`--dir` is added beside the positional rather than replacing it. This file
     is symlinked into bolt and wrench, and three jigs plus a wrapper pass the
@@ -1221,7 +1221,7 @@ def test_the_positional_tree_still_works(checker, tmp_path):
     assert "1 of 1" in out
 
 
-# COVERS: FR-4.23 | edge
+# COVERS FR-4.23 | edge
 def test_a_scoped_out_row_is_still_declared(checker, tmp_path):
     """Exempt from coverage is not absent. A test citing a row scoped to another
     tree is answered by the parity checker's `cited by X but scoped to Y`, and

@@ -72,7 +72,7 @@ def argv(root: Path, target: Path, *rest: str) -> list[str]:
 # ---- what it links ----------------------------------------------------------
 
 
-# COVERS: FR-7.1 | property
+# COVERS FR-7.1 | property
 def test_entries_land_at_the_same_relative_path(checker, tmp_path):
     """A file at bin/checker.py here is at bin/checker.py there, or config_dir breaks."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -82,7 +82,7 @@ def test_entries_land_at_the_same_relative_path(checker, tmp_path):
     assert (target / "bin/checker.py").read_text(encoding="utf-8") == "# bin/checker.py\n"
 
 
-# COVERS: FR-7.15 | positive
+# COVERS FR-7.15 | positive
 def test_includes_are_followed(checker, tmp_path):
     """Adopting go brings common with it, because go's definition overlays it."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -91,7 +91,7 @@ def test_includes_are_followed(checker, tmp_path):
     assert (target / "bolt.go-std-quality.yaml").is_symlink()
 
 
-# COVERS: FR-7.15 | edge
+# COVERS FR-7.15 | edge
 def test_a_set_without_includes_stands_alone(checker, tmp_path):
     """`secrets` needs nothing else to be true of a repository, so it pulls nothing."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -100,7 +100,7 @@ def test_a_set_without_includes_stands_alone(checker, tmp_path):
     assert not (target / "bolt.common-quality.yaml").exists()
 
 
-# COVERS: FR-7.4 | property
+# COVERS FR-7.4 | property
 def test_links_are_relative_so_the_pair_can_move(checker, tmp_path):
     """An absolute link encodes one machine's layout; the default must not."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -108,7 +108,7 @@ def test_links_are_relative_so_the_pair_can_move(checker, tmp_path):
     assert not Path((target / "bolt.secrets.yaml").readlink()).is_absolute()
 
 
-# COVERS: FR-7.4 | edge
+# COVERS FR-7.4 | edge
 def test_absolute_is_available_for_a_toolbox_that_does_not_travel(checker, tmp_path):
     """A shared toolbox at a fixed path wants the link to say so."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -119,7 +119,7 @@ def test_absolute_is_available_for_a_toolbox_that_does_not_travel(checker, tmp_p
 # ---- what it refuses --------------------------------------------------------
 
 
-# COVERS: FR-7.5 | negative
+# COVERS FR-7.5 | negative
 def test_a_real_file_is_never_overwritten(checker, tmp_path):
     """A vendored copy predates adoption; deleting it is mine to decide."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -132,7 +132,7 @@ def test_a_real_file_is_never_overwritten(checker, tmp_path):
     assert not vendored.is_symlink()
 
 
-# COVERS: FR-7.6 | negative
+# COVERS FR-7.6 | negative
 def test_a_manifest_naming_an_absent_file_links_nothing(checker, tmp_path):
     """Manifest rot surfaces here rather than as a dangling link in another repo."""
     root = toolbox(tmp_path, files=("bolt.secrets.yaml",))
@@ -143,7 +143,7 @@ def test_a_manifest_naming_an_absent_file_links_nothing(checker, tmp_path):
     assert not any(target.iterdir())
 
 
-# COVERS: FR-7.7 | negative
+# COVERS FR-7.7 | negative
 def test_an_unknown_set_names_the_ones_that_exist(checker, tmp_path):
     """A typo should print the menu, not a traceback."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -153,7 +153,7 @@ def test_an_unknown_set_names_the_ones_that_exist(checker, tmp_path):
     assert "common" in out and "go" in out
 
 
-# COVERS: FR-7.8 | negative
+# COVERS FR-7.8 | negative
 def test_sets_that_include_each_other_are_refused(checker, tmp_path):
     """A cycle is a manifest error, and must not be an infinite walk."""
     cyclic = "version: 1\nsets:\n  a:\n    includes: [b]\n  b:\n    includes: [a]\n"
@@ -163,7 +163,7 @@ def test_sets_that_include_each_other_are_refused(checker, tmp_path):
     assert "cycle" in out
 
 
-# COVERS: FR-7.9 | edge
+# COVERS FR-7.9 | edge
 def test_no_terminal_and_no_yes_writes_nothing(checker, tmp_path):
     """Consent is asked for or declared, never assumed from a pipe."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -176,7 +176,7 @@ def test_no_terminal_and_no_yes_writes_nothing(checker, tmp_path):
 # ---- what it reports --------------------------------------------------------
 
 
-# COVERS: FR-7.10 | property
+# COVERS FR-7.10 | property
 def test_running_twice_changes_nothing(checker, tmp_path):
     """Idempotent, and says so rather than relinking what is already right."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -186,7 +186,7 @@ def test_running_twice_changes_nothing(checker, tmp_path):
     assert "present and correct" in out
 
 
-# COVERS: FR-7.11 | negative
+# COVERS FR-7.11 | negative
 def test_check_fails_on_a_missing_link_and_writes_nothing(checker, tmp_path):
     """`--check` is the form this grows into as a jig task, so drift must exit 1."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -195,7 +195,7 @@ def test_check_fails_on_a_missing_link_and_writes_nothing(checker, tmp_path):
     assert not any(target.iterdir())
 
 
-# COVERS: FR-7.11 | positive
+# COVERS FR-7.11 | positive
 def test_check_passes_once_the_links_are_there(checker, tmp_path):
     """The same command that fails on drift confirms a project that is set up."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -205,7 +205,7 @@ def test_check_passes_once_the_links_are_there(checker, tmp_path):
     assert "present and correct" in out
 
 
-# COVERS: FR-7.12 | edge
+# COVERS FR-7.12 | edge
 def test_a_link_pointing_at_the_wrong_file_is_repaired(checker, tmp_path):
     """A stale link is drift, not absence, and reads as a working path until followed."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -215,7 +215,7 @@ def test_a_link_pointing_at_the_wrong_file_is_repaired(checker, tmp_path):
     assert (target / "bolt.secrets.yaml").resolve() == (root / "bolt.secrets.yaml")
 
 
-# COVERS: FR-7.12 | edge
+# COVERS FR-7.12 | edge
 def test_a_link_left_behind_by_a_dropped_set_is_found(checker, tmp_path):
     """Dropping go must not leave adapters/go/gofmt.py linked and unmentioned."""
     root, target = toolbox(tmp_path), project(tmp_path)
@@ -226,7 +226,7 @@ def test_a_link_left_behind_by_a_dropped_set_is_found(checker, tmp_path):
     assert "gofmt.py" in out
 
 
-# COVERS: FR-7.14 | negative
+# COVERS FR-7.14 | negative
 def test_a_destination_reached_through_a_link_out_of_the_project_is_refused(checker, tmp_path):
     """Adoption must not write through a symlink that leaves the target.
 
@@ -245,7 +245,7 @@ def test_a_destination_reached_through_a_link_out_of_the_project_is_refused(chec
     assert not any(outside.iterdir())
 
 
-# COVERS: FR-7.13 | positive
+# COVERS FR-7.13 | positive
 def test_plan_says_what_would_happen_and_stops(checker, tmp_path):
     """Enumerate, then act: the shape `bolt plan` already has."""
     root, target = toolbox(tmp_path), project(tmp_path)

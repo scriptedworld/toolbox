@@ -32,7 +32,7 @@ def project(tmp_path: Path, register: str | None, **sources: str) -> Path:
 # ---- agreement --------------------------------------------------------------
 
 
-# COVERS: FR-5.3 | positive
+# COVERS FR-5.3 | positive
 def test_no_pragmas_and_no_register_passes(checker, tmp_path):
     """A project that silences nothing needs no register and is not suspicious."""
     tree = project(tmp_path, None, main_go="package main\n\nfunc main() {}\n")
@@ -41,7 +41,7 @@ def test_no_pragmas_and_no_register_passes(checker, tmp_path):
     assert "no suppression pragmas in 1 source file(s)" in out
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_a_run_that_read_no_source_at_all_fails(checker, tmp_path):
     """Read nothing and found nothing are different results.
 
@@ -59,7 +59,7 @@ def test_a_run_that_read_no_source_at_all_fails(checker, tmp_path):
     assert "read nothing" in out
 
 
-# COVERS: FR-5.1 | positive
+# COVERS FR-5.1 | positive
 def test_a_registered_pragma_passes(checker, tmp_path):
     """The pragma is in the source and the register says why. Nothing to report."""
     tree = project(
@@ -75,7 +75,7 @@ def test_a_registered_pragma_passes(checker, tmp_path):
 # ---- the two directions -----------------------------------------------------
 
 
-# COVERS: FR-5.1, FR-2.2 | negative
+# COVERS FR-5.1, FR-2.2 | negative
 def test_an_unregistered_pragma_fails(checker, tmp_path):
     """A suppression nobody justified."""
     tree = project(
@@ -89,7 +89,7 @@ def test_an_unregistered_pragma_fails(checker, tmp_path):
     assert "in no register entry" in out
 
 
-# COVERS: FR-5.1 | negative
+# COVERS FR-5.1 | negative
 def test_a_registered_entry_with_nothing_behind_it_fails(checker, tmp_path):
     """A justification for something already gone reads as cover for its replacement."""
     tree = project(
@@ -103,7 +103,7 @@ def test_a_registered_entry_with_nothing_behind_it_fails(checker, tmp_path):
     assert "not in the source" in out
 
 
-# COVERS: FR-5.2 | edge
+# COVERS FR-5.2 | edge
 def test_a_second_pragma_in_a_registered_file_fails(checker, tmp_path):
     """The count is the comparison: one registered pragma does not cover two."""
     tree = project(
@@ -116,7 +116,7 @@ def test_a_second_pragma_in_a_registered_file_fails(checker, tmp_path):
     assert "the source carries 2, the register says 1" in out
 
 
-# COVERS: FR-5.3 | negative
+# COVERS FR-5.3 | negative
 def test_pragmas_with_no_register_at_all_fails(checker, tmp_path):
     """A missing register is not an empty one."""
     tree = project(
@@ -132,7 +132,7 @@ def test_pragmas_with_no_register_at_all_fails(checker, tmp_path):
 # ---- the empty case, where the false green is --------------------------------
 
 
-# COVERS: FR-5.4 | regression
+# COVERS FR-5.4 | regression
 def test_a_python_pragma_is_seen_and_must_be_registered(checker, tmp_path):
     """A Python pragma is read, where a Go-only scan passed over it.
 
@@ -158,7 +158,7 @@ def test_a_python_pragma_is_seen_and_must_be_registered(checker, tmp_path):
     assert "B602" in out
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
     """Selecting by extension is the fault this checker sat beside.
 
@@ -176,7 +176,7 @@ def test_a_pragma_in_a_script_with_no_extension_is_seen(checker, tmp_path):
     assert "SC2086" in out
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
     """A pragma is itself a comment, so no rule about strings separates the two.
 
@@ -198,7 +198,7 @@ def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
     assert "no suppression pragmas" in out
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
     """`// #nosec G304 -- reason` is how palette-print writes every one of its.
 
@@ -220,7 +220,7 @@ def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
 # ---- the wiring -------------------------------------------------------------
 
 
-# COVERS: NFR-3 | positive
+# COVERS NFR-3 | positive
 def test_the_script_runs_as_a_script(tmp_path):
     """In-process tests cannot catch a broken shebang or a missing import."""
     (tmp_path / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -236,7 +236,7 @@ def test_the_script_runs_as_a_script(tmp_path):
     assert "main.go" in result.stdout
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_a_pragma_with_a_trailing_reason_is_still_seen(checker, tmp_path):
     """Writing why beside a suppression is the good habit, and it hid one.
 
@@ -261,7 +261,7 @@ def test_a_pragma_with_a_trailing_reason_is_still_seen(checker, tmp_path):
     assert "E402" in out
 
 
-# COVERS: FR-5.2 | negative
+# COVERS FR-5.2 | negative
 def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path):
     """`# nosec` alone is a pragma; `#  nosec marks are...` is a sentence.
 
@@ -284,7 +284,7 @@ def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path)
     assert code == 0, out
 
 
-# COVERS: FR-5.2 | regression
+# COVERS FR-5.2 | regression
 def test_a_triple_quote_inside_a_string_does_not_open_a_docstring(checker, tmp_path):
     """The docstring skipper was defeated by its own source.
 
@@ -330,7 +330,7 @@ def two_base_repo(tmp_path):
     return tmp_path
 
 
-# COVERS: FR-5.1 | regression
+# COVERS FR-5.1 | regression
 def test_a_root_register_is_read_from_a_pack_below_it(checker, tmp_path):
     """The register names a file from the ROOT and the scan runs at the pack.
 
@@ -350,7 +350,7 @@ def test_a_root_register_is_read_from_a_pack_below_it(checker, tmp_path):
     assert code == 0, out
 
 
-# COVERS: FR-5.1 | regression
+# COVERS FR-5.1 | regression
 def test_the_other_packs_rows_are_not_phantoms(checker, tmp_path):
     """Resolving both sides is necessary and not sufficient.
 
@@ -368,7 +368,7 @@ def test_the_other_packs_rows_are_not_phantoms(checker, tmp_path):
     assert "app.py" not in out
 
 
-# COVERS: FR-5.1 | negative
+# COVERS FR-5.1 | negative
 def test_a_row_naming_nothing_is_still_a_phantom(checker, tmp_path):
     """The half of the phantom check that still means something outside the scan.
 
@@ -392,7 +392,7 @@ def test_a_row_naming_nothing_is_still_a_phantom(checker, tmp_path):
 DIR_ARGV = ["--register", "SUPPRESSIONS", "."]
 
 
-# COVERS: FR-5.5 | positive
+# COVERS FR-5.5 | positive
 def test_a_directory_register_totals_what_one_document_totals(checker, tmp_path):
     """One file per suppression is the same register, written differently."""
     entries = tmp_path / "SUPPRESSIONS"
@@ -407,7 +407,7 @@ def test_a_directory_register_totals_what_one_document_totals(checker, tmp_path)
     assert "2 pragma(s)" in out
 
 
-# COVERS: FR-5.5 | negative
+# COVERS FR-5.5 | negative
 def test_a_directory_register_still_fails_an_unregistered_pragma(checker, tmp_path):
     """Splitting the register may not soften either direction of the check."""
     entries = tmp_path / "SUPPRESSIONS" / "a"
@@ -420,7 +420,7 @@ def test_a_directory_register_still_fails_an_unregistered_pragma(checker, tmp_pa
     assert "two.go" in out
 
 
-# COVERS: FR-2.3 | negative
+# COVERS FR-2.3 | negative
 def test_an_unreadable_register_reports_why_and_does_not_raise(checker, tmp_path):
     """Absent and unreadable are different, and neither is a traceback."""
     (tmp_path / "SUPPRESSIONS").write_text("# Register\n\n    main.go   //nolint:errcheck\n", encoding="utf-8")
@@ -437,7 +437,7 @@ def test_an_unreadable_register_reports_why_and_does_not_raise(checker, tmp_path
 # ---- trees this project is not answerable for -------------------------------
 
 
-# COVERS: FR-2.5 | regression
+# COVERS FR-2.5 | regression
 def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
     """The register walked every `*.go` with no skip list at all.
 
@@ -461,7 +461,7 @@ def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
     assert "no suppression pragmas in 1 source file(s)" in out
 
 
-# COVERS: FR-2.5 | positive
+# COVERS FR-2.5 | positive
 def test_the_projects_own_pragma_is_still_found(checker, tmp_path):
     """The skip list may not swallow the thing the check exists for."""
     vendored = tmp_path / "vendor" / "v.go"
@@ -473,7 +473,7 @@ def test_the_projects_own_pragma_is_still_found(checker, tmp_path):
     assert "1 pragma(s)" in out
 
 
-# COVERS: FR-2.5 | property
+# COVERS FR-2.5 | property
 def test_both_checkers_skip_the_same_directories():
     """Two copies of one list, in scripts that share no module.
 

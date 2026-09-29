@@ -76,20 +76,20 @@ def adapters(jig: dict) -> list[tuple[str, str]]:
     return [(task["name"], task["adapter"]) for task in jig.get("tasks") or [] if task.get("adapter")]
 
 
-# COVERS: FR-1.2 | edge
+# COVERS FR-1.2 | edge
 def test_there_are_jigs_to_check():
     """A glob matching nothing would make every test below pass vacuously."""
     assert JIGS, "no bolt.*.yaml found; the rest of this file proves nothing"
 
 
-# COVERS: FR-1.2 | property
+# COVERS FR-1.2 | property
 def test_every_jig_validates_against_the_schema():
     """A jig that does not validate is one bolt may accept today and reject tomorrow."""
     for path in JIGS:
         SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
-# COVERS: FR-1.2 | property
+# COVERS FR-1.2 | property
 def test_every_definitions_file_validates_against_its_own_schema():
     """The definitions files were never validated against anything.
 
@@ -104,7 +104,7 @@ def test_every_definitions_file_validates_against_its_own_schema():
         DEFINITIONS_SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
-# COVERS: NFR-6 | regression
+# COVERS NFR-6 | regression
 def test_the_schema_comes_from_wrench_and_not_from_a_copy():
     """The drift this replaces was silent and hid a dead gate in eight repos.
 
@@ -121,7 +121,7 @@ def test_the_schema_comes_from_wrench_and_not_from_a_copy():
     assert not (ROOT / "schema").exists(), "a local schema/ has reappeared; NFR-6 says wrench ships these and this repository keeps no copy"
 
 
-# COVERS: FR-1.4 | property
+# COVERS FR-1.4 | property
 def test_every_path_into_this_repository_is_config_dir_rooted():
     """The rule travels with the jig; only the subject is base-relative.
 
@@ -138,7 +138,7 @@ def test_every_path_into_this_repository_is_config_dir_rooted():
                     assert prefix.endswith("{config_dir}/"), f"{path.name}:{task} reaches {directory} without {{config_dir}}: {command!r}"
 
 
-# COVERS: FR-1.4 | regression
+# COVERS FR-1.4 | regression
 def test_an_adapter_is_named_and_not_config_dir_prefixed():
     """bolt resolves an adapter's name against the config directory itself.
 
@@ -156,7 +156,7 @@ def test_an_adapter_is_named_and_not_config_dir_prefixed():
             assert not adapter.startswith("/"), f"{path.name}:{task} names an absolute adapter path: {adapter!r}"
 
 
-# COVERS: FR-1.5 | negative
+# COVERS FR-1.5 | negative
 def test_no_jig_names_a_project_specific_entry_point():
     """`entrypoint` hardcoded ./cmd/bolt and failed for every adopter.
 
@@ -181,7 +181,7 @@ def excluding_tasks(jig: dict) -> list[tuple[str, str]]:
     return [(task, command) for task, command in commands(jig) if any(f"{{{slot}}}" in command for slot in SLOTS)]
 
 
-# COVERS: FR-1.6 | property
+# COVERS FR-1.6 | property
 def test_a_task_that_excludes_anything_names_every_slot():
     """Six tools spell exclusion six ways, and three of the obvious forms are
     accepted while excluding nothing.
@@ -198,7 +198,7 @@ def test_a_task_that_excludes_anything_names_every_slot():
             assert not missing, f"{path.name}:{task} excludes but does not name {missing}: {command!r}"
 
 
-# COVERS: FR-1.6 | regression
+# COVERS FR-1.6 | regression
 def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
     """An adopter's `.venv` is thousands of files nobody here wrote.
 
@@ -225,7 +225,7 @@ def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
             )
 
 
-# COVERS: FR-1.6 | property
+# COVERS FR-1.6 | property
 def test_every_slot_a_jig_uses_has_a_default_and_an_override():
     """A slot with no default fails only in the adopter that first runs it.
 
@@ -249,7 +249,7 @@ def test_every_slot_a_jig_uses_has_a_default_and_an_override():
 # ---- what a jig is, and what it may name ------------------------------------
 
 
-# COVERS: FR-1.7 | property
+# COVERS FR-1.7 | property
 def test_a_task_running_a_child_jig_folds_its_verdict_up():
     """bolt runs one jig, so composition is a task, and a child run needs an adapter.
 
@@ -267,7 +267,7 @@ def test_a_task_running_a_child_jig_folds_its_verdict_up():
     assert composing, "no jig composes another, so the rule is untested"
 
 
-# COVERS: FR-1.3 | negative
+# COVERS FR-1.3 | negative
 def test_no_jig_names_a_document_the_project_owns():
     """The rule travels; the subject is the adopter's, and reaches a task through a placeholder.
 
@@ -282,7 +282,7 @@ def test_no_jig_names_a_document_the_project_owns():
                 assert subject not in command, f"{path.name}:{task} names the subject {subject!r}: {command!r}"
 
 
-# COVERS: FR-6.1 | property
+# COVERS FR-6.1 | property
 def test_nothing_a_jig_names_reaches_outside_the_two_repositories():
     """Every path is either the adopter's, relative to the run, or toolbox's through {config_dir}."""
     for path in JIGS:
@@ -294,7 +294,7 @@ def test_nothing_a_jig_names_reaches_outside_the_two_repositories():
                 assert not word.startswith("../") and "/../" not in word, f"{path.name}:{task} climbs out of the run: {word!r}"
 
 
-# COVERS: FR-7.3 | property
+# COVERS FR-7.3 | property
 def test_the_manifest_is_declared_and_could_not_be_derived_from_the_jigs():
     """Every {config_dir} file a jig names is in the manifest, and the manifest holds more.
 

@@ -71,7 +71,7 @@ def reasons_of(envelope, kind):
 # ---- lines -------------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     """Per file, so a well-covered file cannot carry an uncovered one."""
     envelope = run(tmp_path, "--min", "80", "--min-branch", "0")
@@ -80,7 +80,7 @@ def test_a_file_below_the_minimum_becomes_one_reason(tmp_path):
     assert envelope["success"] is False
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_the_aggregate_never_rescues_a_file(tmp_path):
     """b.py is at 0% while the tree is well above it, and the file is judged."""
     envelope = run(tmp_path, "--min", "40", "--min-branch", "0")
@@ -88,14 +88,14 @@ def test_the_aggregate_never_rescues_a_file(tmp_path):
     assert envelope["metadata"]["statistics"]["total_percent"] > 40
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_reason_carries_the_counts_it_judged(tmp_path):
     envelope = run(tmp_path, "--min", "80", "--min-branch", "0")
     a = next(r for r in reasons_of(envelope, "coverage-below-minimum") if r["file"] == "a.py")
     assert (a["covered"], a["lines"], a["percent"]) == (2, 3, 66.7)
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_line_rate_is_not_believed_over_the_counted_lines(tmp_path):
     """The document declares line-rate 0.6. Counting gives 4 covered of 7, which
     is 57.1%, and the counted figure is the one reported."""
@@ -106,7 +106,7 @@ def test_line_rate_is_not_believed_over_the_counted_lines(tmp_path):
 # ---- branches ----------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | positive
+# COVERS FR-3.4 | positive
 def test_a_file_below_the_branch_minimum_is_its_own_reason_kind(tmp_path):
     envelope = run(tmp_path, "--min", "0", "--min-branch", "80")
     below = reasons_of(envelope, "branch-coverage-below-minimum")
@@ -114,14 +114,14 @@ def test_a_file_below_the_branch_minimum_is_its_own_reason_kind(tmp_path):
     assert (below[0]["covered"], below[0]["branches"]) == (1, 2)
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_file_with_no_branch_data_is_not_judged_on_branches(tmp_path):
     """b.py declares no condition-coverage, so it has no branch question."""
     envelope = run(tmp_path, "--min", "0", "--min-branch", "100")
     assert "b.py" not in {r["file"] for r in reasons_of(envelope, "branch-coverage-below-minimum")}
 
 
-# COVERS: FR-3.7 | edge
+# COVERS FR-3.7 | edge
 def test_a_report_without_branch_data_says_so_rather_than_reading_as_missed(tmp_path):
     """coverage.py writes no condition-coverage unless it ran in branch mode.
     That must read as unmeasured, not as every branch missed."""
@@ -131,13 +131,13 @@ def test_a_report_without_branch_data_says_so_rather_than_reading_as_missed(tmp_
     assert envelope["success"] is True, "an unmeasured branch is not a failed one"
 
 
-# COVERS: FR-3.7 | positive
+# COVERS FR-3.7 | positive
 def test_branch_measured_is_true_when_conditions_are_present(tmp_path):
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0")
     assert envelope["metadata"]["statistics"]["branch_measured"] is True
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_malformed_condition_is_skipped_rather_than_guessed(tmp_path):
     """Without a parseable pair there is no count, and inventing one would put a
     number nobody measured into a gate."""
@@ -149,7 +149,7 @@ def test_a_malformed_condition_is_skipped_rather_than_guessed(tmp_path):
 # ---- merging -----------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_one_filename_in_two_packages_merges_on_the_higher_count(tmp_path):
     """A filename can appear in more than one package; a line is covered if any
     entry reached it, and summing would count its hits twice."""
@@ -158,7 +158,7 @@ def test_one_filename_in_two_packages_merges_on_the_higher_count(tmp_path):
     assert envelope["success"] is True, envelope
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_branch_merges_on_the_higher_covered_count(tmp_path):
     report = document(klass("a.py", line(1, 1, "0% (0/2)")) + klass("a.py", line(1, 1, "100% (2/2)")))
     envelope = run(tmp_path, "--min", "0", "--min-branch", "100", report=report)
@@ -168,14 +168,14 @@ def test_a_branch_merges_on_the_higher_covered_count(tmp_path):
 # ---- the test run it answers for ---------------------------------------------
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_a_failed_suite_is_a_failure_even_with_a_clean_report(tmp_path):
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", report=COVERED, exitcode="1")
     assert envelope["success"] is False
     assert reasons_of(envelope, "tests-failed")
 
 
-# COVERS: FR-3.6 | negative
+# COVERS FR-3.6 | negative
 def test_no_evidence_is_a_failure_rather_than_an_empty_pass(tmp_path):
     envelope = run(tmp_path, report=None)
     assert envelope["success"] is False
@@ -185,7 +185,7 @@ def test_no_evidence_is_a_failure_rather_than_an_empty_pass(tmp_path):
 # ---- statistics and the shape of a pass --------------------------------------
 
 
-# COVERS: FR-3.7 | positive
+# COVERS FR-3.7 | positive
 def test_statistics_are_emitted_on_a_pass(tmp_path):
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", report=COVERED)
     stats = envelope["metadata"]["statistics"]
@@ -195,13 +195,13 @@ def test_statistics_are_emitted_on_a_pass(tmp_path):
     assert stats["branch_below_minimum"] == 0
 
 
-# COVERS: FR-3.5 | positive
+# COVERS FR-3.5 | positive
 def test_a_pass_omits_the_reasons_block_rather_than_emitting_it_empty(tmp_path):
     envelope = run(tmp_path, "--min", "0", "--min-branch", "0", report=COVERED)
     assert "reasons" not in envelope
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_an_exclusion_removes_a_file_from_both_judgements(tmp_path):
     envelope = run(
         tmp_path,
@@ -220,7 +220,7 @@ def test_an_exclusion_removes_a_file_from_both_judgements(tmp_path):
 # ---- encoding ----------------------------------------------------------------
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_non_ascii_filename_survives_into_the_reason(tmp_path):
     """A filename is a reason's whole identity. Latin-1-range, CJK and an
     astral-plane character together, because each is a different width in UTF-8
@@ -234,7 +234,7 @@ def test_a_non_ascii_filename_survives_into_the_reason(tmp_path):
     }
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_non_ascii_filename_round_trips_through_the_envelope(tmp_path):
     """The envelope is YAML bolt reads back, so the escaping has to survive a
     load rather than merely be written without raising."""
@@ -243,7 +243,7 @@ def test_a_non_ascii_filename_round_trips_through_the_envelope(tmp_path):
     assert reasons_of(envelope, "coverage-below-minimum")[0]["file"] == "café.py"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_declared_latin1_document_is_decoded_by_its_declaration(tmp_path):
     """XML carries its own encoding and the parser is obliged to honour it.
     Reading these bytes as UTF-8 would fail outright; reading them as UTF-8 with
@@ -256,7 +256,7 @@ def test_a_declared_latin1_document_is_decoded_by_its_declaration(tmp_path):
     assert reasons_of(envelope, "coverage-below-minimum")[0]["file"] == "café.py"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_utf8_document_with_a_byte_order_mark_parses(tmp_path):
     """A BOM ahead of the declaration is legal and a parser that treated it as
     content would fail on the first character of the document."""
@@ -272,7 +272,7 @@ def test_a_utf8_document_with_a_byte_order_mark_parses(tmp_path):
     assert reasons_of(envelope, "coverage-below-minimum")[0]["file"] == "café.py"
 
 
-# COVERS: FR-3.4 | edge
+# COVERS FR-3.4 | edge
 def test_a_class_without_a_filename_is_skipped(tmp_path):
     """Nothing can be said about a file with no name, and attributing its lines
     to a neighbour would move coverage between files."""
