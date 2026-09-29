@@ -9,12 +9,17 @@ compares them, in both directions.
 Every test function must carry, somewhere in the comment block immediately
 above it, a line of the form:
 
-    // COVERS: FR-4.4 | property          (Go, and Rust)
-    # COVERS: FR-1.4, FR-1.5 | negative   (Python)
+    // COVERS FR-4.4 | property          (Go, and Rust)
+    # COVERS FR-1.4, FR-1.5 | negative   (Python)
+
+No colon after COVERS. With one, a Python mark citing a single id is a valid
+annotated statement once the `#` is removed, so a commented-out-code lint flags
+every such line. The colon form is still read, so an adopter's gate does not
+break while its marks move, and it will be refused once every adopter has moved.
 
 Rust writes it `//` and never `///`. A doc comment is not a comment for this
-purpose: the pattern wants whitespace or `COVERS:` where the third slash sits,
-so `/// COVERS: FR-1.1 | positive` matches nothing and the test then reads as
+purpose: the pattern wants whitespace or `COVERS` where the third slash sits,
+so `/// COVERS FR-1.1 | positive` matches nothing and the test then reads as
 carrying no annotation at all. That failure is silent, so it survives, and
 `///` is exactly what a doc-comment reflex reaches for. A `///` line between
 the marker and the `fn` is fine and expected; it is stepped over.
@@ -161,12 +166,15 @@ class Language:
         """The COVERS line, written in this language's comment syntax.
 
         A Rust doc comment does not match this and is not meant to. `///` puts
-        a third slash where the pattern wants whitespace or `COVERS:`, so a
+        a third slash where the pattern wants whitespace or `COVERS`, so a
         doc comment is stepped over as continuation rather than read as an
         annotation carrying nothing.
+
+        `COVERS` is followed by whitespace, or by the colon of the older form.
+        Either separates it from the ids, so `COVERSFR-1.1` is not a mark.
         """
         marker = re.escape(self.comment)
-        return re.compile(rf"^\s*{marker}\s*COVERS:\s*(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$")
+        return re.compile(rf"^\s*{marker}\s*COVERS(?::\s*|\s+)(?P<ids>[^|]+?)\s*\|\s*(?P<kind>\w+)\s*$")
 
     @property
     def continuation(self) -> re.Pattern[str]:
@@ -659,7 +667,7 @@ def scan_file(path: Path, language: Language, declared: dict[str, str], retired:
         where = f"{path}:{number + 1}: {test.group(1)}"
         found = annotation_of(block, language)
         if not found:
-            failures.append(f"{where} has no `{language.comment} COVERS: <ids> | <kind>` line")
+            failures.append(f"{where} has no `{language.comment} COVERS <ids> | <kind>` line")
             continue
         cited.update(REQ_ID.findall(found.group("ids")))
         failures.extend(f"{where} {problem}" for problem in check_annotation(found, declared, retired, source))

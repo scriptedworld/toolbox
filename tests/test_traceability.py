@@ -108,7 +108,52 @@ def test_a_test_without_a_covers_line_fails(checker, tmp_path):
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
     assert "test_silent" in out
-    assert "# COVERS:" in out
+    assert "# COVERS <ids> | <kind>" in out
+
+
+# COVERS FR-4.1 | positive
+def test_the_mark_without_a_colon_is_read_in_every_language(checker, tmp_path):
+    """The colonless form is FR-4.1's, in Python, Go and Rust alike."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]"), ("FR-1.2", "[A]"), ("FR-1.3", "[A]")),
+        {
+            "test_it.py": "# COVERS FR-1.1 | positive\ndef test_py():\n    pass\n",
+            "it_test.go": "package it\n\n// COVERS FR-1.2 | positive\nfunc TestGo(t *testing.T) {}\n",
+            "it.rs": "// COVERS FR-1.3 | positive\n#[test]\nfn rust() {}\n",
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "3 of 3" in out
+
+
+# COVERS FR-4.25 | positive
+def test_the_colon_form_still_reads_as_the_same_mark(checker, tmp_path):
+    """Both spellings in one tree, so a repository mid-migration stays green."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]"), ("FR-1.2", "[A]")),
+        {
+            "test_it.py": ("# COVERS: FR-1.1 | positive\ndef test_old():\n    pass\n\n\n# COVERS FR-1.2 | positive\ndef test_new():\n    pass\n"),
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+    assert "2 of 2" in out
+
+
+# COVERS FR-4.25 | negative
+def test_covers_run_into_an_id_is_not_a_mark(checker, tmp_path):
+    """Without whitespace or a colon after COVERS, the line cites nothing."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[?]")),
+        {"test_it.py": "# COVERSFR-1.1 | positive\ndef test_run_on():\n    pass\n"},
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "test_run_on has no" in out
 
 
 # COVERS: FR-4.2 | negative
@@ -330,7 +375,7 @@ def test_a_rust_test_still_has_to_cite_something(checker, tmp_path):
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
     assert "silent" in out
-    assert "// COVERS:" in out
+    assert "// COVERS <ids>" in out
 
 
 # COVERS: FR-4.7 | edge

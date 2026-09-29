@@ -68,7 +68,7 @@ requirement it marks is testable.
 
 | ID | Requirement | |
 |---|---|---|
-| FR-4.1 | Every test states which requirement it discharges and by which path, written as `COVERS: <ids> | <kind>` in the comment block directly above it. | [A] |
+| FR-4.1 | Every test states which requirement it discharges and by which path, written as `COVERS <ids> | <kind>` in the comment block directly above it. No colon follows `COVERS`: with one, a Python mark citing a single id parses as an annotated statement, and a commented-out-code lint flags it. | [A] |
 | FR-4.2 | A test citing a requirement the document does not declare fails, so a renamed or deleted requirement is caught instead of left rotting in a comment. | [D] |
 | FR-4.3 | A `COVERS` line naming a kind outside the declared set fails. The kind states which path through the requirement that test walks. | [D] |
 | FR-4.4 | A `COVERS` line citing no requirement id at all fails. It parses as an annotation while discharging nothing. | [D] |
@@ -92,6 +92,7 @@ requirement it marks is testable.
 | FR-4.20 | A directory whose name carries a retirement suffix has retired everything beneath it, the note and its supporting material together. The search for such a directory stops at the requirements root: walking to the filesystem root would let a tree archived as `holder.retired/`, or any checkout beneath one, read as retired entire, holding nothing to coverage and passing. | [D] |
 | FR-4.24 | The tree to read may be named with `--dir PATH` as well as given positionally, so a scoped run says which rows and which tree separately instead of repeating one word: `--scope go --dir ./go`. Giving both is a usage error, not a precedence, because a caller who wrote two directories meant one of them and choosing for them reads the tree they did not mean. The positional stays: this checker is symlinked into several repositories and their jigs pass it today. | [D] |
 | FR-4.23 | `--scope NAME` holds one tree to the rows that name it and to the rows that name no tree, so a repository with several trees against one document holds each to its own coverage and not to the union of all of them. Without it a row covered in one tree alone passes the whole repository, and a tree holding none of a requirement is invisible. The scope clause is the lowercase half of a row's marker, `[A/D python]`; a row also scoping KINDS, `[A go,python:edge,negative]`, stays in scope everywhere, because the rest of that row is still expected in every tree and this checker never asks by which kind. A scoped-out row is exempt exactly as an open one is: out of the denominator, reported as context, never a failure, and still declared so a test citing it is not told the id does not exist. | [D] |
+| FR-4.25 | A mark written `COVERS:` with a colon reads as the same mark, so no adopter's gate breaks while its marks move to FR-4.1's form. `COVERS` must be followed by whitespace or that colon, so `COVERSFR-1.1` is not a mark. Refusing the colon form is a separate change, made once every adopter has moved. | [D] |
 
 ## FR-5, The suppression register
 
