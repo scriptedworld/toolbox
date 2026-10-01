@@ -11,9 +11,12 @@ loaded from beside this file, so the two checks always read the same prose.
 
 Each document, each file's comments and each commit message goes to the model
 whole, one request apiece, with the prompt in
-`config/prompts/voice-findings.md`. The model names a line, a rule and a quote.
-A finding stands only when its rule is one the prompt asks for and its quote
-starts on the line it names; anything else is dropped and counted.
+`config/prompts/voice-findings.md`. The model drafts findings, each a line, a
+rule and a quote, then checks each draft against its rule before answering, and
+only a draft its own check holds is kept. That check is what makes repeated runs
+agree; a sampling parameter cannot, since none is sent. A kept finding stands
+only when its rule is one the prompt asks for and its quote starts on the line
+it names; anything else is dropped and counted.
 
 This never fails a run on what it finds. Two reviews of one unchanged tree
 agree on well under half their findings, which is a report to read and not a
@@ -213,16 +216,19 @@ def squashed(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
-def parse_findings(answer: str) -> list[dict]:
-    """The findings list from a reply the prompt asks to be one JSON object."""
+def parse_findings(answer: str) -> tuple[list[dict], int]:
+    """The drafts the model's own check held, and how many it withdrew or left unchecked."""
     start, end = answer.find("{"), answer.rfind("}")
     try:
         document = json.loads(answer[start : end + 1]) if 0 <= start < end else None
     except ValueError:
         document = None
-    if not isinstance(document, dict) or not isinstance(document.get("findings"), list):
-        raise Unanswered(f"the answer carried no findings list: {answer.strip()[:200]!r}")
-    return [item for item in document["findings"] if isinstance(item, dict)]
+    if not isinstance(document, dict) or not isinstance(document.get("draft"), list) or not isinstance(document.get("checks"), list):
+        raise Unanswered(f"the answer carried no drafts and checks: {answer.strip()[:200]!r}")
+    drafts = [item for item in document["draft"] if isinstance(item, dict)]
+    held = {check.get("draft") for check in document["checks"] if isinstance(check, dict) and check.get("holds") is True}
+    kept = [item for index, item in enumerate(drafts) if index in held]
+    return kept, len(drafts) - len(kept)
 
 
 def verified(text: Any, finding: dict) -> bool:
@@ -240,31 +246,40 @@ def review_text(backend: Backend, prompt: str, text: Any) -> dict:
     """One text's findings, split into those that verify and those that do not."""
     body = "\n".join(f"{number}| {line}" for number, line in text.lines)
     answer = backend.ask(prompt, f"text: {text.where}\nkind: {text.kind}\n\n{body}\n")
-    found = parse_findings(answer)
+    found, withdrawn = parse_findings(answer)
     kept = [{"where": text.where, **item} for item in found if verified(text, item)]
-    return {"where": text.where, "kept": kept, "dropped": len(found) - len(kept)}
+    return {"where": text.where, "kept": kept, "dropped": len(found) - len(kept), "withdrawn": withdrawn}
 
 
-def review(backend: Backend, prompt: str, texts: list, workers: int) -> tuple[list[dict], int, list[dict]]:
-    """Every text, in parallel: the findings, how many were dropped, and the texts no answer could be read for.
+@dataclass
+class Outcome:
+    """What a whole review found, and what it set aside on the way."""
+
+    kept: list[dict] = field(default_factory=list)
+    dropped: int = 0
+    withdrawn: int = 0
+    unanswered: list[dict] = field(default_factory=list)
+
+
+def review(backend: Backend, prompt: str, texts: list, workers: int) -> Outcome:
+    """Every text, in parallel.
 
     An unreachable model anywhere ends the review, because a partial review
     reads as a complete one.
     """
-    kept: list[dict] = []
-    dropped = 0
-    unanswered: list[dict] = []
+    outcome = Outcome()
     with ThreadPoolExecutor(max_workers=max(workers, 1)) as pool:
         jobs = [(text, pool.submit(review_text, backend, prompt, text)) for text in texts if text.lines]
         for text, job in jobs:
             try:
                 result = job.result()
             except Unanswered as problem:
-                unanswered.append({"where": text.where, "why": str(problem)})
+                outcome.unanswered.append({"where": text.where, "why": str(problem)})
                 continue
-            kept += result["kept"]
-            dropped += result["dropped"]
-    return kept, dropped, unanswered
+            outcome.kept += result["kept"]
+            outcome.dropped += result["dropped"]
+            outcome.withdrawn += result["withdrawn"]
+    return outcome
 
 
 # ---- running it -------------------------------------------------------------
@@ -272,7 +287,7 @@ def review(backend: Backend, prompt: str, texts: list, workers: int) -> tuple[li
 
 def arguments(argv: list[str] | None) -> argparse.Namespace:
     """The wording check's modes, and what this review adds to them."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     tells.add_modes(parser)
     parser.add_argument("--prompt", type=Path, default=PROMPT, help="the prompt every request sends")
     parser.add_argument("--model", default="claude-sonnet-5")
@@ -303,18 +318,20 @@ def main(argv: list[str] | None = None, access: Access | None = None) -> int:
         return 2
     try:
         backend = resolve_backend(args.model, args.fallback, access)
-        kept, dropped, unanswered = review(backend, prompt, texts, args.workers)
+        outcome = review(backend, prompt, texts, args.workers)
     except Unreachable as problem:
         notice = f"voice review: NOT RUN, no model could be reached ({problem.why}): {problem.detail}"
         return finish(args.report, {"status": "unreachable", "why": problem.why, "detail": problem.detail}, [notice])
-    lines = [f"{item['where']}:{item['line']}: {item['rule']}: {item.get('quote', '')}" for item in kept]
-    lines += [f"{item['where']}: not reviewed: {item['why']}" for item in unanswered]
+    lines = [f"{item['where']}:{item['line']}: {item['rule']}: {item.get('quote', '')}" for item in outcome.kept]
+    lines += [f"{item['where']}: not reviewed: {item['why']}" for item in outcome.unanswered]
     lines.append(
-        f"voice review by {backend.model} through the {backend.name}: {len(kept)} findings, "
-        f"{dropped} dropped by verification, {len(unanswered)} texts unanswered; {read}"
+        f"voice review by {backend.model} through the {backend.name}: {len(outcome.kept)} findings, "
+        f"{outcome.withdrawn} withdrawn by its own check, {outcome.dropped} dropped by verification, "
+        f"{len(outcome.unanswered)} texts unanswered; {read}"
     )
-    document = {"status": "reviewed", "model": backend.model, "backend": backend.name, "findings": kept, "dropped": dropped}
-    return finish(args.report, {**document, "unanswered": unanswered}, lines)
+    document = {"status": "reviewed", "model": backend.model, "backend": backend.name, "findings": outcome.kept}
+    document |= {"withdrawn": outcome.withdrawn, "dropped": outcome.dropped, "unanswered": outcome.unanswered}
+    return finish(args.report, document, lines)
 
 
 if __name__ == "__main__":

@@ -34,12 +34,23 @@ empty pair of backticks marks where one was.
 
 When unsure, leave it out. An empty list is a correct answer.
 
+## Check each finding before you answer
+
+Draft the findings first. Then check every draft against its rule's definition
+above, reading the quote in its paragraph: does the quote show that habit, and
+would a careful second reader name the same rule for it? A draft that fails
+either question does not hold. Only a draft that holds is reported.
+
 ## Answer
 
 One JSON object and nothing else, no code fence:
 
-    {"findings": [{"line": 14, "rule": "closing-aphorism", "quote": "exact words copied from that line"}]}
+    {"draft": [{"line": 14, "rule": "closing-aphorism", "quote": "exact words copied from that line"}],
+     "checks": [{"draft": 0, "holds": true, "why": "the paragraph's last line restates its first"}]}
 
-`line` is the number of the line the quote starts on. `quote` is copied exactly,
-at most one sentence, and starts on that line. It may continue onto the next two
-lines only where the sentence wraps.
+`draft` holds every finding drafted. `line` is the number of the line the quote
+starts on. `quote` is copied exactly, at most one sentence, and starts on that
+line. It may continue onto the next two lines only where the sentence wraps.
+
+`checks` holds one entry per draft: `draft` is its index from 0, `holds` is the
+outcome of the check, and `why` is one short clause.

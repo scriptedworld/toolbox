@@ -40,7 +40,7 @@ class FakeAPI:
     """Answers each request from a function of the text it names, and keeps every request body."""
 
     def __init__(self, answer: Callable[[str, str], dict | str] | None = None, status: int = 200):
-        self.answer: Callable[[str, str], dict | str] = answer or (lambda where, user: {"findings": []})
+        self.answer: Callable[[str, str], dict | str] = answer or (lambda where, user: checked([]))
         self.status = status
         self.requests: list[dict] = []
         self.lock = threading.Lock()
@@ -92,9 +92,15 @@ def run(tree: Path, access, *flags: str, capsys) -> tuple[int, dict, str]:
     return code, json.loads(report.read_text(encoding="utf-8")), capsys.readouterr().out
 
 
+def checked(drafts: list[dict], holds: list[bool] | None = None) -> dict:
+    """An answer carrying these drafts and a check of each, every check holding unless told otherwise."""
+    outcomes = holds if holds is not None else [True] * len(drafts)
+    return {"draft": drafts, "checks": [{"draft": index, "holds": held, "why": "w"} for index, held in enumerate(outcomes)]}
+
+
 def one_finding(rule: str, line: int, quote: str):
     """An answer that reports one finding for every text."""
-    return lambda where, user: {"findings": [{"line": line, "rule": rule, "quote": quote}]}
+    return lambda where, user: checked([{"line": line, "rule": rule, "quote": quote}])
 
 
 # COVERS FR-10.1 | positive
@@ -139,12 +145,12 @@ def test_a_quote_on_its_line_stands_and_may_wrap(tmp_path, capsys):
     tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n\nA sentence that\nwraps onto the next line.\n"})
 
     def answer(where, user):
-        return {
-            "findings": [
+        return checked(
+            [
                 {"line": 3, "rule": "closing-aphorism", "quote": APHORISM},
                 {"line": 5, "rule": "table-stakes", "quote": "A sentence that wraps onto the next line."},
             ]
-        }
+        )
 
     code, report, output = run(tree, api_access(FakeAPI(answer)), capsys=capsys)
 
@@ -165,7 +171,7 @@ def test_a_quote_not_starting_on_its_line_is_dropped(tmp_path, capsys, line, quo
     _, report, output = run(tree, api_access(FakeAPI(one_finding("closing-aphorism", line, quote))), capsys=capsys)
 
     assert report["findings"] == [] and report["dropped"] == 1
-    assert "0 findings, 1 dropped by verification" in output
+    assert "0 findings, 0 withdrawn by its own check, 1 dropped by verification" in output
 
 
 # COVERS FR-10.4 | positive
@@ -223,7 +229,7 @@ def test_an_answer_that_is_not_a_findings_list_leaves_only_that_text_unreviewed(
     tree = repository(tmp_path, {"a.md": f"# a\n\n{APHORISM}\n", "b.md": "# b\n\nA sentence.\n"})
 
     def answer(where, user):
-        return "I could not decide." if where == "b.md" else {"findings": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}]}
+        return "I could not decide." if where == "b.md" else checked([{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}])
 
     code, report, output = run(tree, api_access(FakeAPI(answer)), capsys=capsys)
 
@@ -267,7 +273,7 @@ def test_without_a_key_the_cli_is_asked_with_no_tools_or_settings(tmp_path, caps
 
     def fake_run(argv, **kwargs):
         calls.append((argv, kwargs["input"]))
-        result = json.dumps({"findings": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}]})
+        result = json.dumps(checked([{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}]))
         return subprocess.CompletedProcess(argv, 0, json.dumps({"result": result, "is_error": False}), "")
 
     access = review.Access(env={}, which=claude_at("/usr/bin/claude"), run=fake_run)
@@ -341,7 +347,49 @@ def test_the_report_names_the_model_backend_findings_and_counts(tmp_path, capsys
 
     assert report["model"] == "claude-sonnet-5" and report["backend"] == "api"
     assert report["findings"] == [{"where": "README.md", "line": 3, "rule": "closing-aphorism", "quote": APHORISM}]
-    assert report["dropped"] == 0 and report["unanswered"] == []
+    assert report["withdrawn"] == 0 and report["dropped"] == 0 and report["unanswered"] == []
+
+
+# COVERS FR-10.8 | positive
+def test_only_a_draft_its_own_check_holds_is_kept(tmp_path, capsys):
+    """Two drafts, one check holding and one not: one finding stands and one is withdrawn."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n\nA plain sentence.\n"})
+    drafts = [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}, {"line": 5, "rule": "table-stakes", "quote": "A plain sentence."}]
+
+    _, report, output = run(tree, api_access(FakeAPI(lambda where, user: checked(drafts, [True, False]))), capsys=capsys)
+
+    assert [f["line"] for f in report["findings"]] == [3]
+    assert report["withdrawn"] == 1 and report["dropped"] == 0
+    assert "1 findings, 1 withdrawn by its own check" in output
+
+
+# COVERS FR-10.8 | negative
+@pytest.mark.parametrize(
+    "answer",
+    [
+        {"draft": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}], "checks": []},
+        {"draft": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}], "checks": [{"draft": 0, "holds": "yes"}]},
+        {"draft": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}], "checks": [{"draft": 1, "holds": True}]},
+    ],
+)
+def test_a_draft_with_no_holding_check_is_withdrawn(tmp_path, capsys, answer):
+    """No check at all, a check that is not true, and a check naming another draft all withdraw it."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
+
+    _, report, _ = run(tree, api_access(FakeAPI(lambda where, user: answer)), capsys=capsys)
+
+    assert report["findings"] == [] and report["withdrawn"] == 1
+
+
+# COVERS FR-10.8 | edge
+def test_an_answer_with_findings_but_no_checks_is_unanswered(tmp_path, capsys):
+    """The unchecked shape is not accepted, so the check cannot be skipped by answering the old way."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
+    unchecked = {"findings": [{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}]}
+
+    _, report, _ = run(tree, api_access(FakeAPI(lambda where, user: unchecked)), capsys=capsys)
+
+    assert report["findings"] == [] and [item["where"] for item in report["unanswered"]] == ["README.md"]
 
 
 # COVERS FR-10.4 | positive

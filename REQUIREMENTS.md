@@ -32,7 +32,7 @@ requirement it marks is testable.
 | FR-1.2 | Every jig here validates against `schema/jig.schema.json`. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
 | FR-1.3 | A jig carries the rule and never the subject. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
 | FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
-| FR-1.5 | A shared jig states no project-specific name. `entrypoint` came out of the Go jig for hardcoding `./cmd/bolt`: it looked like a rule and was a subject. | [A] |
+| FR-1.5 | A shared jig states no project-specific name. A main package path such as `./cmd/bolt` is a subject, so a task that must name one, like `entrypoint`, belongs to the adopter. | [A] |
 | FR-1.6 | A jig does not grade the files it installed. Adoption links this repository's checkers into the adopter's `bin/` and its adapters into `adapters/`, so a tool reading the tree reads them as the adopter's own source. Every task that excludes them names all three exclusion slots, and every slot carries a default and an override, because a placeholder holds one argument and the six tools spell exclusion six ways. | [D] |
 
 ## FR-2, Checkers
@@ -43,7 +43,7 @@ requirement it marks is testable.
 | ID | Requirement | |
 |---|---|---|
 | FR-2.1 | A checker is what a task runs. Its input is `argv` and the filesystem, and its exit code is the verdict, which is why a checker needs no adapter. | [D] |
-| FR-2.2 | A checker written here reports every finding on stdout, naming the file, line or identifier it is about. A finding nobody can locate is a finding nobody acts on. | [D] |
+| FR-2.2 | A checker written here reports every finding on stdout, naming the file, line or identifier it is about, so a reader can go to it. | [D] |
 | FR-2.3 | A checker given a document that is absent fails instead of raising. A traceback is not a verdict, and the adopter who has not yet written the document is the reader most in need of an instruction. | [D] |
 | FR-2.4 | A checker refuses to pass vacuously. Zero requirements agreeing with zero citations describes a gate with nothing in it, and it must never read as a pass. | [A] |
 | FR-2.5 | A checker does not walk trees it is not answerable for: `.venv`, `node_modules`, `vendor`, `testdata`, and `.ephemera`. A vendored suite full of unannotated tests must not fail the project that vendored it, and neither must a scratch file in `.ephemera`. | [D] |
@@ -56,11 +56,11 @@ requirement it marks is testable.
 |---|---|---|
 | FR-3.1 | An adapter is a task's `result_command`. Its input is `argv` and an execution **record** on stdin; its output is an **envelope** on stdout. Its own exit code means nothing, because the envelope is the verdict. | [D] |
 | FR-3.2 | An adapter exists only where the checker's exit code is not the answer. `gofmt -l` lists unformatted files and exits 0 whichever it finds, so its status answers "did gofmt run" and never "is this formatted". | [A] |
-| FR-3.8 | An adapter reads only what it is handed, the record on stdin or the evidence named on its command line, and writes only its envelope. No clock, no network, and no file it was not given. That makes it testable from a fixture, on a machine where the tool it is about is not installed. | [D] |
+| FR-3.8 | An adapter reads only what it is handed, the record on stdin or the evidence named on its command line, and writes only its envelope. That makes it testable from a fixture, on a machine where the tool it is about is not installed. | [D] |
 | FR-3.4 | An adapter emits one reason per finding, naming its `checker` and, where the tool supplies them, the file and line. Where the fix is mechanical, the reason carries the fix. | [D] |
 | FR-3.5 | An adapter omits an optional block instead of emitting it empty. `reasons: []` on a pass reads as "checked and found nothing to say", which is a different claim from having nothing to report. | [D] |
-| FR-3.6 | An adapter that cannot recognise the output of a checker which also exited non-zero reports a failure it cannot name, never a pass. Silence plus a bad exit code is not success. | [D] |
-| FR-3.7 | `[?]` **Every adapter emits `statistics` on pass as well as on fail.** A number is only useful as a series, and a task that reports nothing when it passes can show no trend. True of the three coverage adapters, `adapters/{go,python,rust}/coverage.py`, which report their totals on a pass and not only on a failure; `gofmt.py` and `govet.py` still do not. `lizard.py`, the earlier exemplar, was deleted along with the `complexity` task it read for. Both remaining exceptions are the stdin-contract adapters wired to no task, so neither can report anything today either way. | [?] |
+| FR-3.6 | An adapter that cannot recognise the output of a checker which also exited non-zero reports a failure it cannot name, never a pass. | [D] |
+| FR-3.7 | `[?]` **Every adapter emits `statistics` on pass as well as on fail.** A number is only useful as a series, and a task that reports nothing when it passes can show no trend. True of the three coverage adapters, `adapters/{go,python,lcov}/coverage.py`, which report their totals on a pass as well as on a failure. `gofmt.py` and `govet.py` do not; both are stdin-contract adapters wired to no task, so neither reports anything either way. | [?] |
 
 ## FR-4, Traceability
 
@@ -113,7 +113,7 @@ recorded in `bin/suppression-register.py`.
 
 | ID | Requirement | |
 |---|---|---|
-| FR-6.1 | Everything a jig needs lives either in this repository or in the adopting one. Nothing reaches outside those two. | [A] |
+| FR-6.1 | Everything a jig needs lives either in this repository or in the adopting one. | [A] |
 | FR-6.2 | `[?]` **A project composes jigs by short name instead of by repeated `-c` with full paths.** Ordering has to stay explicit, because a directory glob has no order and order is semantics here. Needs a change to bolt. See `NEXT_STEPS.md`, open decisions. | [?] |
 
 ## FR-7, Adoption by link
@@ -178,7 +178,7 @@ that every rule in it fails on a single instance; `bin/voice-tells.py`.
 ## FR-10, The voice review
 
 *Derives from:* my decision that the model review reports and never gates,
-after two reviews of one repository agreed on 30 of 77 findings;
+since repeated reviews of one repository disagree on many of their findings;
 `bin/voice-review.py` and `config/prompts/voice-findings.md`.
 
 | ID | Requirement | |
@@ -189,18 +189,19 @@ after two reviews of one repository agreed on 30 of 77 findings;
 | FR-10.4 | Findings never fail the run: a review exits 0 whatever it found. It exits 2 when the command or the repository is wrong, or the prompt cannot be read. | [A] |
 | FR-10.5 | When no model can be reached the review exits 0 and says NOT RUN with the cause, and the report's status is `unreachable`. One unreachable request ends the review. An answer that is not a findings list leaves that text reported as unanswered, and the rest are still reviewed. | [A] |
 | FR-10.6 | With `ANTHROPIC_API_KEY` set the Messages API is asked with no sampling parameter; without it, `claude -p` is asked only where the fallback is `cli`. | [A] |
-| FR-10.7 | `--report` writes the status, the model and backend, every standing finding, the dropped count and the unanswered texts as JSON. | [A] |
+| FR-10.7 | `--report` writes the status, the model and backend, every standing finding, the withdrawn and dropped counts and the unanswered texts as JSON. | [A] |
+| FR-10.8 | The model checks each finding it drafted against its rule before it answers, and the answer carries the drafts and one check per draft. Only a draft whose check holds is kept; the rest are counted as withdrawn. An answer without drafts and checks leaves the text unanswered. | [A] |
 
 ## Non-functional
 
 | ID | Requirement | |
 |---|---|---|
 | NFR-1 | The test suite runs with none of the tools the jigs name installed. A suite needing the toolchain could not run inside the image `anvil` builds it to populate. | [D] |
-| NFR-2 | Every script here is measured by the suite that tests it, however the test reaches it. A spawned script is invisible to the parent's coverage, and a suite built on subprocesses reported 0% while testing thoroughly (`adapters/go/coverage.py` read 0 of 96 lines with a full suite behind it), which once forced tests to run in-process. `tests/conftest.py`'s `script_argv` removes that trade: it spawns the child under `coverage run --parallel-mode` when the parent is under coverage, and the jig's `tests` task combines before reporting. So a test may spawn, which it should where the shebang, the imports, or where `main()` writes are part of what is being checked, and the number still moves. | [D] |
+| NFR-2 | Every script here is measured by the suite that tests it, however the test reaches it. A spawned script is invisible to the parent's coverage, so `tests/conftest.py`'s `script_argv` spawns the child under `coverage run --parallel-mode` when the parent is under coverage, and the jig's `tests` task combines before reporting. So a test may spawn, which it should where the shebang, the imports, or where `main()` writes are part of what is being checked, and the number still moves. | [D] |
 | NFR-3 | Every script is also exercised once as a script, because in-process testing catches neither a broken shebang, nor a missing executable bit, nor a failure on import. | [D] |
 | NFR-4 | Adapter fixtures are captured from real tool output, and each records the tool version and the date of capture. A fixture composed by hand tests whoever composed it, and a tool changing its output format is the break adapters exist to absorb. | [D] |
-| NFR-5 | `[?]` This repository's own gate passes on this repository, and it does: `common-quality`, `python-std-quality` and `secrets` each report `success: true` under `--definitions toolbox`. The row stays open because nothing in the suite can assert it. NFR-1 has the suite running without the tools the jigs name, so the only check is running the three jigs. | [?] |
-| NFR-6 | The schema has one home, and it is wrench. A jig schema describes bolt's configuration format, which is not toolbox's to define. wrench ships the schemas and bolt is built from them, so this repository keeps no copy and imports the pack instead. The local `schema/` directory was deleted, not resynced. | [A] |
+| NFR-5 | `[?]` This repository's own gate passes on this repository: `common-quality`, `python-std-quality` and `secrets` each report `success: true` under `--definitions toolbox`. The row stays open because nothing in the suite can assert it. NFR-1 has the suite running without the tools the jigs name, so the only check is running the three jigs. | [?] |
+| NFR-6 | The schema has one home, and it is wrench. A jig schema describes bolt's configuration format, which is not toolbox's to define. wrench ships the schemas and bolt is built from them, so this repository keeps no copy and imports the pack instead. | [A] |
 
 ## Retired
 
