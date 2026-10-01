@@ -66,8 +66,7 @@ requires:
 # all three.
 #
 # Toolbox overrides these. Its `bin/` and `adapters/` are real files, not
-# links, so excluding them would stop it gating its own checkers: that silences
-# the gate instead of scoping it. It runs with `--definitions toolbox`, which
+# links, so excluding them would stop it gating its own checkers. It runs with `--definitions toolbox`, which
 # names `.ephemera` three times over.
 definitions:
   excluded_one: .ephemera
@@ -92,8 +91,7 @@ tasks:
   # ---- shape ----------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check
-  # is a check with a side effect, and in CI it produces a green run against a
-  # tree nobody has seen.
+  # leaves CI green against a tree nobody has seen.
   #
   # Both ruff tasks use --extend-exclude, not --exclude. `--exclude` replaces
   # ruff's built-in default list, which already holds `.venv`, `venv`, `build`,
@@ -121,17 +119,16 @@ tasks:
   # three I001 import-order findings appear that a bare `ruff check .` does not
   # report. Those findings are correct and the bare run is the wrong one, so
   # there is no defect to fix here, but one line of config stops a gate and a
-  # local run disagreeing about the same tree. Inference varies; a declaration
-  # does not.
+  # local run disagreeing about the same tree.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
     command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
 
   # ---- correctness ----------------------------------------------------------
 
-  # --strict is deliberately not set here. A shared jig turning strict mode on
-  # for every adopter fails every adopter on day one, which teaches them to
-  # delete the task instead of fixing the code. Strictness is a project's
+  # --strict is deliberately not set here. Strict mode switched on for every
+  # adopter fails every existing project at once, and the usual response is to
+  # drop the task. Strictness is a project's
   # decision, made in its own pyproject.toml, and this task honours it.
   #
   # mypy runs through `uv run`, for the same reason as `tests`. It resolves the
@@ -157,8 +154,7 @@ tasks:
   #
   # Without it this task hangs instead of failing. In skid, `.venv` held 11,795
   # files including torch and transformers, and the task was killed at 900s
-  # having produced no result.yaml. A gate that never returns reads as a slow
-  # gate, so the natural response is to wait longer.
+  # having produced no result.yaml.
   #
   # Use --ignore, not --ignore-paths. Three spellings of --ignore-paths (two
   # flags and a pyproject table) all still walked the virtualenv. --ignore takes
@@ -180,9 +176,7 @@ tasks:
   #     full                    1.47s   exit 2   7 x E0401 import-error
   #     duplicate-code only     0.66s   exit 0
   #
-  # R0801 is token-based and imports nothing, so the same tree passes. That is
-  # also the likeliest explanation of skid's 900s kill: an import-based analysis
-  # walking a virtualenv, and not duplicate detection being slow.
+  # R0801 is token-based and imports nothing, so the same tree passes.
   #
   # Nesting rides along. ruff's nesting rule is preview-only, pylint's R1702 is
   # stable, and a pylint run is already happening here, so the fourth complexity
@@ -201,7 +195,7 @@ tasks:
   # through a function. complexipy measures how hard the function is to hold in
   # your head, weighting nesting depth far more heavily. A flat function with a
   # ten-branch match scores badly on the first and fine on the second; three
-  # nested loops score the reverse. Neither substitutes for the other.
+  # nested loops score the reverse.
   #
   # The flag is --max-complexity-allowed, not --max-complexity. Against
   # complexipy 7.0.1 the short form exits with a usage error instead of a
@@ -225,9 +219,8 @@ tasks:
   #     C901      cyclomatic, from mccabe        PLR0913   arguments
   #     PLR0915   statements
   #
-  # The thresholds are the ones the retired lizard task used: 15 and 5. Ruff
-  # counts statements where lizard counted lines, so 60 lines becomes 60
-  # statements, which is the stricter reading of the same intent.
+  # The thresholds are 15 cyclomatic, 5 arguments and 60 statements. Counting
+  # statements rather than lines is the stricter of the two readings.
   #
   # Nesting is not here. ruff's PLR1702 is the
   # nesting rule and it is preview-only: selecting it prints "has no effect
@@ -283,7 +276,7 @@ tasks:
   # the suite, so one task over the whole tree fails any project with tests, on
   # its own design and not on a defect.
   #
-  # Refused alternatives, so they are not proposed again. `--severity-level medium`
+  # The alternatives do not work. `--severity-level medium`
   # reports nothing at all, because every bandit finding here is Low including
   # the subprocess ones, and it leaves a task that cannot fail. `-x ./tests`
   # stops reading the test tree entirely. `--skip B101` everywhere gives up the
@@ -299,19 +292,16 @@ tasks:
   # `pyproject.toml` leaves the gate exactly as red as before. Whether it should
   # bind is an open decision in `NEXT_STEPS.md`.
   #
-  # `./.venv,./venv` for the same reason as `analyse`, and it matters more here
-  # than anywhere: bandit over a dependency tree reports other people's
-  # security findings as this project's, and there is nothing an adopter can do
-  # about any of them.
+  # `./.venv,./venv` for the same reason as `analyse`: bandit over a dependency
+  # tree reports other projects' security findings as this one's.
   - name: security
     description: no bandit finding outside the test tree
     command: >-
       bandit -r -q
       -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir},./.venv,./venv .
 
-  # B101 only. A test that shells out still answers for B404 and B603, because
-  # deliberate subprocess use is a design choice a reader should see, not noise
-  # to silence.
+  # B101 only. A test that shells out still answers for B404 and B603, so each
+  # deliberate subprocess call is marked and registered where a reader sees it.
   - name: security-tests
     description: the test tree, held to everything except assert_used
     command: bandit -r -q --skip B101 {test_dir}
@@ -319,8 +309,7 @@ tasks:
   # ---- tests ----------------------------------------------------------------
 
   # The profile is declared evidence. A test run reporting success without
-  # producing one measured nothing, and declaring the file turns that from a
-  # silent gap into a failure.
+  # producing one measured nothing, and declaring the file makes that a failure.
   #
   # -p no:randomly is not set: where the project has pytest-randomly installed,
   # order randomisation is wanted. A suite that only passes in one order has a
@@ -335,9 +324,8 @@ tasks:
   #
   # `--branch` is named here and not left to the adopter's config. Without it
   # coverage.py writes no `condition-coverage`, the report parses cleanly, and
-  # the branch threshold passes having judged nothing. The failure is a silent
-  # pass, so the flag belongs where the gate is, not in a file the jig does not
-  # own. The adapter reports `branch_measured` for the same reason.
+  # the branch threshold passes having judged nothing, so the flag sits in the
+  # jig and not in a file the jig does not own. The adapter reports `branch_measured` for the same reason.
   #
   # `--parallel-mode` and `coverage combine` are what measure a spawned script.
   # A checker or adapter invoked as its own process is invisible to the parent's
@@ -366,12 +354,10 @@ tasks:
 # None of it is gated, because a gate needs a threshold that fails a build and
 # none of these has one anybody can defend. Halstead effort has no conventional
 # limit, and the comment density floor is a number nobody here has argued for.
-# Adding it needs a named metric, a named threshold and a reason that threshold
-# is the right one.
+# Adding one needs a metric and a threshold with a reason for it.
 #
 # safety / pip-audit, the counterpart to the Go jig's `govulncheck`. The two
 # differ in a way that matters: govulncheck is reachability-based, reporting
 # only advisories whose affected functions the code actually calls, while the
-# Python tools report every advisory touching an installed distribution. That is
-# a much noisier signal, and choosing which tool and how to handle the noise is
-# a decision, not a default.
+# Python tools report every advisory touching an installed distribution. Which
+# tool, and how to handle that noise, is an open decision.

@@ -2,26 +2,14 @@
 #
 #     bolt rust-std-quality .          flags before the positionals
 #
-# Adopted from bolt, which carried it as `bolt.rust-quality.yaml` while toolbox
-# shipped no Rust jig. It was written to be moved: its header named which tasks
-# belonged to a shared rust-std jig and which to the common one, "so a later
-# port knows what to delete from here rather than guessing". This is that port.
-#
 # The path rule. A path resolves against {config_dir} if it travels with this
 # file: a checker, a linter's config. It stays relative to the base if it
 # belongs to the project being checked. Getting this backwards works in a
 # repository whose jig sits at its own root, where the two are the same
 # directory, and breaks for every adopter.
 #
-# The standard, taken from the Python jig, which is the written statement of
-# what should be validated for every language:
-#
-#     shape         a formatter that reports without writing, and a linter
-#     correctness   types, and a test suite with coverage
-#     security      known vulnerabilities, and the licences of what is linked
-#     hygiene       dead code, documentation, complexity
-#
-# Where Rust differs from Python, and why each absent task is absent:
+# The standard is the category list in `bolt.deno-std-quality.yaml`'s header,
+# taken from the Python jig. Where Rust differs from Python, and why each absent task is absent:
 #
 #   types        the compiler does it. There is no mypy-shaped task because
 #                there is no mypy-shaped gap; `cargo build` failing is the
@@ -43,9 +31,7 @@ version: "1.0.0"
 requires:
   - cargo
   # cargo-clippy is a separate binary, and `cargo` being present says nothing
-  # about it. Leaving it out of `requires` while the lint task invokes it is the
-  # failure `requires` exists to prevent: a run that gets three tasks in before
-  # discovering the fourth cannot start.
+  # about it. Naming it here refuses the run up front instead of three tasks in.
   - cargo-clippy
   - rustfmt
   # A cargo subcommand is a separate binary too. Naming only `cargo` lets three
@@ -55,16 +41,15 @@ requires:
   - cargo-deny
 
 definitions:
-  # Not the compiler's default of 0. A gate that fails on the first warning is
-  # what makes `dead_code` and `missing_docs` load-bearing and not advisory.
+  # Not the compiler's default of 0. Failing on the first warning is what makes
+  # `dead_code` and `missing_docs` fail the gate.
   deny: warnings
 
 tasks:
   # ---- shape ----------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check
-  # is a check with a side effect, and in CI it produces a green run against a
-  # tree nobody has seen.
+  # leaves CI green against a tree nobody has seen.
   - name: format
     description: every file is rustfmt clean
     command: cargo fmt --check
@@ -110,9 +95,8 @@ tasks:
   # untested one; the total is reported in statistics as context.
   #
   # Lines, not statements. lcov's `DA` records count executable lines where Go's
-  # profile counts statements per block. The threshold is the same number
-  # against a slightly different denominator, and the two should not be read as
-  # one measurement.
+  # profile counts statements per block, so 80% here and 80% there use
+  # different denominators.
   - name: tests
     description: the suite, and coverage judged per file against the profile it writes
     command: >-

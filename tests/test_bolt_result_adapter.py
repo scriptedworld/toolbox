@@ -1,16 +1,14 @@
 """Tests for `adapters/common/bolt-result.py`, which is the whole of composition.
 
-Bolt retired nested jigs, so a jig composing another writes a command task whose
-command is `bolt` and names this adapter. Without it the task gets the generic
-exit-code adapter, and bolt exits 0 whenever it carried a run out, so the
-composed task passes however badly the child failed.
+A jig composing another writes a command task whose command is `bolt` and names
+this adapter. Without it the task gets the generic exit-code adapter, and bolt
+exits 0 whenever it carried a run out, so the composed task passes however badly
+the child failed.
 
 On a real composed run, one failing child judged twice:
 
     composed                   success=False, carrying the child's reason
     composed-without-adapter   success=True
-
-That is the defect these tests exist to keep closed.
 """
 
 from __future__ import annotations
@@ -90,9 +88,8 @@ def test_the_result_path_is_the_last_line_not_the_first(tmp_path):
     """The Go build prints a transcript first and the path last.
 
     FR-10.3a says bolt prints the path to the result it wrote, and the Rust
-    build prints that alone. Reading the first line got a task name from the Go
-    build still on PATH, and reported a missing result over a child that had
-    written one. The last line satisfies both.
+    build prints that alone. The first line of the Go build's output is a task
+    name, so only the last line satisfies both.
     """
     path = child(
         tmp_path,
@@ -142,8 +139,7 @@ def test_a_failure_claiming_no_reasons_is_refused_as_invalid(tmp_path):
 
     `success: false` alone, and with `reasons: []`, both fail validation. So a
     validated failure always carries at least one reason and the adapter needs
-    no fallback for the empty case. Written as a test rather than trusted,
-    because it is the guarantee that lets a branch be absent.
+    no fallback for the empty case, and this test holds the schema to that.
     """
     envelope = run(tmp_path, child(tmp_path, {"success": False}))
     assert envelope["success"] is False

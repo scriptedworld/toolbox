@@ -4,28 +4,24 @@ How this repository tests the code it ships, and why the two kinds of code get
 two different shapes of test.
 
 A checker is what a task runs, taking `argv` and the filesystem and returning a
-verdict as its exit code. An adapter takes an execution **record** on stdin and
-returns an **envelope** on stdout, and its own exit code means nothing. The
+verdict as its exit code. An adapter takes an execution record on stdin and
+returns an envelope on stdout, and its own exit code means nothing. The
 split below is that distinction applied to tests.
 
 ---
 
 ## Why
 
-`test-traceability.py` carried a sort key that compared an `int` against a `str`
-and raised `TypeError` on any requirement id with a letter suffix. It survived
-review and a full run against `bolt`, which has no such id. It surfaced only
-because the checker happened to be pointed at `qwark`, which has eleven.
-
-A checker is only exercised by the repository it happens to be pointed at, and
-the shared ones are pointed at repositories their author has never seen. A gate
-that crashes is at least loud. The worse failure is a gate that passes when it should not, and nothing in this
-repository would currently notice either kind.
+A checker is only exercised by the repository it is pointed at, and the shared
+ones are pointed at repositories their author has never seen.
+`docs/LESSONS/a-checker-only-meets-the-repository-it-is-pointed-at.md` has the
+case: a sort key that raised on any lettered requirement id passed every run
+against a repository with none. The suite is where both a crash and a gate that
+passes when it should not are caught before an adopter meets them.
 
 ## Two contracts, two shapes of test
 
-The distinction is not stylistic. It decides what a test is able to assert at
-all.
+The contract decides what a test is able to assert.
 
 | | **Checker** (`bin/`) | **Adapter** (`adapters/`) |
 |---|---|---|
@@ -84,10 +80,10 @@ smoke test per script covers the wiring, and everything else stays in-process.
 
 ## Fixtures are captured, never composed
 
-An adapter exists because a tool's output needs interpreting. A test that feeds
-it output you imagined tests your imagination.
+An adapter exists because a tool's output needs interpreting, so a test feeding
+it invented output tests only whoever invented it.
 
-So run the real tool once, save what it printed under `tests/fixtures/`, and
+Run the real tool once, save what it printed under `tests/fixtures/`, and
 record where it came from.
 
 ```
@@ -150,35 +146,17 @@ tests/
   fixtures/<tool>/*.txt     real captured tool output
 ```
 
-One test file per script under test, named for that script. A test file covering
-two scripts is a test file nobody can find.
+One test file per script under test, named for that script, so the tests for a
+script are found by its name.
 
-## The order of work
+## Every script has tests
 
-Checkers first: they gate other people's repositories, and a bug in one is
-already proven. Adapters second, ordered by how much interpretation they do,
-because the more parsing an adapter performs the more there is to get wrong.
-
-| | Script | State |
-|---|---|---|
-| 1 | `bin/test-traceability.py` | done |
-| 2 | `bin/suppression-register.py` | done |
-| 3 | `adapters/go/gofmt.py` | done, the worked example for the rest |
-| 4 | `adapters/go/coverage.py` | done |
-| 5 | `adapters/lcov/coverage.py` | done, with the lcov branch records and the encoding cases |
-| 6 | `adapters/python/coverage.py` | done, with the Cobertura branch data and the encoding cases |
-| 7 | `adapters/common/bolt-result.py` | done |
-| 8 | `adapters/go/govet.py` | done |
-| 9 | `bin/voice-review.py` | done, with a fake API connection and a fake CLI handed in, never a model |
-| 10 | `bin/voice-tells.py` | done, against real git repositories built in the test |
-
-Every script in `bin/` and `adapters/` has tests. The queue is empty, and
-`bolt python-std-quality .` is what keeps it that way: it judges coverage per
-file at 80% of lines and 80% of branches, so a new script arriving without tests
-fails the gate and does not wait on a list.
-
-Every adapter written for the Python jig (`NEXT_STEPS.md` item 1) arrives with
-its tests instead of joining this queue.
+Every script in `bin/` and `adapters/` has a test file. `bolt
+python-std-quality .` keeps it so: it judges coverage per file at 80% of lines
+and 80% of branches, so a new script arriving without tests fails the gate.
+`bin/voice-review.py` is tested with a fake API connection and a fake CLI handed
+in, never a model, and `bin/voice-tells.py` against real git repositories built
+in the test.
 
 ## What this suite deliberately does not do
 
@@ -187,9 +165,9 @@ test's job to prove.
 
 **It does not test bolt.** A test here that ran `bolt` would be testing the
 runner through this repository, and that is the dependency the three-repository
-split avoids. The `record` a test composes stands in for bolt, and
-`schema/jig.schema.json` holds the two ends together.
+split avoids. The `record` a test composes stands in for bolt, and the schema
+wrench ships, which `tests/test_jigs.py` imports, holds the two ends together.
 
-**It does not assert on exact prose.** Checker output is read by people and will
+It does not assert on exact prose. Checker output is read by people and will
 be reworded. A test asserts that a finding *names* the file, id or count, never
 that it phrases it a particular way.

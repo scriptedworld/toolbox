@@ -3,9 +3,9 @@
 Quality jigs for bolt, a runner that executes a project's quality gate, and the
 checkers those jigs invoke.
 
-Most projects grow a gate of their own: a lint config here, a coverage threshold
-there, a script checking the thing nobody else checks. Across several projects
-those drift, and the two obvious fixes both fail. Copy the configuration and
+A project's own gate is usually lint configuration, coverage thresholds and a
+few scripts. Across several projects those drift, and the two obvious fixes both
+fail. Copy the configuration and
 every copy is free to disagree with the others. Share one file and every project
 is judged against whichever project's answers got baked into it.
 
@@ -33,9 +33,9 @@ The jigs are readable from a clone on their own. Running one, or running
 `pytest`, needs those two beside it.
 
 There are no releases and no version tags, so adoption tracks the default
-branch. Jigs exist for Go and Python only. Three adapters still speak a retired
-contract and are wired to no task, which leaves `format`, `vet` and `complexity`
-gating on exit status with no per-finding detail.
+branch. Two Go adapters, `gofmt` and `govet`, still speak a retired contract and
+are wired to no task, so Go's `format` and `vet` gate on exit status with no
+per-finding detail. The Ruby jig has never run.
 
 ## What is here
 
@@ -45,6 +45,7 @@ gating on exit status with no per-finding detail.
 | `bolt.go-std-quality.yaml` | Go: `gofmt`, `go mod tidy`, build, `vet`, `golangci-lint`, race-and-shuffle tests, per-file coverage, `govulncheck` |
 | `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `ruff` complexity, `vulture`, `interrogate`, `bandit`, `pytest`, per-file line **and branch** coverage |
 | `bolt.rust-std-quality.yaml` | Rust: `cargo fmt`, `clippy`, build, tests, per-file coverage, `cargo-audit`, `cargo-deny` |
+| `bolt.typescript-std-quality.yaml`, `bolt.node-std-quality.yaml`, `bolt.deno-std-quality.yaml`, `bolt.ruby-std-quality.yaml` | TypeScript, Node, Deno and Ruby; each jig's header lists its tasks |
 | `bolt.secrets.yaml` | `gitleaks` and `detect-secrets` |
 
 `common-quality` runs the secrets jig as a child task, so adopting the common
@@ -56,9 +57,9 @@ alone.
 Needs a clone of this repository, Python 3 with PyYAML, and bolt to run the
 result. Linking works today; running does not, for the reason above.
 
-`jigs.yaml` declares four sets: `common`, `go`, `python` and `secrets`. A
-language set includes `common`, and `common` includes `secrets`, so naming one
-brings what it depends on. Run this from your clone of toolbox:
+`jigs.yaml` declares the sets: `common`, `secrets`, `base`, and one per
+language. A language set includes `common`, and `common` includes `secrets`, so
+naming one brings what it depends on. Run this from your clone of toolbox:
 
 ```sh
 python3 bin/link-toolbox.py --plan ../your-project python
@@ -92,8 +93,7 @@ plus one check at the root that no pack could run because it reads all three.
 **Adopt at the root** when the subdirectories are parts of one project rather
 than projects in their own right.
 
-The question is who owns the verdict. If a subdirectory can fail on its own
-terms, it adopts on its own terms.
+A subdirectory that should be able to fail on its own adopts on its own.
 
 ### What your project supplies
 
@@ -106,7 +106,7 @@ terms, it adopts on its own terms.
 | `.voice-baseline.json` | `wording` | nothing is accepted, which is how a project starts; entries are added by hand, each with the reason it stands |
 | `bolt.<name>.definitions.yaml` | any task carrying a placeholder | the jig's own defaults stand, which suit a project laid out like this one |
 
-Everything else a jig needs lives here. Nothing reaches outside those two places.
+Everything else a jig needs lives in toolbox.
 
 A definitions file overrides a jig's placeholders and is passed by name, so
 `bolt --definitions mine common-quality .` reads `bolt.mine.definitions.yaml`
@@ -179,9 +179,8 @@ now judged against its author's answers.
 Getting this backwards is invisible in the repository that gets it wrong. A jig
 living at its own root has a `{config_dir}` equal to its run root, so both
 spellings resolve to the same file and nothing shows. It breaks for everyone
-else: pointing the suppression register at `{config_dir}` made a project with
-one justified pragma report ten disagreements against another project's
-register, and no state that project could reach would have passed.
+else: a suppression register read from `{config_dir}` judges every adopter's
+pragmas against toolbox's own register, which no adopter can pass.
 
 ## What is deliberately not here
 

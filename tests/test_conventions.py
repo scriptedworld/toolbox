@@ -40,7 +40,7 @@ def test_every_fixture_records_the_tool_version_and_the_date():
 
 # COVERS NFR-2 | property
 def test_a_spawned_script_is_measured_when_the_parent_is_under_coverage():
-    """The guarantee that replaced 'tests must run in-process'.
+    """A test may spawn a script, because the spawned script is still measured.
 
     Asserted on the command and not on a coverage figure, because a figure
     would need a second coverage run inside this one. What can go wrong here is

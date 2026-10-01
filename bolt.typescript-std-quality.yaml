@@ -11,30 +11,18 @@
 #     bolt.deno-std-quality.yaml   deno fmt, lint, check, test, coverage, doc,
 #                                  audit, all built in
 #
-# Each is held to the same category list, which is the language-independent
-# standard taken from the Python jig:
-#
-#     shape         a formatter that reports without writing, and a linter
-#     correctness   types, and a test suite with coverage
-#     security      known vulnerabilities, and the licences of what is linked
-#     hygiene       dead code, documentation, complexity
-#
-# The two engines do not meet it equally and the jigs say so rather than
-# implying they do. Node's toolchain covers every category. Deno's covers shape
+# Each is held to the category list in `bolt.deno-std-quality.yaml`'s header,
+# taken from the Python jig, and they do not meet it equally. Node's toolchain covers every category. Deno's covers shape
 # and correctness and leaves complexity, duplicate detection, dead code,
 # licences and static security patterns open, each written down in that file
 # with the measurement behind it.
 #
-# No bun jig. Bun is not installed on the machine this was measured on, so
-# anything written for it would be unproven, and a jig nobody can run is worse
-# than an absent one. `bolt.bun-std-quality.yaml` joins the same way when there
+# No bun jig, because bun is not installed here to measure one against.
+# `bolt.bun-std-quality.yaml` joins the same way when there
 # is an installed engine and an adopter, and it is held to the same category
 # list.
 #
 # ---- what runs once and what runs per engine ---------------------------------
-#
-# This is the decision the composite exists to make, so it is written down
-# rather than left to be inferred from the task list.
 #
 # The full standard runs ONCE, under {standard}. prettier, eslint, tsc, knip,
 # license-checker and npm audit read source files and manifests. None of them
@@ -42,9 +30,8 @@
 # running a second full engine jig would ask one question twice and take twice
 # as long to give the same answer.
 #
-# What genuinely varies is whether the suite RUNS under an engine. That is the
-# portability claim, it is the only thing a second engine can falsify, and it is
-# the whole reason a project claims to support one. So each additional engine
+# What varies is whether the suite runs under an engine, which is what a
+# project claims when it claims to support one. So each additional engine
 # contributes one task: its suite, under its own runtime.
 #
 # It is one task and not a composed jig because bolt cannot run part of a jig.
@@ -57,7 +44,7 @@
 # `@types/node` are the ones that hide deno's globals from deno, and the two
 # cannot be satisfied at once.
 #
-# The cost of the split, stated so it is not discovered: the secondary engine's
+# The cost of the split: the secondary engine's
 # suite is not covered by a coverage minimum here. Coverage was judged once,
 # under {standard}, against the same source. A second profile from a second
 # engine would measure the same lines through a different runtime, and gating on
@@ -113,8 +100,7 @@ definitions:
 tasks:
   # ---- the standard, once -----------------------------------------------------
 
-  # The adapter is not optional and this is the trap the whole composition
-  # pattern turns on. Bolt exits 0 whenever it carried a run out, whatever the
+  # The adapter is required. Bolt exits 0 whenever it carried a run out, whatever the
   # tools concluded, so a composed task naming no adapter gets the generic
   # exit-code one and passes however badly the child failed.
   #

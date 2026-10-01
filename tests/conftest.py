@@ -51,15 +51,9 @@ def script_argv(path: Path | str, *args: str) -> list[str]:
     Under coverage when the parent is. These scripts are spawned, not called,
     because the shebang, the imports, and where `main()` writes its envelope
     are all part of the contract and an in-process call proves none of them. A
-    spawned process is invisible to the parent's coverage, though, so without
-    this every script tested only this way reported 0% with a full suite behind
-    it: `adapters/go/coverage.py` measured 0 of 96 lines, and
-    `adapters/common/bolt-result.py` 0 of 65.
-
-    That is worse than a gap, because the number was going to be gated. A
-    per-file threshold reading those figures would have failed two well-tested
-    adapters and pressed whoever fixed it to rewrite good subprocess tests as
-    weaker in-process ones to move a number that was measuring the wrong thing.
+    spawned process is invisible to the parent's coverage, so without this a
+    script tested only as a subprocess reports 0% and fails the per-file gate
+    however well it is tested.
 
     `--parallel-mode` makes each child write its own data file, and the jig's
     `tests` task runs `coverage combine` before reporting, which folds them back
@@ -89,9 +83,8 @@ def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode
     The coverage adapters take `--evidence`, `--work-dir` and `--exitcode` and
     write `output.yaml` into the work directory, where the stdin-contract
     adapters the `adapter` fixture serves read a record and print an envelope.
-    This is that second shape, and it is here rather than in each test file
-    because it was written out twice, identically, and pylint's R0801 was right
-    about it.
+    This is that second shape, shared here so each coverage adapter's tests
+    run it the same way.
 
     As a subprocess, because an in-process call cannot catch a broken shebang, a
     missing import, or a `main()` that writes somewhere other than where it was

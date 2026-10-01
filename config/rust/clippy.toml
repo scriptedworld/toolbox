@@ -5,7 +5,7 @@
 #
 # Not discovered from the project tree, for the same reason the golangci config
 # is passed explicitly: a project dropping its own clippy.toml would silently
-# relax the gate, and the jig carries the rule.
+# relax the gate.
 #
 # The numbers match the other language jigs, so a project moving between
 # languages is held to the same bar:
@@ -13,15 +13,14 @@
 #     15  complexity      5  arguments      60  lines      4  nesting
 #
 # Cognitive, not cyclomatic, and it is the one metric Rust cannot match to the
-# others. clippy has no cyclomatic lint at all: `cognitive_complexity` was named
-# `cyclomatic_complexity` until 2019 and was renamed because it never measured
-# that, weighting nesting instead of counting paths. So Rust reports cognitive
+# others. clippy has no cyclomatic lint at all: `cognitive_complexity` weights
+# nesting instead of counting paths. So Rust reports cognitive
 # complexity where Go reports both and Python reports both.
 #
 # What that costs: a flat function with a sixteen-arm match scores badly under
 # cyclomatic and fine under cognitive, so Rust will not catch that shape here.
-# `bolt.common-quality.yaml` says why measuring every language with one tool
-# is worse than this.
+# `bolt.common-quality.yaml` says why every language is not measured with one
+# tool instead.
 cognitive-complexity-threshold = 15
 too-many-arguments-threshold = 5
 too-many-lines-threshold = 60

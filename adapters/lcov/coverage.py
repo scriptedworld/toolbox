@@ -7,9 +7,7 @@ context in statistics and nothing branches on it. The Go adapter beside this one
 makes the same choice for the same reason, and the two are meant to read alike.
 
 A file with no test at all still appears in the profile with every line at count
-0, so this sees it as 0% rather than not seeing it. That matters: a per-file gate
-that read only the files it found would silently pass exactly the files nobody
-had written a test for.
+0, so this reports it at 0% and fails it.
 
     coverage.py --min 80 --min-branch 80 [--exclude REGEX]...
                 --evidence PROFILE --work-dir DIR
@@ -23,11 +21,9 @@ returning a verdict. No stdin is supplied.
 Bolt checks declared evidence exists before invoking an adapter, so a missing
 profile arrives as its `evidence-missing` verdict and never reaches here.
 
-Lines, not statements, is the honest name for what lcov carries. Go's profile
-counts statements per block; lcov's `DA` records count executable lines. The
-threshold is the same number against a slightly different denominator, and
-calling it lines here is what stops a reader comparing the two as though they
-measured one thing.
+lcov carries lines, not statements. Go's profile counts statements per block;
+lcov's `DA` records count executable lines. The threshold is the same number
+against a different denominator, so the reasons here say lines.
 
 Branch records are read where they exist, and on a stable Rust toolchain they do
 not. The lcov format carries `BRDA` records and this adapter reads them.
@@ -42,32 +38,24 @@ with exit 101 instead of being quietly ignored. This decides whether a gate
 exists, so recheck it on a newer rustc.
 
 So the Rust jig sets no branch minimum, and `branch_measured` in the statistics
-below reports false instead of letting a threshold pass quietly on a zero
-denominator. A check that looks like it could fail and cannot is worse than one
-that is plainly absent.
+below reports false instead of letting a threshold pass on a zero denominator.
 
-This file is named for a format and not a language. lcov is what
-cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno jigs read the
-same records with the same judgement, per file, and none of them owns it.
+lcov is what cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno
+jigs read the same records with the same per-file judgement.
 
 The languages are not level on branches, and the jigs say so. Python's
 coverage.py measures branches on the stable toolchain, so the Python jig gates
 them. Node and Deno do too: node's lcov reporter and `deno coverage --lcov` both
 write `BRDA` records with no extra flag. Go has no branch mode at all. Rust
-could on nightly and does not, because the estate builds on stable. Holding
-every language to lines would discard a guarantee most of them have for free;
-reporting them all as though they had it would claim one that nothing
-established.
+could on nightly and does not, because the estate builds on stable. Each jig
+gates branches where its toolchain measures them.
 """
 
 # pylint: disable=duplicate-code
 #
-# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
-# by path from a directory that is not a package, so none can import another,
-# so anything two of them must both do is written twice. R0801 finds a different
-# pair each time one is dissolved: the coverage adapters' judgement, the
-# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
-# with what would retire it.
+# Every script in `bin/` and `adapters/` is spawned by path from a directory that
+# is not a package, so none can import another and shared code is written twice.
+# Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
 import argparse
 import pathlib
@@ -161,9 +149,9 @@ def shorten(files):
 def test_failure(path):
     """Return a reason when the test run itself failed, else None.
 
-    Bolt captures the status to a file rather than passing it, so an absent or
-    unreadable one is treated as a failure: an adapter that assumed success
-    where it could not tell would report the guarantee it exists to check.
+    Bolt captures the status to a file rather than passing it. An absent or
+    unreadable one is treated as a failure, since the suite's outcome is then
+    unknown.
     """
     if not path:
         return None
@@ -200,11 +188,10 @@ def arguments():
     # that one of its arms ran, so the two have to be settable apart even when
     # they agree.
     #
-    # 80 is measured, not conventional. When it was set, the worst per-file
-    # branch figure across toolbox's own checkers was 84.1%
-    # (`bin/link-toolbox.py`) against a worst line figure of 91.8% in the same
-    # file, so 80 clears every file that has tests with a little headroom and
-    # fails one that has none.
+    # 80 comes from toolbox's own checkers: the worst per-file branch figure
+    # measured 84.1% (`bin/link-toolbox.py`) against a worst line figure of
+    # 91.8% in the same file, so 80 clears every file that has tests with a
+    # little headroom and fails one that has none.
     ap.add_argument("--min-branch", dest="min_branch", type=float, default=80.0)
     ap.add_argument("--exclude", action="append", default=[])
     ap.add_argument("--evidence", action="append", default=[])
@@ -229,9 +216,8 @@ def merged_profile(paths):
 
 
 # The two metrics differ only in what they are called and what the denominator
-# is named in the reason, so they are described rather than written twice. That
-# also keeps `judge` below the cognitive limit: inlining both arms took it to 22
-# against a limit of 15, which is the shape complexipy exists to catch.
+# is named in the reason, so they are described rather than written twice, which
+# also keeps `judge` under the cognitive-complexity limit of 15.
 LINES = {
     "kind": "coverage-below-minimum",
     "unit": "lines covered",
@@ -345,8 +331,8 @@ def main():
 
     # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the profile. So it answers for the
-    # test run as well: a suite that failed while leaving a profile behind would
-    # otherwise be reported as a pass with a coverage number beside it.
+    # test run as well, and a failed suite fails the task even when it left a
+    # profile behind.
     failed = test_failure(args.exitcode)
 
     if not args.evidence:

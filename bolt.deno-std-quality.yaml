@@ -6,9 +6,8 @@
 # file and `bolt.node-std-quality.yaml` both exist and neither is a runtime knob
 # of the other. Deno ships a formatter, a linter, a type checker, a test runner,
 # a coverage reporter and an auditor in one binary; Node reaches five npm
-# packages for the same ground. A single file spanning both would be a template
-# of placeholders standing in for the very things a standard is supposed to
-# state.
+# packages for the same ground. A single file spanning both would replace with
+# placeholders the tools a standard has to name.
 #
 # `bolt.typescript-std-quality.yaml` is the composite that runs an adopter's
 # declared engines. This jig is what a Deno-first project adopts on its own.
@@ -24,9 +23,8 @@
 #
 # This is the shorter jig and it is also the weaker one. Deno's built-ins cover
 # shape and correctness completely and leave four holes in security and hygiene
-# that the Node toolchain fills. Each is written down under "not here" at the
-# foot of this file with the measurement that established it, because a hole a
-# reader has to discover is worse than one the file admits to.
+# that the Node toolchain fills. Each is listed under "not here" at the foot of
+# this file with the measurement that established it.
 #
 # Measured against deno 2.9.7 throughout. Where a figure decides whether a gate
 # exists at all, re-measure it on a newer deno rather than trusting the number.
@@ -100,8 +98,7 @@ tasks:
   # ---- shape ------------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check
-  # is a check with a side effect, and in CI it produces a green run against a
-  # tree nobody has seen.
+  # leaves CI green against a tree nobody has seen.
   #
   # Exclusions come from `deno.json`'s `exclude` and `fmt.exclude`, which are the
   # project's, so this jig names none. That is deno's own convention and the same
@@ -126,8 +123,7 @@ tasks:
   # The trailing `.` is load-bearing and its absence is a silent pass. Measured:
   # `deno check` with no path argument exits 0 immediately having checked
   # nothing, while `deno check .` checked ten files in the same tree. A task
-  # written without it would pass forever, which is the `test -f` failure the Go
-  # jig warns about wearing a different spelling.
+  # written without it would always pass.
   - name: types
     description: deno's type checker is satisfied over the whole tree
     command: deno check .
@@ -184,8 +180,8 @@ tasks:
   # evidence a side effect of a default; `deno coverage --lcov --output` states
   # what this task produces.
   #
-  # Joined with `;` and an explicit `exit`, not with `&&`, and that is a
-  # correction rather than a style. With `&&` a failing suite skips the coverage
+  # Joined with `;` and an explicit `exit`, not with `&&`. With `&&` a failing
+  # suite skips the coverage
   # step, no profile is written, and bolt reports
   # `tests declared coverage.lcov and did not write it`, which is red for the
   # right run and names the wrong thing, sending a reader after a jig fault when
@@ -203,7 +199,7 @@ tasks:
   #
   # `--no-prompt` literally as well as in the slots, so an adopter's overrides
   # cannot remove it. Without it a missing permission becomes an interactive
-  # prompt, and a gate that waits for a keystroke is a gate that hangs.
+  # prompt, and the gate hangs waiting for a keystroke.
   #
   # The adapter is the one the Rust and Node jigs use too, and it is shared
   # because it reads lcov, not because it knows a language. It answers
@@ -230,10 +226,8 @@ tasks:
   # `--test-coverage-include-all` puts exactly that file in the report at 0% and
   # fails the gate, and deno has no counterpart flag.
   #
-  # This matters more than its size suggests, because hard rule 5's whole
-  # reason for judging coverage per file is that a well-tested file must not
-  # carry an untested one, and the file with no test at all is the case it is
-  # aimed at. A Deno-only adopter does not have that guarantee and should know
+  # Coverage is judged per file so that a well-tested file cannot carry an
+  # untested one, and a file with no test at all is the first such case. A Deno-only adopter does not have that guarantee and should know
   # it. `dead-code` would be the compensating check and deno has none of those
   # either; see "not here".
   - name: tests

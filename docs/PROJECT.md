@@ -30,9 +30,8 @@ or `config/` without `{config_dir}`, and any jig that prefixes an `adapter:`
 with `{config_dir}`, which would resolve twice.
 
 `{config_dir}` resolves against the symlink's own directory and not its
-target. That was measured, not assumed, and it is why an adopter needs
-its own `bin/` and `adapters/` links instead of simply naming a jig that lives
-elsewhere.
+target, so an adopter needs its own `bin/` and `adapters/` links and cannot
+simply name a jig that lives elsewhere.
 
 ## Layout
 
@@ -46,11 +45,17 @@ elsewhere.
                                  security-tests, tests with per-file line and
                                  branch coverage
     bolt.rust-std-quality.yaml   Rust: format, lint, build, tests with per-file
-                                 coverage, vuln, licences. Adopted from bolt on
-                                 2026-09-03. Lines, not branches: cargo-llvm-cov
-                                 needs nightly for those.
+                                 coverage, vuln, licences. Lines, not branches:
+                                 cargo-llvm-cov needs nightly for those.
+    bolt.typescript-std-quality.yaml, bolt.node-std-quality.yaml,
+    bolt.deno-std-quality.yaml, bolt.ruby-std-quality.yaml
+                                 the other languages; the Ruby jig has never run
     bolt.secrets.yaml            gitleaks, detect-secrets
+    bolt.toolbox.definitions.yaml               this repository's own overrides
+    bolt.requirements-directory.definitions.yaml for an adopter whose
+                                 requirements are a directory
     jigs.yaml                    which files a project links to adopt a set
+    just/base.just               the shared recipes, linked by the base set
 
     bin/            checkers written here, because no tool does the job
       test-traceability.py     tests cite what they discharge; requirements have tests
@@ -59,11 +64,12 @@ elsewhere.
       voice-tells.py           the wording the writing standard names, by pattern
       voice-review.py          a model's findings on the same text, run by hand,
                                never a gate
+      flay-envelope            flay's report as an envelope, for the Ruby jig
     adapters/       record -> envelope, per task that needs one
       common/bolt-result.py    a child bolt run's verdict becomes this task's
       go/{gofmt,govet,coverage}.py
       python/coverage.py       Cobertura: lines and branches, per file
-      rust/coverage.py         lcov: lines per file, and branches where a
+      lcov/coverage.py         lcov: lines per file, and branches where a
                                toolchain emits them
       */__init__.py            not packages in use; they are what lets coverage
                                see an adapter no test executed
@@ -91,54 +97,39 @@ adopter overriding a placeholder passes its own file instead, and one taking the
 defaults passes none. The shared jigs exclude `bin/` and `adapters/`, because in
 every other adopter those hold symlinks to this repository's checkers and the
 adopter's tools would grade toolbox's code as their own. This repository holds
-the real files, so taking the default would stop it gating its own checkers,
-which would silence a gate instead of scoping it. `bolt.toolbox.definitions.yaml`
-carries the override and says so.
+the real files, so taking the default would stop it gating its own checkers.
+`bolt.toolbox.definitions.yaml` carries the override and says so.
 
 One jig and one directory per run. Flags come before the positionals, and the
-jig is named bare, read as `bolt.<name>.yaml` from `--config-dir`. Running three
-in one invocation was the overlay model, which the current CLI does not have.
+jig is named bare, read as `bolt.<name>.yaml` from `--config-dir`.
 
 **Read `result.yaml`, never bolt's exit status.** Bolt exits 0 when the run
 completed, whatever the tools concluded, and the verdict is in the artifact. It
 also exits 0 when it refuses the jig outright.
-
-All three runs report `success: true` in `result.yaml`. Read that artifact, never
-bolt's exit status.
 
 The gate cannot be asserted from inside the suite, which is why NFR-5 stays
 marked open: NFR-1 has the suite running with none of the tools the jigs name, so
 running the three jigs is the only check there is.
 
 `complexity` measures each adopter's own code, because the shared jigs exclude
-the directories adoption fills. Before that an adopter was graded on the checkers
-it had adopted instead of on its own source.
+the directories adoption fills. It does not read a script with no file
+extension.
 
-One gap remains in what `complexity` reads: it misses a script with no file
-extension, which is how one adopter's only source file went unread.
-
-Every settled requirement is cited by a test, 101 of 101 at `4997fb3`, and two
-rows carry `[?]`: `FR-6.2` and `NFR-5`.
+Every settled requirement is cited by a test, and two rows carry `[?]`:
+`FR-6.2` and `NFR-5`. The `traceability` task prints the count.
 
 A COVERS mark is written `# COVERS FR-1.2 | kind`, with no colon; the colon
 form fails (FR-4.26). A repository whose requirements are a directory runs
 common-quality with `--definitions requirements-directory`, and the jig's
 default flips to `docs/REQUIREMENTS` once no repository holds a single file.
 
-Nine of those citations were written by holding the jig documents and the scripts
-themselves to what the requirement says, which is how a property that reads like
-a design statement turns out assertable. A jig carrying the rule and never the
-subject becomes: no command names `REQUIREMENTS.md` or `SUPPRESSIONS` except
-through a placeholder. An adapter reading only what it is handed becomes: no
-adapter imports a clock, a socket or `subprocess`. The suite running without the
-toolchain becomes: no test spawns anything but the interpreter and git.
+Some requirements that read as design statements are tested by holding the jig
+documents and the scripts to them. No command names `REQUIREMENTS.md` or
+`SUPPRESSIONS` except through a placeholder; no adapter imports a clock, a
+socket or `subprocess`; no test spawns anything but the interpreter and git.
 
-Three requirements were retired on the way, because they described a toolbox that
-had changed under them. `FR-1.1` and `FR-7.2` said jigs compose by overlay, and
-bolt runs one jig with composition as a child task. `FR-3.3` said an adapter
-touches no filesystem, and the four flag-contract adapters read their evidence
-and write `output.yaml`. `FR-1.7`, `FR-7.15` and `FR-3.8` replace them, and
-`REQUIREMENTS.md`'s `## Retired` section holds the pointers.
+Retired requirements are listed with their replacements in `REQUIREMENTS.md`'s
+`## Retired` section.
 
 ## Adoption
 
@@ -164,27 +155,20 @@ ever becoming a gate task.
 - `README.md`, for somebody arriving cold, and the adoption instructions.
 - `CONTRIBUTING.md`, how to run the gate here and what a change has to satisfy.
 - `SECURITY.md`, the trust boundary and how to report a vulnerability.
-- `REQUIREMENTS.md`, 60 requirements, still one file and no longer forced to be.
+- `REQUIREMENTS.md`, what must be true, one row per requirement.
 - `NEXT_STEPS.md`, the open decisions, never the queue.
 - `docs/PATTERNS/testing-checkers-and-adapters.md`, how the two contracts are
   tested and why they differ.
 - `docs/DECISIONS/` and `docs/LESSONS/`, one file per decision and per lesson.
 
-`REQUIREMENTS.md` and `SUPPRESSIONS` are still single files and are no longer
-forced to be. They stayed single because `--requirements <DIR>` died with an
-unhandled `IsADirectoryError`, the guard being `.exists()`, which a directory
-satisfies. `shared-checkers/10` closed that at `cc65aad`: both checkers read a
-directory or a file, and `.retired` names a retired requirement without needing
-a `## Retired` heading.
+`REQUIREMENTS.md` and `SUPPRESSIONS` are single files. Both checkers read either
+a file or a directory, and in a directory `.retired` names a retired requirement
+without a `## Retired` heading, so splitting either is open and changes no
+verdict.
 
-Splitting a copy of this repository's own document, 59 rows into 59 files, gave
-byte-identical output from both forms: `43 of 55 requirements covered; 4 open
-and exempt`. So the split is available and is a separate change nobody has
-made. `skid` and `agent-support` have made theirs.
-
-There is no `SUPPRESSIONS` file and no `docs/SUPPRESSIONS/`, because nothing here
-is silenced. See `docs/DECISIONS/no-suppressions-file-while-nothing-is-silenced.md`.
-The same holds for `docs/MOCKS/`.
+`SUPPRESSIONS` registers every pragma here, S-1 to S-4. There is no
+`docs/MOCKS/`: tests hand fakes in through each script's own parameters, and
+nothing is patched.
 
 There is no project `CLAUDE.md`. Every rule that applies here comes from the
 global one.
@@ -196,7 +180,7 @@ global one.
     anvil     builds images carrying the tools a jig `requires:`.
 
 `requires:` declares **executables**, not libraries. Nothing here declares that
-the adapters need PyYAML: it works by ambient availability, which is why
-`types-PyYAML` was unavailable and `pyproject.toml` carries a mypy override in
-place of the stub package. If anvil is ever to install from a declaration instead
-of a guess, that gap is what it will hit.
+the adapters need PyYAML: it works by ambient availability, and
+`pyproject.toml` carries a mypy override in place of the `types-PyYAML` stub
+package. anvil cannot install the adapters' libraries from a declaration until
+one exists.

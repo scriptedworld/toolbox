@@ -6,8 +6,7 @@ without this marker an adapter with no test is absent from the report rather
 than present at 0%, which is exactly the file a per-file coverage gate exists
 to catch. `../../pyproject.toml` carries the numbers.
 
-Naming the leaf directories in `[tool.coverage.run] source` also works and was
-rejected: it makes each Cobertura filename relative to its own leaf, so the
-three `coverage.py` adapters all report as "coverage.py" and merge into one
-entry.
+Naming the leaf directories in `[tool.coverage.run] source` instead would make
+each Cobertura filename relative to its own leaf, so the three `coverage.py`
+adapters would all report as "coverage.py" and merge into one entry.
 """

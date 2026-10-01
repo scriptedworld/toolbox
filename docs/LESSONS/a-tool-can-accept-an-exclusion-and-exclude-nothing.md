@@ -4,7 +4,7 @@ Six tools in `bolt.python-std-quality.yaml` spell exclusion six ways. Three of
 them accept the obvious spelling, exit 0, and exclude nothing at all.
 
 Measured against a planted violation, a deliberately bad `.py` in a
-directory that was supposed to be skipped. The number is findings in that file,
+directory meant to be skipped. The number is findings in that file,
 before the flag and after it:
 
     ruff        --exclude .ephemera,bin,adapters          8 -> 0
@@ -21,18 +21,17 @@ Every wrong form was accepted without complaint. `interrogate` reported 90.9%
 docstring coverage with the comma form and 97.9% with repeated `-e`, which is
 the difference between grading this repository's code and grading the adopter's.
 
-## What it cost
+## What it costs
 
-Nothing, because the planted violation caught all four before they shipped. The
-cost was the habit that produced it: an exclusion had already been added to the
-`complexity` task months earlier in a form nobody tested, and `complexity`
-passed in `agent-support` having read 23 functions of toolbox's code and none of
-the adopter's.
+An exclusion added in an untested form ships unnoticed. The `complexity` task
+carried one, and passed in `agent-support` having read 23 functions of toolbox's
+code and none of the adopter's.
 
 ## What to do
 
 **Plant a violation in the directory you are excluding, and count findings with
-the flag and without.** An exclusion that changes no number is not excluding.
+the flag and without.** If the number does not change, the flag excludes
+nothing.
 
     ruff check .            8 findings
     ruff check --exclude X  0 findings     the flag works
@@ -48,9 +47,6 @@ dot, and the two flags read as synonyms.
 
 ## The general shape
 
-This is the false-green family. A check that runs, reports nothing and exits 0
-is indistinguishable from a check that was never pointed at anything, and the
-green row reads as a checked property either way.
-
-The wider version is a claim outliving its own check, where whatever would
-falsify the claim lives on a shorter timescale than the claim does.
+A check that runs, reports nothing and exits 0 is indistinguishable from a check
+that was never pointed at anything, and the green row reads as a checked
+property either way.

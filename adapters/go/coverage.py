@@ -6,9 +6,7 @@ lets a well-tested file carry an untested one, so the total is reported as
 context in statistics and nothing branches on it.
 
 A file with no test at all still appears in the profile with every statement
-at count 0, so this sees it as 0% rather than not seeing it. That matters: a
-per-file gate that read only the files it found would silently pass exactly
-the files nobody had written a test for.
+at count 0, so this reports it at 0% and fails it.
 
     coverage.py --min 80 [--exclude REGEX]... --evidence PROFILE --work-dir DIR
 
@@ -24,12 +22,9 @@ profile arrives as its `evidence-missing` verdict and never reaches here.
 
 # pylint: disable=duplicate-code
 #
-# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
-# by path from a directory that is not a package, so none can import another,
-# so anything two of them must both do is written twice. R0801 finds a different
-# pair each time one is dissolved: the coverage adapters' judgement, the
-# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
-# with what would retire it.
+# Every script in `bin/` and `adapters/` is spawned by path from a directory that
+# is not a package, so none can import another and shared code is written twice.
+# Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
 import argparse
 import pathlib
@@ -100,9 +95,9 @@ def shorten(files):
 def test_failure(path):
     """Return a reason when the test run itself failed, else None.
 
-    Bolt captures the status to a file rather than passing it, so an absent or
-    unreadable one is treated as a failure: an adapter that assumed success
-    where it could not tell would report the guarantee it exists to check.
+    Bolt captures the status to a file rather than passing it. An absent or
+    unreadable one is treated as a failure, since the suite's outcome is then
+    unknown.
     """
     if not path:
         return None
@@ -210,8 +205,8 @@ def main():
 
     # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the profile. So it answers for the
-    # test run as well: a suite that failed while leaving a profile behind would
-    # otherwise be reported as a pass with a coverage number beside it.
+    # test run as well, and a failed suite fails the task even when it left a
+    # profile behind.
     failed = test_failure(args.exitcode)
 
     if not args.evidence:

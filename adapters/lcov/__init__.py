@@ -6,13 +6,11 @@ without this marker an adapter with no test is absent from the report rather
 than present at 0%, which is exactly the file a per-file coverage gate exists
 to catch. `../../pyproject.toml` carries the numbers.
 
-Naming the leaf directories in `[tool.coverage.run] source` also works and was
-rejected: it makes each Cobertura filename relative to its own leaf, so the
-three `coverage.py` adapters all report as "coverage.py" and merge into one
-entry.
+Naming the leaf directories in `[tool.coverage.run] source` instead would make
+each Cobertura filename relative to its own leaf, so the three `coverage.py`
+adapters would all report as "coverage.py" and merge into one entry.
 
-The directory is named for the format, not for a language. lcov is what
-cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno jigs read the
-same file, and a copy per language would be one more thing in this repository
-to exist twice with nothing detecting whether the copies agree.
+The directory is named for the format. lcov is what cargo-llvm-cov, node and
+deno all emit, so the Rust, Node and Deno jigs read one adapter and no copy per
+language can drift from it.
 """

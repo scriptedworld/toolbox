@@ -42,7 +42,7 @@ def test_each_unformatted_file_becomes_one_reason(adapter):
 
 # COVERS FR-3.4 | property
 def test_a_reason_names_its_checker_and_how_to_fix_it(adapter):
-    """A reason nobody can act on is a reason nobody acts on."""
+    """Each reason names the checker and carries the command that fixes the file."""
     envelope = adapter(gofmt, record(fixture_text("gofmt/unformatted.txt")))
     first = envelope["reasons"][0]
     assert first["checker"] == "format"

@@ -1,7 +1,5 @@
 # A checker is only exercised by the repository it happens to be pointed at
 
-Learned from a crash that survived review and a full clean run.
-
 ## What it cost
 
 `test-traceability.py` sorted requirement ids with a key that compared an `int`
@@ -14,10 +12,9 @@ raises:
 
     TypeError: '<' not supported between instances of 'str' and 'int'
 
-`bolt` has no lettered requirement id, so bolt could never have found it. It
-passed review, and it passed a full run against bolt. It surfaced on the first
-run against `qwark`, which has eleven: `FR-4.9a`, `FR-4.13a`, `FR-10.3b` and the
-rest.
+`bolt` has no lettered requirement id, so a full run against bolt passes.
+`qwark` has eleven, `FR-4.9a`, `FR-4.13a`, `FR-10.3b` and the rest, and a run
+against it raises.
 
 The fix keys every segment as `(number, suffix)`, so both shapes compare:
 
@@ -28,28 +25,25 @@ The fix keys every segment as `(number, suffix)`, so both shapes compare:
 
 These checkers are shared. They get pointed at repositories their author has
 never seen, and whoever runs them will read a traceback as *their* repository
-being broken. A crash is at least loud. The worse case is the same class of bug giving
-a wrong answer quietly, which is what `suppression-register.py` scanning
-`rglob("*.go")` does for every non-Go adopter.
+being broken. A crash is loud. A wrong answer given quietly is not: a scan
+that reads only one language's files passes every adopter written in another.
 
-One repository is one sample. Two repositories with different conventions is the
-first thing that counts as a test.
+A checker run against one repository has been tested on that repository's
+conventions and no others.
 
 ## What to do with it
 
-Write tests. See `docs/PATTERNS/testing-checkers-and-adapters.md`. The suite
-would have caught this:
-`test_a_lettered_requirement_id_sorts_without_raising` pins it as a regression,
-and it needs no repository to run.
+Write tests, as `docs/PATTERNS/testing-checkers-and-adapters.md` describes.
+`test_a_lettered_requirement_id_sorts_without_raising` pins this case and needs
+no repository to run.
 
 **Where a checker takes a convention as input, whether an id format, a marker or
 a pragma spelling, get a second real example before believing it works.**
 
 ## A second instance
 
-Estimating how many `[?]` markers qwark carried was done with
-`grep -oE '\| *\[[^]]*\] *\|? *$'`. It matched 9 of a true 19, and the wrong
-blast-radius figure was known before the checker itself corrected it.
+Over qwark's requirements, `grep -oE '\| *\[[^]]*\] *\|? *$'` matches 9 of the
+19 `[?]` markers the checker counts.
 
 **Count with the checker, never with a regex over the same table.** A second
-parser of one format is a second thing to be wrong.
+parser of one format can disagree with the first.

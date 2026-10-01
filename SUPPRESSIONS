@@ -5,14 +5,9 @@ the question that was asked and the answer that was given. **A suppression that
 is not here is a defect**, because the register is the only thing standing
 between a silenced check and nobody remembering why.
 
-This register supersedes
-`docs/DECISIONS/no-suppressions-file-while-nothing-is-silenced.md`. That decision
-held while nothing was silenced, when a register would have been a document
-about an empty set, and it said it would expire once something was.
-
 ## S-1, bandit's subprocess findings in the test tree
 
-Sixteen marks, two rules, eight files, and every one is a test. `B404` for
+Eighteen marks, two rules, eight files, and every one is a test. `B404` for
 importing `subprocess`, `B603` for calling it without `shell=True`.
 
     tests/conftest.py                         # nosec B404    import subprocess
@@ -32,13 +27,6 @@ importing `subprocess`, `B603` for calling it without `shell=True`.
     tests/test_traceability.py                # nosec B404    import subprocess
     tests/test_traceability.py                # nosec B603    the script-runs-as-a-script case
 
-There were once sixteen marks across seven files, and the three that went show
-what the register is for. The Rust and Python coverage adapter tests each carried
-their own eighteen-line runner, identical apart from the evidence filename, and
-pylint's R0801 said so. Extracting it to `conftest.py`'s `run_flag_adapter`
-removed a copy of the subprocess call along with the duplication, and this
-checker then failed until the register followed.
-
 The rows carry the pragma as it is spelled in the source, and `×N` where a file
 holds more than one. That is what makes this an index and not a description of
 one: the checker reads these rows with the same patterns it scans the source
@@ -53,7 +41,7 @@ a design choice worth seeing rather than noise to silence". Marking each site is
 what that sentence asks for. Excluding the test tree would have been one line
 and would have stopped anyone ever seeing a new one appear.
 
-`conftest.py`'s git helper is the one new reason. Both voice checks read a real
+`conftest.py`'s git helper is there because both voice checks read a real
 repository: the wording check asks git for the tracked files, the staged copy of
 one and the messages after a start commit. A test of either builds a repository
 and commits into it, so the helper runs git the way the checker does.
@@ -86,10 +74,8 @@ parses was written by the `tests` task in the same jig, seconds earlier, in the
 same work directory. It is not a document arriving from anywhere.
 
 This entry retires when either `defusedxml` becomes a declared dependency or the
-adapter stops parsing XML. The first is not possible today, because `requires:`
-names executables and not libraries, and anvil's NEXT_STEPS carries that as its
-first item. Neither is close, so the marks stay and this paragraph is what a
-reader gets instead.
+adapter stops parsing XML. The first waits on `requires:` naming libraries as
+well as executables, which anvil's NEXT_STEPS carries.
 
 The module docstring carries the same reasoning at the point of use, which is
 deliberate duplication: a reader of the adapter should not have to find this
@@ -109,8 +95,7 @@ Nine marks, one rule, every standalone script here.
     adapters/python/coverage.py    # pylint: disable=duplicate-code
     adapters/lcov/coverage.py      # pylint: disable=duplicate-code
 
-The cause is structural, and it turned up three times before it was written down
-as one thing. Every script here is spawned by path, from a directory that is not
+The cause is structural. Every script here is spawned by path, from a directory that is not
 a package, and linked one file at a time into each adopter. None can import
 another. So anything two of them must both do is written twice, and R0801
 reports a different pair each time one is dissolved:

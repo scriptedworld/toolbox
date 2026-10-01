@@ -1,7 +1,5 @@
 # An uncovered settled requirement fails the gate
 
-Implemented in `05f3a52`.
-
 ## What was decided
 
 `traceability` fails when a requirement that no test cites is **settled**. It
@@ -16,12 +14,10 @@ exemption is claimed, never granted by omission.
 
 ## Why
 
-Before this, an uncovered requirement was printed as context and the task exited
-0, which left `REQUIREMENTS.md` unenforced by the one task meant to enforce it.
-
-The old exemption had been sized for open questions that cannot have a test yet,
-and it covered *every* untested requirement whatever its status. Splitting it is
-what turns a report into a gate.
+An uncovered requirement printed as context with the task exiting 0 leaves
+`REQUIREMENTS.md` unenforced by the one task meant to enforce it. The exemption
+exists for open questions that cannot have a test yet, so it covers only rows
+marked `[?]`.
 
 ## What it cost
 
@@ -32,18 +28,14 @@ Both real adopters, same tooling:
 | `bolt` | exit 1: 28 settled requirements untested, 3 open and exempt |
 | `qwark` | exit 0: 19 untested, all marked `[?]` |
 
-qwark had been marking its open decisions honestly all along, so the gate found
-nothing to complain about.
-
 ## What was rejected, and why
 
 A ratchet flag (`--allow-uncovered N`, pinned to the current count and only ever
-lowered) was offered and declined. It would have let bolt and qwark adopt the
-gate at once and burn the number down, at the cost of a knob that can be left
-permanently loose.
+lowered) is declined. It would let an adopter take the gate at once and burn the
+number down, at the cost of a knob that can be left permanently loose.
 
-Report-only with a `--strict` opt-in was offered and declined for the same
-reason: it is another report, and a gate is what was asked for.
+Report-only with a `--strict` opt-in is declined for the same reason: it is
+another report, and the requirement is a gate.
 
 ## Revisit if
 
@@ -51,6 +43,6 @@ An adopter's honest state turns out to be genuinely unrepresentable: a
 requirement that is settled, testable in principle, and that no test can reach
 for a reason nobody can fix.
 
-Reaching for `[?]` to quiet the gate is the failure mode to watch, because the
-marker says *this decision is open* and not *this is inconvenient*. A requirement
-moved to `[?]` states the open question in its own text.
+`[?]` marks an open decision. A requirement moved to `[?]` states the open
+question in its own text, so a marker used to quiet the gate shows as a row with
+no question in it.

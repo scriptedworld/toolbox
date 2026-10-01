@@ -738,13 +738,13 @@ def test_an_edit_record_or_a_this_function_opener_is_found(tmp_path, capsys, com
     ],
 )
 def test_the_owner_of_a_file_or_a_binding_is_not_the_person(tmp_path, capsys, sentence):
-    """Ownership in the filesystem sense, found in wrench, dotfiles and skid, is not a third-person reference."""
+    """Ownership in the filesystem sense is not a third-person reference."""
     assert doc_rules(tmp_path, capsys, sentence) == set()
 
 
 # COVERS FR-9.3 | negative
 def test_what_a_link_used_to_say_is_not_narration(tmp_path, capsys):
-    """A thing other than a document having said something before is ordinary prose, found in silo."""
+    """A thing other than a document having said something before is ordinary prose."""
     assert doc_rules(tmp_path, capsys, "So the manifest has to carry what the link used to say.") == set()
 
 

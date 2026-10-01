@@ -1,15 +1,13 @@
-# golangci-lint configuration, shipped inside the dev image at
-# /opt/gates/golangci.yml and passed explicitly via --config.
+# golangci-lint configuration for bolt.go-std-quality.yaml, which passes it
+# explicitly via --config.
 #
-# It is not discovered from the project tree. That is deliberate: a project
-# dropping its own .golangci.yml would silently relax the gates, which is the
-# drift this image exists to prevent. The consequence: a project with a
-# legitimate need for an exception has no per-repo escape hatch, only a `nolint`
-# directive that `nolintlint` will demand it justify.
+# It is not discovered from the project tree, because a project dropping its
+# own .golangci.yml would silently relax the gates. A project needing an
+# exception has no per-repo escape hatch, only a `nolint` directive that
+# `nolintlint` requires it to justify.
 #
-# Schema is golangci-lint v2 (pinned to v2.12.2 in Dockerfile.dev). Run
-# `just verify-config` after editing; v2 renamed and moved a number of keys and
-# the parser is strict about it.
+# Schema is golangci-lint v2. v2 renamed and moved a number of keys and the
+# parser is strict about it, so run `golangci-lint config verify` after editing.
 
 version: "2"
 
@@ -148,9 +146,8 @@ linters:
         - .Wrapf(
 
     nolintlint:
-      # A bare //nolint is a silent gate bypass. Both of these make suppression
-      # a visible, justified, reviewable act, not a way to make the linter stop
-      # talking.
+      # A bare //nolint is a silent gate bypass. Both of these require each
+      # suppression to name its linter and carry a reason.
       require-explanation: true
       require-specific: true
       allow-unused: false
@@ -176,22 +173,20 @@ linters:
       # gochecknoglobals or maintidx. A test is read most often at the worst
       # moment, when it has just failed and nobody knows why, so it has to be
       # as readable as the code it supports. A table that has outgrown the
-      # length limit is doing too much and should be several tables;
-      # "legitimately long" is the argument every long function makes.
+      # length limit is split into several tables.
 
       # Lip Gloss styles are conventionally package-level vars, which is how
       # every Charm codebase is written, because a Style is built once and
       # reused per render. gochecknoglobals flags every one of them.
       #
       # Scoped to style files and not disabled outright: the ban on
-      # package-level mutable state still holds everywhere else, and
-      # confining styles to their own file is good practice independently.
+      # package-level mutable state still holds everywhere else.
       - path: (^|/)styles?\.go$
         linters:
           - gochecknoglobals
 
 formatters:
   # v2 moved formatters out of `linters`. gofumpt is a strict superset of
-  # gofmt with no configuration surface, so there is nothing to argue about.
+  # gofmt with no configuration surface.
   enable:
     - gofumpt

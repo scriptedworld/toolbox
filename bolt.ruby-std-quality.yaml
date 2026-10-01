@@ -26,7 +26,7 @@
 #     rufo --check messy   prints "produced changes"                      exit 0
 #     bundle-audit check   no Gemfile.lock present, checked nothing       exit 0
 #
-# Four correct reports, four exit codes that only say the process ran.
+# Each report is correct and each exit code only says the process ran.
 #
 # The path rule: a path resolves against {config_dir} if it travels with this
 # jig; it stays relative to the base if it belongs to the project being checked.
@@ -39,8 +39,8 @@ requires:
   - flay
   - bundler-audit
   # The test-suite cops. They load through the `plugins:` key of a rubocop
-  # config and not through `--require`: rubocop 1.72 introduced the plugin
-  # system, and since then `rubocop --require rubocop-minitest` fails with
+  # config and not through `--require`: from rubocop 1.72, which has the plugin
+  # system, `rubocop --require rubocop-minitest` fails with
   # `cannot load such file` while `ruby -e 'require "rubocop-minitest"'`
   # succeeds on the same machine. The error names the file and not the
   # mechanism, so it reads as a missing gem.
@@ -68,8 +68,7 @@ tasks:
   # The Layout cops are the formatter, and rufo is deliberately not used. Two
   # formatters with different opinions on one tree is a disagreement the adopter
   # has to arbitrate, and rubocop is here anyway for lint. rufo would also need
-  # `-x/--simple-exit` before its exit code meant anything, which is a second
-  # way to write a check that never fails.
+  # `-x/--simple-exit` before its exit code meant anything.
   - name: format
     description: every file is rubocop-Layout clean
     command: rubocop --only Layout --format simple .
@@ -100,8 +99,7 @@ tasks:
   # The analysis rubocop does not do: feature envy, uncommunicative names,
   # duplicate method calls, nested iterators, too many statements.
   #
-  # No other language here has this. Go, Python and Rust have no smell gate, so
-  # it is the one control Ruby carries alone.
+  # The Go, Python and Rust jigs have no smell gate.
   - name: smells
     description: no reek warning outside the excluded directories
     command: >-
@@ -179,8 +177,8 @@ tasks:
 # Neither gem is declared. Named here so the gap is visible.
 #
 # brakeman. The Ruby security scanner is Rails-shaped: against plain Ruby it
-# reports almost nothing, which is a task that cannot fail. It belongs in a
-# Rails project's own jig, not the standard one.
+# reports almost nothing, so a task running it could not fail. It belongs in a
+# Rails project's own jig.
 #
 # flog. Its ABC metric is measured by `complexity` above, through a tool that
 # can be held to a threshold. flog has no threshold flag at all, so a flog task
@@ -194,5 +192,4 @@ tasks:
 #
 # Doc coverage. `yard stats --list-undoc` reports it and yard is declared, but
 # no threshold here has been argued for. The Python jig gates interrogate at
-# 80%; copying that number across without a reason is how a gate becomes
-# decoration.
+# 80%, and that number is not copied across without a reason.

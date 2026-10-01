@@ -9,11 +9,10 @@
 # a machine where both are installed, and the task reports `evidence-missing`
 # instead of a coverage figure.
 #
-# The jig runs it through `uv run`, which every Python adopter can offer: skid
-# has an environment, wrench's pack has one, and this is toolbox's. Declaring
-# the test tools here, instead of relying on what happens to be on PATH, is also
-# the direction anvil needs: `requires:` names executables, and an environment
-# is what actually has to exist.
+# The jig runs it through `uv run`, so every Python adopter declares an
+# environment, and this is toolbox's. The test tools are declared here instead
+# of taken from PATH, which also suits anvil: `requires:` names executables, and
+# an environment is what has to exist.
 [project]
 name = "toolbox"
 version = "0"
@@ -21,7 +20,7 @@ requires-python = ">=3.12"
 license = "Apache-2.0"
 
 [tool.uv]
-# No distribution is built. There is nothing here to install.
+# No distribution is built.
 package = false
 
 [dependency-groups]
@@ -29,9 +28,7 @@ package = false
 # `requires:` cannot yet declare a library. See anvil's NEXT_STEPS.
 #
 # wrench is here because `tests/test_jigs.py` validates every jig against the
-# schema wrench ships, not against a copy kept here. That settles NFR-6: a copy
-# could only be a second description free to disagree with the one being
-# enforced, and a local copy did disagree, twice.
+# schema wrench ships, not against a copy kept here (NFR-6).
 dev = ["pytest", "coverage", "pyyaml", "wrench", "mypy"]
 
 # wrench is not on a registry, so it is named by git URL, exactly as skid does.
@@ -46,9 +43,8 @@ wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "
 # default rule set does not include E501 at all, so ruff checks no length, and
 # pylint's default of 100 is the only limit in play. Lines at 101 to 103
 # characters then fail `analyse` against a limit nobody chose, while the
-# declared standard goes unenforced. That is the worst form of
-# `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`: two tools, neither
-# of which holds the number the project means.
+# declared standard goes unenforced; see
+# `docs/LESSONS/a-dead-threshold-is-a-latent-relaxation.md`.
 #
 # `line-length` drives ruff's formatter as well as its linter. No file reflows
 # at 150, because the formatter does not expand code already wrapped shorter.
@@ -57,8 +53,8 @@ line-length = 150
 
 [tool.ruff.lint]
 # E501 is line length, and it is selected explicitly because ruff's defaults
-# leave it out. Declaring the number without selecting the rule would be a limit
-# that cannot bind, which is the same fault one step earlier.
+# leave it out. Declaring the number without selecting the rule would set a
+# limit nothing enforces.
 extend-select = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
@@ -75,8 +71,8 @@ extend-select = ["E501"]
 testpaths = ["tests"]
 # bin/test-traceability.py is a checker, not a test file. It does not match
 # test_*.py because of the hyphen, and testpaths keeps collection out of bin/
-# regardless, but saying so here means a later rename cannot quietly turn a
-# checker into a collected test module.
+# regardless; this keeps a later rename from turning it into a collected test
+# module.
 python_files = ["test_*.py"]
 addopts = "-q --strict-markers"
 
@@ -86,12 +82,10 @@ branch = true
 # coverage adds a file that no test executed to the report only where it can
 # reach it as a package. The adapters are standalone scripts loaded by path, so
 # without a marker in their directories the report carries the adapters that
-# ran and silently omits every one that did not, which is exactly the file a
-# per-file coverage gate exists to catch. Without the markers, four files were
-# reported where ten existed, and the missing adapters were absent from the
-# report instead of at 0%.
+# ran and silently omits every one that did not, where a per-file gate needs
+# them reported at 0%.
 #
-# Naming the leaf directories here also works and is worse. Each Cobertura
+# The leaf directories are not named here. Each Cobertura
 # `filename` is relative to the source root that contains it, so with the leaves
 # named, `adapters/go/coverage.py`, `adapters/python/coverage.py` and
 # `adapters/lcov/coverage.py` all report as `coverage.py` and the adapter merges
@@ -100,7 +94,7 @@ branch = true
 source = ["bin", "adapters"]
 
 [tool.coverage.report]
-# The scripts are invoked by path and loaded by path, so show them by path.
+# The scripts are invoked and loaded by path, so the report names them by path.
 show_missing = true
 exclude_also = ["if __name__ == .__main__.:"]
 
@@ -108,8 +102,8 @@ exclude_also = ["if __name__ == .__main__.:"]
 # runs a bare `mypy .` and says so in its own comment. What it needs from here
 # is only that third-party imports resolve.
 #
-# `types-PyYAML` is the better answer than ignoring yaml and is not used because
-# nothing in this repository declares runtime dependencies: bolt invokes these
+# `types-PyYAML` is not used because nothing in this repository declares
+# runtime dependencies: bolt invokes these
 # scripts by path against whatever interpreter anvil built. Revisit when anvil
 # carries the stub packages: see NEXT_STEPS.
 #
@@ -126,22 +120,18 @@ ignore_missing_imports = true
 # default rule set: 16 findings here, one of them cross-module analysis and the
 # rest rules ruff already runs.
 #
-# An allowlist, not a denylist. A denylist has to be remembered every time ruff
-# gains a rule and will not be; an allowlist is wrong in the safe direction, by
-# missing a new pylint check instead of silently running a duplicate. The shape
-# is wrench's, adopted here on its reasoning and not by copying its list.
+# An allowlist, because a denylist would need updating every time ruff gains a
+# rule. An allowlist errs by missing a new pylint check rather than running a
+# duplicate. wrench uses the same shape with its own list.
 #
-# Every entry needs more than one file in view, or type inference. That is the
-# test each one is held to, and it is what pylint's slowness is being paid for.
+# Every entry needs more than one file in view, or type inference.
 # `duplicate-code` is the clearest case: ruff has no equivalent and cannot have
 # one, because it is a whole-program question.
 #
-# What is deliberately not here, so it is not added back by habit:
-# `line-too-long` and `invalid-name` and `missing-function-docstring` are all
+# Deliberately not here: `line-too-long` and `invalid-name` and `missing-function-docstring` are all
 # single-file judgements. ruff owns line length above, at the estate's 150.
 # The module names it objects to are hyphenated because these are executables
-# invoked by path, not importable modules, which is deliberate and is why a
-# naming rule is the wrong instrument for them.
+# invoked by path, not importable modules.
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["all"]
 enable = [

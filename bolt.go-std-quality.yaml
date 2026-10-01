@@ -10,8 +10,8 @@
 #
 # Every task gates on its exit code, and two only do so because their commands
 # were written to.  `gofmt -l` and `test -f` exit 0 whatever they find, so a
-# task running them bare passes forever.  If a command's exit status does not
-# answer the question the task asks, rewrite the command or drop the task.
+# task running them bare always passes.  A command whose exit status does not
+# answer the task's question is rewritten, or the task is dropped.
 
 version: "1.0.0"
 
@@ -27,8 +27,7 @@ requires:
 # calls main(). Hard rule 5 says measure it and never exclude it, so the
 # binary is built with -cover, run once, and its profile merged with the test
 # one. Both are declared evidence of the `tests` task and both reach the
-# adapter, which is what keeps this inside FR-4.6: one script, one exit code,
-# one work directory.
+# adapter, which keeps this inside FR-4.6's single script and work directory.
 #
 # A placeholder is one argument, so this names a program and never a command
 # line. FR-4.16c holds a defined value to a scalar and substitute.go shell-
@@ -72,8 +71,7 @@ tasks:
     command: test -z "$(gofmt -l .)"
 
   # -diff exits non-zero when go.mod or go.sum would change, without changing
-  # them. A tidy that mutates the tree during a check is a check with a side
-  # effect.
+  # them, so the check leaves the tree as it found it.
   - name: tidy
     description: go.mod and go.sum are already tidy
     command: go mod tidy -diff
@@ -94,12 +92,10 @@ tasks:
   # one task and not forty-two.
   #
   # The config is named explicitly. `golangci-lint run` with no --config
-  # searches for one and, finding none, silently runs its five default linters:
-  # a far weaker gate wearing the same name and reporting the same "0 issues".
-  # Naming the file makes its absence an error.
+  # searches for one and, finding none, silently runs its five default linters
+  # and still reports "0 issues". Naming the file makes its absence an error.
   #
-  # The config travels with this file: the pair is the definition, and neither
-  # half means anything without the other.
+  # The config travels with this file, since the two together define the task.
   #
   # The three output limits are off, so the task prints every finding. By
   # default golangci-lint keeps 50 per linter, 3 per identical message and one
@@ -120,8 +116,7 @@ tasks:
   # instrumentation itself and the counts are quietly wrong.
   #
   # The profile is declared evidence. A test run that reports success without
-  # producing one did not measure anything, and declaring the file is what turns
-  # that from a silent gap into a failure.
+  # producing one measured nothing, and declaring the file makes that a failure.
   #
   # Coverage is judged here and not by a task of its own, because a task's
   # work directory is its own and the profile is written into this one. A
@@ -165,6 +160,5 @@ tasks:
 # `if` with no `else` is not something the toolchain can see.
 #
 # Tools that advertise branch coverage for Go fill the branch fields of a
-# Cobertura document from statement data. Gating on those numbers would report a
-# guarantee nothing established, which is the same failure as gating on
-# `test -f`. So the gate measures statements and says so.
+# Cobertura document from statement data, so their branch figures measure
+# nothing the toolchain saw. The gate judges statements only.

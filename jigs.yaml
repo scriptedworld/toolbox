@@ -20,12 +20,9 @@ sets:
   #
   # A set of its own, included by nothing. Adopting the jigs and adopting the
   # recipe set are different decisions: a project can run the checks without a
-  # Justfile, and can have a Justfile without adopting a jig. Folding this into
-  # `common` would make one imply the other for no reason.
+  # Justfile, and can have a Justfile without adopting a jig.
   #
-  # It exists because five repositories already held byte-identical copies
-  # (sha256 81db942f738d, 198 lines, all tracked) with no shared source, and
-  # nothing would have detected them drifting apart.
+  # One shared source, linked, so the copies in each project cannot drift apart.
   #
   # A repository holding several projects cannot take this at its root. A file
   # lands at the same relative path it has here, so a repository that wants one
@@ -72,8 +69,8 @@ sets:
       - config/go-std-quality.golangci.yml
 
   # The coverage adapter is the only file besides the definition. Every other
-  # tool here is off the shelf and its exit code is the answer. A shared ruff or mypy configuration would be the next entry to join,
-  # and would be invisible to anything that tried to infer this list from the
+  # tool here is off the shelf and its exit code is the answer. A shared ruff or
+  # mypy configuration would join this list, and nothing could infer it from the
   # definition's command lines.
   python:
     includes: [common]
@@ -81,9 +78,8 @@ sets:
       - bolt.python-std-quality.yaml
       - adapters/python/coverage.py
 
-  # Adopted from bolt, which carried it while nothing here shipped a Rust jig.
-  # The clippy config is listed for the same reason the golangci one
-  # is: it travels with the jig, and nothing could infer it from a command line
+  # The clippy config is listed for the same reason the golangci one is: it
+  # travels with the jig, and nothing could infer it from a command line
   # because clippy finds it by directory through CLIPPY_CONF_DIR.
   rust:
     includes: [common]
@@ -92,8 +88,7 @@ sets:
       - adapters/lcov/coverage.py
       - config/rust/clippy.toml
 
-  # The Ruby jig shipped with no set, so nothing could adopt it: `link-toolbox`
-  # links what a set names, and no set named it. Its coverage task reads a
+  # The Ruby jig. Its coverage task reads a
   # Cobertura report, which is the Python adapter's format, so the two sets
   # share that file the way `rust` and `typescript` share the lcov one.
   ruby:
@@ -104,23 +99,16 @@ sets:
       - config/ruby-std-quality.rubocop.yml
 
   # The lcov adapter is shared with `typescript` and the two Node sets and
-  # belongs to none of them. It lives in `adapters/lcov/` because it reads lcov, which
-  # cargo-llvm-cov, gcovr and node's own test reporter all emit. Every set lists
-  # it, all of them symlink the same file, and a project adopting two gets one
-  # copy.
-  #
-  # It moved from `adapters/rust/` while only this repository referenced that
-  # path, so no adopter had to re-link.
+  # belongs to none of them. It lives in `adapters/lcov/` because it reads lcov,
+  # which cargo-llvm-cov, deno and node's own test reporter all emit. Every set
+  # lists it, all of them symlink the same file, and a project adopting two gets
+  # one copy.
 
   # The Node toolchain, over a TypeScript project. Named for the toolchain and
-  # not the language, which is the one set here that has to be: deno and bun run
-  # the same language through entirely different tools, so a set called
-  # `typescript` would promise something no single file can deliver. A
-  # `deno-std-quality` set joins this list when a project adopts one, and is
-  # held to the same category list rather than inventing its own.
+  # not the language, because deno and bun run the same language through
+  # different tools; `typescript` is the composite below.
   #
-  # The shortest file list of any language set, and that is a property of the
-  # ecosystem rather than of the jig: every tool it drives is an npm package the
+  # The shortest file list of any language set: every tool it drives is an npm package the
   # adopter pins in its own `devDependencies`, so there is nothing to symlink
   # except the jig and the shared adapter.
   #
@@ -133,9 +121,9 @@ sets:
   # eslint's `--rule`, which beats whatever the project's own config says.
   #
   # The adopter supplies four files of its own: `tsconfig.json`,
-  # `eslint.config.js`, `knip.json` and a `package-lock.json`. That is a longer
-  # contract than any other language set here asks for: it states something only
-  # the project knows.
+  # `eslint.config.js`, `knip.json` and a `package-lock.json`, more than any
+  # other language set asks for, because each states something only the project
+  # knows.
   node-std-quality:
     includes: [common]
     files:
@@ -146,11 +134,9 @@ sets:
   # of the one above, because the two share no tool: every task in the deno jig
   # is a deno subcommand and every task in the node one reaches an npm package.
   #
-  # It shares the lcov adapter with `node-std-quality` and `rust`, which is three
-  # sets reading one file. That is what naming the adapter for its
-  # format rather than for a language bought.
+  # It shares the lcov adapter with `node-std-quality` and `rust`.
   #
-  # Shorter than the Node set in what it gates, not in what it links. Deno's
+  # It gates less than the Node set and links as much. Deno's
   # built-ins leave complexity, duplicate detection, dead code, licences and
   # static security patterns open; the jig records each with the measurement.
   deno-std-quality:

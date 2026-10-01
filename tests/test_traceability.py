@@ -2,8 +2,7 @@
 
 The checker fails in two directions: a test that does not say what it
 discharges, and a requirement no test cites. The second is exempt only when the
-requirement's row marks it `[?]`, and most of what follows pins that boundary,
-because a gate that exempts too much is indistinguishable from no gate at all.
+requirement's row marks it `[?]`, and most of what follows pins that boundary.
 """
 
 from __future__ import annotations
@@ -262,14 +261,9 @@ def test_a_decorator_does_not_hide_the_annotation(checker, tmp_path):
 def test_a_decorator_wrapped_onto_a_second_line_does_not_hide_it(checker, tmp_path):
     """`ruff format` wraps a long decorator, so this is reachable by formatting.
 
-    The continuation line begins with whitespace, not `@` or `#`, so the block
-    walk stopped there and the test reported as citing nothing while carrying a
-    correct mark. The failure points the wrong way: the report blames the test,
-    so the author's fix is to add a mark that is already present.
-
-    agent-support hit it on three of seven tests in one file and worked around
-    it by hoisting every parametrize list to a module constant so each
-    decorator fit on one line.
+    The continuation line begins with whitespace, not `@` or `#`, so a block
+    walk stopping there reports the test as citing nothing while it carries a
+    correct mark, and the author's fix would be to add a mark already present.
     """
     tree = project(
         tmp_path,
@@ -430,11 +424,7 @@ def test_someone_elses_tests_are_not_scanned(checker, tmp_path):
 
 # COVERS FR-2.5 | regression
 def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
-    """`.ephemera` is gitignored working space every repository here has.
-
-    A scratch `main_test.go` left in one failed this gate while being no part
-    of the project, which is how this entry got added.
-    """
+    """`.ephemera` is gitignored working space, and a scratch test there is no part of the project."""
     tree = project(
         tmp_path,
         requirements(("FR-1.1", "[A]")),
@@ -453,11 +443,7 @@ def test_the_session_scratch_directory_is_not_scanned(checker, tmp_path):
 
 # COVERS FR-4.9 | regression
 def test_a_lettered_requirement_id_sorts_without_raising():
-    """FR-4.13a compared against FR-4.13 once raised TypeError.
-
-    bolt has no lettered id, so bolt could never have found this; qwark's
-    FR-4.13a did, on the first run against a second repository.
-    """
+    """FR-4.13a compares against FR-4.13 without a TypeError."""
     ordered = sorted(
         ["FR-4.13", "FR-4.9a", "FR-4.9", "FR-10.1", "NFR-1", "FR-4.13a"],
         key=traceability.requirement_key,
@@ -1026,12 +1012,7 @@ def test_a_requirement_directory_inside_another_is_reported(checker, tmp_path):
 
 # COVERS FR-4.22 | regression
 def test_an_undefined_id_names_the_requirements_path_it_was_given(checker, tmp_path):
-    """`REQUIREMENTS.md` is not where a tier 2 or tier 3 repository looks.
-
-    The diagnostic named a file that does not exist in either layout, so a
-    reader went looking for a document nobody had, in the message whose whole
-    job is to say where to add the row.
-    """
+    """A repository holding a tree has no `REQUIREMENTS.md`, so the message names the path it read."""
     tree = split(
         tmp_path,
         {"core/FR-1.1-live.md": requirements(("FR-1.1", "[A]"))},
@@ -1049,8 +1030,8 @@ def test_a_retired_directory_above_the_root_retires_nothing(checker, tmp_path):
 
     Walking every parent instead reaches whatever happens to be above the
     repository. A tree archived as `holder.retired/`, or a checkout under one,
-    would read as retired entire: nothing is held to coverage, the gate passes,
-    and the output says so in a line nobody reads twice.
+    would read as retired entire, holding nothing to coverage, and the gate
+    would pass.
 
     This runs on an absolute `--requirements` path, because that is what puts
     directories above the root into the document's own path at all.

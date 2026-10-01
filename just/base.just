@@ -26,7 +26,6 @@
 #    all. A fixed directory is what is forbidden, because bolt refuses one that
 #    already holds a run, so naming one works exactly once. The default is
 #    unique per run and `clean` removes them.
-#    Every project answering to the same two words is a settled decision.
 #
 # 3. It quotes the path it read. A verdict with no artifact beside it cannot be
 #    checked by whoever reads the output.
@@ -46,9 +45,8 @@
 # fixture, the task passes with the flag and fails without it, and nothing in
 # either message says "definitions".
 #
-# So an adopter hitting this goes and changes their coverage or requirements
-# configuration instead of suspecting this file. qwark and skid both hit it,
-# in different languages, from the same cause.
+# So the symptom points at the adopter's coverage or requirements
+# configuration, and the cause is a missing --definitions here.
 _verdict jig *flags:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -139,12 +137,9 @@ install:
 # to ask of a path before deleting it is "does anything execute this", which
 # includes hooks, service units and configuration.
 #
-# infobot's clean once carried `rm -f bin/statusline bin/forget` under the
-# heading "remove build output". Those were deployed artefacts that Claude Code
-# executes on every event, and running `just clean` stopped fifteen status files
-# being written for 25 minutes while every instrument reading them kept printing
-# the last values as current. Anyone writing a clean recipe from this template
-# will assume build output is disposable, because in most projects it is.
+# A built binary that a hook executes on every event is build output and a
+# deployed artefact at once. Removing it stops whatever it writes, and anything
+# reading that output keeps printing the last values as current.
 #
 # So a language layer overriding this removes run directories, coverage output
 # and intermediate build trees, and leaves the installed artefact alone. `just
@@ -171,15 +166,12 @@ clean:
 #
 # The verdict also depends on prose. This file stays clean with the `@`
 # removed, while the same three lines cut out of it flag, because the word
-# appears eight times in the comments above. The check clears a file whose name
-# is genuinely hazardous, and would equally condemn one that had done nothing
-# but lose a comment.
+# appears several times in the comments above, so the scanner's verdict on the
+# name changes with the surrounding prose.
 #
 # `leak-scan` is clean with no `@`, in isolation, and with a body that itself
 # invokes `bolt secrets`. The jig keeps its name: `bolt.secrets.yaml` is
 # toolbox's and is untouched. Only the recipe is renamed.
-#
-# Every project answering to the same two words is a settled decision.
 
 # the secrets jig alone
 leak-scan:

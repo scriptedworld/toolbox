@@ -1,37 +1,31 @@
 # A finding phrased as a conclusion has no seam to check at
 
-Six wrong claims travelled between projects in a single day, in both directions,
-and every one was caught by somebody else's arithmetic, not by care. The pattern
-underneath them is the useful part, and it is not "verify what you are told",
-which nobody can do at scale.
+A claim relayed between projects as a conclusion cannot be checked by whoever
+receives it. A claim relayed with the command that produced it can. Asking
+everyone to verify what they are told does not scale; asking for the command
+does.
 
-## What went wrong, and it went wrong both ways
+## Three instances
 
-**Into this repository.** infobot reported two shell shims "gated by nothing",
-and toolbox repeated it into two committed task files without opening
+**A conclusion relayed in.** infobot reported two shell shims "gated by
+nothing", and two toolbox task files repeated it without opening
 `cmd/statusline/`. Their behaviour is tested: five cases, each marked, running
-the real file. **Unread is not untested**, and the two are one word apart.
+the real file. Unread is not the same as untested.
 
-**Out of this repository.** A task here carried "dotfiles has 8 bash scripts and
-10 zsh fragments" with no command and no date. It was correct when taken, at
-dotfiles `2979efd` on 2026-08-19, and the window was three days: `config/zsh`
-held ten fragments only until `f4d7837`. A right measurement became
-unreconstructable within a week and nothing about it looked stale. infobot
-relayed it into their own task and designed a paragraph around it before
-discovering it could not be checked.
+**A measurement relayed out with no command.** A task here carried "dotfiles has
+8 bash scripts and 10 zsh fragments" with no command and no date. It was correct
+at dotfiles `2979efd` on 2026-08-19, and `config/zsh` held ten fragments only
+until `f4d7837`, three days later. Nothing about the figure looked stale, and
+infobot designed a paragraph around it before finding it could not be checked.
 
-**Inside one paragraph.** Checking that figure caught its neighbour:
-`install.sh` recorded at 4,380 bytes against an actual 4,376. Four bytes,
-nothing turning on it, and it would never have been found, because nobody
-re-measures a byte count that is not adjacent to one under suspicion.
+**A figure beside a checked one.** Re-measuring that figure caught the one next
+to it: `install.sh` recorded at 4,380 bytes against an actual 4,376. Nobody
+re-measures a byte count unless it sits next to one under suspicion.
 
 ## The rule, which is infobot's
 
 > **Relayed findings should carry the command, not the conclusion, and a finding
 > that cannot carry its command is a lead by construction.**
-
-Both failures happened because the claim arrived already phrased as a
-conclusion, so there was nothing to check at.
 
     no seam    gated by nothing
     no seam    8 bash scripts and 10 zsh fragments
@@ -41,34 +35,25 @@ conclusion, so there was nothing to check at.
     seams      the command, the number, and the date, any of which
                failing is visible
 
-Carrying the command makes checking cheap enough to actually happen, and that is
-what lets the rule hold up on a busy day.
+Carrying the command makes checking cheap enough to be done.
 
-## The corollary that changed how a task got planned
+## The corollary for planning
 
 A relayed instance is a lead to ask its owner about, never an instance to design
 against.
-
-silo offered eight instances of a fault and shrank the list to the two it held
-first-hand, declining to pass on six from another project's log. skid declined
-the same way an hour earlier. Both were right, and the reason is stronger than courtesy:
 
 > The consequence was not available to anyone who did not know what
 > `bin/infobot` is for, so it could not have been relayed at all. Only
 > re-derived at the far end.
 
-A relay cannot carry what depends on knowing why a file exists, however well it
-summarises. The project that owns the file is more than the preferred source; it
-is the only source that holds the consequence. Of the eight, seven were found in
-the project that owned the defective thing.
+A relay cannot carry what depends on knowing why a file exists. The project that
+owns the file is the only source that holds the consequence: of eight instances
+of one fault offered across projects, seven were found in the project that owned
+the defective thing.
 
-## What it cost, and what it bought
+## What it costs
 
-Nothing shipped wrong, because each error was caught within hours by somebody
-re-measuring instead of re-reading. What it cost was two committed task files
-carrying an overstatement, a paragraph designed against a figure that did not
-check out, and several hours of two projects arguing from different numbers for
-the same tree.
-
-What it bought is that every figure in this repository's task tree now carries
-the command that produced it and the date it was taken.
+Two committed task files carrying an overstatement, a paragraph designed against
+a figure that did not check out, and two projects arguing from different numbers
+for the same tree. Every figure in this repository's task tree now carries the
+command that produced it and the date it was taken.

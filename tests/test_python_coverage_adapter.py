@@ -10,9 +10,9 @@ as a pass with a number beside it.
 
 Encoding is a real case here. This adapter is the only
 one of the three parsing XML, so it is the only one where the document declares
-its own encoding and the parser is obliged to honour it. A filename is the whole
-identity of a reason, so a filename decoded wrongly is a reason pointing at a
-file nobody has.
+its own encoding and the parser is obliged to honour it. A reason is identified
+by its filename, so a filename decoded wrongly points at a file that does not
+exist.
 """
 
 from __future__ import annotations

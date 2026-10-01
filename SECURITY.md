@@ -25,8 +25,8 @@ to how the jigs work. The Python jig runs the project's own test suite under
 built. Point a jig at a repository you do not trust and you have run that
 repository's code with your own privileges.
 
-The jigs are a quality gate, not a sandbox. They are built to tell you whether
-your code meets a standard, and they assume the code is yours.
+The jigs are a quality gate and assume the code is yours. They do not sandbox
+it.
 
 **Adoption is symlinks, not copies, so a change here takes effect immediately in
 every project that has adopted.** `bin/link-toolbox.py` links this repository's
@@ -52,19 +52,17 @@ It has two limits.
 
 Rotation is not a check. Neither scanner can tell you whether a credential it
 found has been revoked. A scan that goes green after a secret is deleted from
-the working tree has reported on the tree, not on the secret. The key is valid
-until somebody rotates it, and that step belongs to a person.
+the working tree has reported on the tree, not on the secret. Rotate any key a
+scan found.
 
 **A baseline is a list of accepted findings, and it belongs to the adopting
 project.** `--baseline` stays relative to the project and does not travel with
-the jig, so no adopter is judged against another project's accepted findings. A
-baseline that is never re-reviewed will absorb real findings, which is the cost
-of having one.
+the jig, so no adopter is judged against another project's accepted findings.
+Review a baseline whenever it changes, since an accepted finding stays accepted
+until somebody removes it.
 
 ## Suppressions
 
-There is no `SUPPRESSIONS` file here, because nothing in this repository is
-silenced. The `suppressions` task fails in both directions: an unregistered
-pragma is a suppression nobody justified, and a registered row with nothing
-behind it is a justification for something that has already gone, which reads as
-cover for whatever replaces it.
+`SUPPRESSIONS` registers every pragma in this repository with the question asked
+and the answer given. The `suppressions` task fails in both directions: on an
+unregistered pragma, and on a registered row with no pragma behind it.

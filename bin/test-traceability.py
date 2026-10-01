@@ -2,9 +2,8 @@
 """Check that every test states which requirement it discharges, and that
 every settled requirement has a test.
 
-A requirements document nobody is held to becomes decoration: it drifts from
-the code, and the drift is invisible because nothing compares the two. This
-compares them, in both directions.
+A requirements document nobody is held to drifts from the code. This compares
+the two, in both directions.
 
 Every test function must carry, somewhere in the comment block immediately
 above it, a line of the form:
@@ -15,13 +14,12 @@ above it, a line of the form:
 No colon after COVERS. With one, a Python mark citing a single id is a valid
 annotated statement once the `#` is removed, so a commented-out-code lint flags
 every such line. A mark written with the colon fails and says which form to
-write, which is louder than reading it as no mark at all.
+write.
 
 Rust writes it `//` and never `///`. A doc comment is not a comment for this
 purpose: the pattern wants whitespace or `COVERS` where the third slash sits,
 so `/// COVERS FR-1.1 | positive` matches nothing and the test then reads as
-carrying no annotation at all. That failure is silent, so it survives, and
-`///` is exactly what a doc-comment reflex reaches for. A `///` line between
+carrying no annotation at all. A `///` line between
 the marker and the `fn` is fine and expected; it is stepped over.
 
 A Rust test is found by its `#[test]` attribute, not by its name, so a helper
@@ -42,10 +40,8 @@ The filename, which is the better one:
     docs/REQUIREMENTS/<level>/<group>/FR-7.4-a-thing.retired
 
 Everything in a `.retired` document has gone, whatever is inside it. There is
-no heading, no switch and no below-this-line, so retiring a requirement and
-appending one are different gestures, not the same gesture in different
-positions. It shows in `ls` without opening anything, and it leaves the row in
-the group it always sat in. `.retired.md` is read the same way.
+no heading and no switch, so appending a requirement can never retire one. It
+shows in `ls` without opening anything, and it leaves the row in its group. `.retired.md` is read the same way.
 
 `.superseded` and `.superseded.md` say the id was replaced and not simply
 dropped, and are read the same way again. The suffix is the record; the
@@ -80,8 +76,8 @@ The marker is the row's last bracketed cell. `[?]` means an open decision that
 cannot have a test yet, and failing on those would make the honest state of the
 document unrepresentable. Everything else (`[A]`, `[D]`, `[A/D]`, or no
 marker cell at all) is settled, and settled means testable. A document with
-no marker column therefore has no exemptions, which is the correct reading:
-exemption is something you claim, never something you get by omission.
+no marker column therefore has no exemptions; an exemption is claimed in the
+document.
 
 Exiting 0 is this task's contract, which is why it prints its findings instead
 of returning an envelope: bolt's configuration never says what success
@@ -90,12 +86,9 @@ means, and a tool whose exit code genuinely is the answer needs no adapter.
 
 # pylint: disable=duplicate-code
 #
-# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
-# by path from a directory that is not a package, so none can import another,
-# so anything two of them must both do is written twice. R0801 finds a different
-# pair each time one is dissolved: the coverage adapters' judgement, the
-# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
-# with what would retire it.
+# Every script in `bin/` and `adapters/` is spawned by path from a directory that
+# is not a package, so none can import another and shared code is written twice.
+# Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
 from __future__ import annotations
 
@@ -120,12 +113,10 @@ HEADING = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 RETIRED_HEADING = re.compile(r"^retired\b", re.IGNORECASE)
 
 # Directories that hold tests this project is not answerable for. Walking into a
-# virtualenv finds hundreds of `test_*.py` citing nothing, which under a gate
-# that fails on uncovered requirements is not noise: it is a guaranteed failure.
+# virtualenv finds hundreds of `test_*.py` citing nothing, and each one fails.
 #
-# `.ephemera` is the same problem from the other end. Every repository here has
-# one, it is gitignored working space, and a scratch `main_test.go` left in it
-# failed this gate while being no part of the project.
+# `.ephemera` is gitignored working space, so a scratch test file left in it is
+# no part of the project.
 SKIP_DIRS = frozenset(
     {
         ".git",
@@ -137,8 +128,8 @@ SKIP_DIRS = frozenset(
         "__pycache__",
         "testdata",
         "site-packages",
-        # Cargo's build output, which carries vendored `.rs` sources. Reading
-        # every `.rs` file reaches it, and bolt's held 12 of them.
+        # Cargo's build output, which carries vendored `.rs` sources that
+        # reading every `.rs` file would otherwise reach.
         "target",
     }
 )
@@ -278,12 +269,10 @@ def is_retired_by_name(path: Path) -> bool:
 def enclosing_directories(path: Path, root: Path) -> Iterator[Path]:
     """Every directory holding a document, from its own up to the root.
 
-    Bounded at the root, which is the whole point of taking one. Walking to
-    the filesystem root instead reads whatever happens to be above the
-    repository: a tree archived as `holder.retired/`, or a checkout beneath
-    one, would retire every requirement in it. Nothing would then be held to
-    coverage and the run would pass, the failure this checker exists to
-    prevent arriving through the checker itself.
+    Bounded at the root. Walking to the filesystem root instead reads whatever
+    happens to be above the repository: a tree archived as `holder.retired/`,
+    or a checkout beneath one, would retire every requirement in it, nothing
+    would be held to coverage, and the run would pass.
     """
     current = path.parent
     while True:
@@ -404,9 +393,8 @@ def requirement_directories(documents: set[Path], root: Path) -> set[Path]:
 def report_nested(nested: list[tuple[Path, Path]]) -> None:
     """Say which requirement directories sit inside another, and what follows.
 
-    The closing line is the point of the message. Naming the pair without
-    saying that the inner note declares nothing leaves a reader to discover
-    that from a missing id somewhere else.
+    The closing line says the inner note declares nothing, so a reader does not
+    have to work that out from a missing id somewhere else.
     """
     print(f"{len(nested)} requirement directory(ies) sit inside another:")
     for inner, outer in nested:
@@ -422,10 +410,9 @@ def nested_requirement_directories(path: Path) -> list[tuple[Path, Path]]:
     carry the note's name, and the sibling rule silently makes the inner one
     supporting material either way.
 
-    Silence is the expensive outcome: the inner id is never declared, so a test
-    citing it is told the requirement does not exist, and the obvious remedy is
-    to delete a real test's coverage of a requirement sitting on disk. That is
-    the same misleading remedy the retirement suffix handling guards against.
+    Left unreported, the inner id is never declared, so a test citing it is
+    told the requirement does not exist, and the obvious remedy is to delete a
+    real test's coverage of a requirement sitting on disk.
     """
     if not path.is_dir():
         return []
@@ -488,9 +475,8 @@ def read_document(path: Path, retired_by_name: bool) -> tuple[dict[str, str], di
     requirement and retiring one are the same gesture, and only their position
     in the file tells them apart. A name has no below-this-line to fall under.
 
-    The heading survives because a single `REQUIREMENTS.md` has nowhere else to
-    put the record, and seven of the eight repositories here are still one
-    file. It goes when they have all split, not before.
+    The heading stays while any repository keeps a single `REQUIREMENTS.md`,
+    which has nowhere else to put the record.
 
     The heading's reach stops at the end of the file either way. Concatenating
     a tree would let a document ending inside `## Retired` carry that state
@@ -591,12 +577,8 @@ def comment_block_above(lines: list[str], index: int, language: Language) -> lis
     begins with. Without that the block stops at the wrapped line and a test
     carrying a correct mark reports as citing nothing.
 
-    In agent-support three of seven tests read as uncited on first run, all
-    three from wrapped decorators. **`ruff format` wraps a long decorator by
-    default**, so this is reachable by formatting a conformant file, not only by
-    writing one oddly, and the failure points the wrong way: the
-    report blames the test for citing nothing while the mark sits right there,
-    so the author's fix is to add what is already present.
+    **`ruff format` wraps a long decorator by default**, so formatting a
+    conformant file produces this shape.
 
     Balance is counted from the declaration upwards, so a line only counts as a
     continuation while something below it is still open. An ordinary statement
@@ -640,9 +622,8 @@ def check_annotation(found: re.Match[str], declared: dict[str, str], retired: di
     """Validate one COVERS annotation against the requirements document.
 
     `source` is the `--requirements` path as given, because the message whose
-    job is to say where to add a row must name somewhere that exists. Naming
-    `REQUIREMENTS.md` sent a tier 2 or tier 3 reader looking for a document
-    nobody has.
+    job is to say where to add a row must name the document this run read,
+    which may be a directory.
     """
     problems = []
     ids = REQ_ID.findall(found.group("ids"))
@@ -700,8 +681,8 @@ def test_files(root: Path) -> list[tuple[Path, Language]]:
 def print_block(heading: str, rows: list[str]) -> None:
     """A heading, its indented rows, and a blank line. Nothing when there are none.
 
-    Four findings groups had this shape written out four times, which is most of
-    what took `report` to a cognitive complexity of 23 against a limit of 15.
+    Every findings group in `report` has this shape, and writing it once keeps
+    `report` under the cognitive-complexity limit of 15.
     """
     if not rows:
         return

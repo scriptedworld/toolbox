@@ -89,8 +89,8 @@ case.
 
 `bin/test-traceability.py` has a `LANGUAGES` table giving each language its test
 file globs, its test declaration pattern and its comment marker. A language with
-a jig here but no entry in that table finds no tests, cites nothing, and fails
-every requirement at once, so the entry lands in the same change as the jig.
+a jig here and no entry in that table finds no tests and fails every
+requirement, so the entry lands in the same change as the jig.
 
 ## Requirements and tests
 
@@ -118,34 +118,29 @@ test is inconvenient.
 ## Tests
 
 One test file per script under test, named for that script.
-`docs/PATTERNS/testing-checkers-and-adapters.md` is the full account. Three
-things it asks for that a reviewer will look for:
+`docs/PATTERNS/testing-checkers-and-adapters.md` is the full account, and a
+reviewer checks these three:
 
 - **Fixtures are captured, never composed.** Run the real tool once, save what
   it printed under `tests/fixtures/`, and record the tool version and the
-  capture date in the file. An adapter fed output somebody imagined tests their
-  imagination.
+  capture date in the file.
 - **Assert the verdict and what the verdict says.** `success is False` passes
   just as happily when the adapter fails for the wrong reason on the wrong file.
 - **Cover the empty case.** A checker that finds nothing after looking in the
   wrong place is indistinguishable from one that found nothing wrong.
 
-Tests call `main()` in process, not through a subprocess, because
-coverage sees nothing a subprocess does. One subprocess smoke test per script
-covers the wiring that in-process testing cannot reach: a bad shebang, a file
-that is not executable, a crash on import.
+Tests call `main()` in process. One subprocess test per script covers the
+wiring in-process testing cannot reach: the shebang, the executable bit and the
+imports. It spawns through `tests/conftest.py`'s `script_argv`, which runs the
+child under coverage.
 
 ## Suppressions
 
-There is no `SUPPRESSIONS` file here, because nothing is silenced. That is the
-honest state and not a gap: an empty register asserts that something is
-suppressed when nothing is.
-
-If a change genuinely needs a `#nosec`, `# noqa`, `//nolint` or a `type: ignore`,
-the register comes back with it, carrying the reason. The `suppressions` task
-fails in both directions, on an unregistered pragma and on a registered row with
-nothing behind it. Fixing the underlying problem is almost always smaller than
-it looks.
+`SUPPRESSIONS` registers every `# nosec`, `# noqa`, `//nolint` or `type: ignore`
+here, each with the question asked and the answer given. A change that needs a
+new one adds its row in the same commit. The `suppressions` task fails in both
+directions, on an unregistered pragma and on a registered row with nothing
+behind it. Prefer fixing the underlying problem to adding a row.
 
 ## Commit messages
 
@@ -157,13 +152,12 @@ fix(traceability): a wrapped decorator no longer hides a test's COVERS mark
 ```
 
 The subject says what changed. The body says what it cost, in counts and
-verdicts, and where the rest lives. The reasoning belongs in the file the commit
-changed, and a sentence that would survive being moved into that file belongs
-there instead.
+verdicts, and where the rest lives. Reasoning goes in the file the commit
+changed, not in the message.
 
 ## Prose
 
 `README.md` and the documents under `docs/` are held to the same bar as the
 code. State what is true, and leave what changed and when to git, which already
-records it. No em-dashes. A document earns its length by covering its
-subject, not by explaining a decision twice in two places.
+records it. No em-dashes. Explain a decision in one place and point at it from
+the others.

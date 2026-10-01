@@ -1,8 +1,5 @@
 """Tests for `adapters/go/coverage.py`.
 
-It landed at `0cfd449` with no tests at all, which is also why its `main()`
-grew to 88 lines against the jig's own `--length 60` without anything saying so.
-
 It speaks the flag contract, not the stdin one. `gofmt.py` reads an execution
 record on stdin and is what the `adapter` fixture serves; this one is handed
 `--evidence`, `--work-dir` and `--exitcode` and writes `output.yaml` into the

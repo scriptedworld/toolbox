@@ -3,8 +3,8 @@
 
 flay finds structural duplication and **exits 0 whether or not it found any**.
 Against two identical six-line methods it printed `Total score = 40` and
-`Similar code found in :defn (mass = 40)`, and exited 0. The exit status answers
-"did flay run", never "is this duplicated", which is why this exists.
+`Similar code found in :defn (mass = 40)`, and exited 0, so its exit status
+cannot be the verdict and this script reads the report.
 
     flay . | flay-envelope --out {work_dir}/output.yaml [--max-mass N]
 
@@ -32,8 +32,8 @@ The format, which has no structured alternative:
       dup.rb:10
 
 A match header carries its kind and mass; the indented lines beneath it are the
-locations sharing that structure. Text-scraping is a fragility, and it is stated
-here instead of hidden: flay offers no JSON, YAML or XML output of any kind.
+locations sharing that structure. This scrapes text, which breaks if flay
+changes its format, because flay offers no JSON, YAML or XML output.
 """
 
 from __future__ import annotations

@@ -314,8 +314,7 @@ def test_records_before_any_source_line_are_ignored(tmp_path):
 def test_a_profile_with_no_branch_records_reads_as_unmeasured(tmp_path):
     """cargo-llvm-cov on a stable toolchain writes BRF:0 and BRH:0 and not one
     BRDA record, so the branch threshold has nothing to judge. That has to read
-    as unmeasured rather than as a threshold quietly met on a zero denominator,
-    which is the whole reason the statistic exists."""
+    as unmeasured rather than as a threshold quietly met on a zero denominator."""
     profile = "SF:/repo/src/a.rs\nDA:1,1\nBRF:0\nBRH:0\nend_of_record\n"
     envelope = run(tmp_path, "--min", "0", "--min-branch", "100", profile=profile)
     assert envelope["metadata"]["statistics"]["branch_measured"] is False

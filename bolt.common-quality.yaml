@@ -40,9 +40,8 @@ tasks:
     description: every test cites what it discharges, and every settled requirement has one
     command: python3 {config_dir}/bin/test-traceability.py --requirements {requirements} .
 
-  # An unregistered pragma is a suppression nobody justified; a registered row
-  # with nothing behind it is cover for whatever replaces it.  A project with
-  # neither passes.
+  # Fails on an unregistered pragma and on a registered row with no pragma
+  # behind it.  A project with neither passes.
   - name: suppressions
     description: every suppression is registered, and every entry is real
     command: python3 {config_dir}/bin/suppression-register.py --register {suppressions} .
@@ -80,19 +79,18 @@ tasks:
   # measure them the same way.
   #
   # That also settles whether a language jig accepts common numbers or declares
-  # its own task (see NEXT_STEPS.md): its own, because the numbers are not the
-  # same numbers.
+  # its own task (see NEXT_STEPS.md): its own, because each tool computes the
+  # metric differently.
   #
-  # The cost is that a new language starts with no complexity gate. An
-  # inherited gate that cannot measure the language it is pointed at is worse
-  # than an absent one, since only the absent one is visible.
+  # The cost is that a new language starts with no complexity gate, which is
+  # visible, where an inherited gate unable to measure the language would not be.
 
   # ---- secrets ---------------------------------------------------------------
 
   # The secrets jig runs from here as a child, composed and not copied, so a
   # project running only its common gate still scans for credentials. The two
-  # sets can be adopted separately, and when they were, a common-only project
-  # scanned for nothing and nothing said so.
+  # sets can be adopted separately, and a common-only project would otherwise
+  # scan for nothing without saying so.
   #
   # Composed, so `bolt.secrets.yaml` stays the single definition of what a
   # secret scan is. Copying the two tasks here would put detect-secrets'

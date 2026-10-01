@@ -6,8 +6,7 @@ location, so a merged result stays actionable.
 
 It still speaks the retired stdin contract and is wired to no task, which is
 recorded in `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md`. These
-tests pin what it does so that porting it is a change with a before and an
-after, not a rewrite of something nobody had measured.
+tests pin what it does, so a port can be checked against them.
 """
 
 from __future__ import annotations
@@ -41,7 +40,7 @@ def test_each_diagnostic_becomes_one_reason(adapter):
 
 # COVERS FR-3.4 | property
 def test_a_reason_names_its_checker_and_where_to_look(adapter):
-    """A reason nobody can act on is a reason nobody acts on."""
+    """Each reason names the checker and the file, line and column to look at."""
     first = adapter(govet, record(fixture_text("govet/composites.txt")))["reasons"][0]
     assert first["checker"] == "vet"
     assert first["column"] == 9

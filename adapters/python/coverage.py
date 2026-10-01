@@ -3,27 +3,21 @@
 
 Judged per file, never in aggregate. An aggregate threshold is precisely what
 lets a well-tested file carry an untested one, so the total is reported as
-context in statistics and nothing branches on it. The Go and Rust adapters
-beside this one make the same choice for the same reason, and the three are
-meant to read alike.
+context in statistics and nothing branches on it. The Go and lcov adapters
+make the same choice.
 
 A file with no test at all appears in the report with every line at zero hits,
-so this sees it as 0% instead of not seeing it. **That holds only if the
-producer put it there**, and coverage.py does not always. It adds an unexecuted
-file to the report only where it can reach it as a package, so a source root whose
-subdirectories carry no `__init__.py` yields the files that ran and silently
-omits the ones that did not.
+so this reports it at 0%, **provided the producer put it there**. coverage.py
+adds an unexecuted file to the report only where it can reach it as a package,
+so a source root whose subdirectories carry no `__init__.py` yields the files
+that ran and omits the ones that did not. This adapter cannot tell a file
+missing from the report from one that does not exist, which is why each
+directory under `adapters/` carries an `__init__.py` and `pyproject.toml` says
+so at `[tool.coverage.run]`.
 
-That is the one failure this adapter cannot detect from the inside: a file
-missing from the report and a file that does not exist look identical here.
-`toolbox/pyproject.toml` names the leaf directories in `[tool.coverage.run]
-source` for that reason, with the measurement, and `tests/test_python_coverage.py`
-pins the shape so the blind spot cannot come back unnoticed.
-
-The Go and Rust adapters beside this one do not share it. `-coverpkg=./...`
-instruments every package in the module, and cargo-llvm-cov instruments every
-file compiled into the binary, so in both an untested file is present at 0%
-rather than absent.
+`-coverpkg=./...` instruments every package in a Go module, and cargo-llvm-cov
+every file compiled into the binary, so for those an untested file is present
+at 0%.
 
     coverage.py --min 80 --min-branch 80 [--exclude REGEX]...
                 --evidence REPORT --work-dir DIR
@@ -53,21 +47,12 @@ so this uses the standard parser on a file the task next to it just wrote. That
 is the one case where the standard parser is defensible: the producer is the
 `tests` task in the same jig, not a document arriving from somewhere.
 
-Branches are gated here and in neither of the other two, and that asymmetry is
-deliberate. Cobertura carries `condition-coverage` in the same document the
-lines come from, and coverage.py produces it on the stable interpreter, so here
-the data really is free.
-
-It is not free elsewhere. Go has no branch mode at all: `-covermode` offers
-set, count and atomic and all three count statements. Rust has one behind
-cargo-llvm-cov's unstable `--branch`, which needs a nightly compiler, and on
-stable (bolt on 1.98.1) the profile carries `BRF:0` and no `BRDA` records at
-all.
-
-Holding Python to lines alone would discard a guarantee it has for free, to
-match two languages that cannot have it, levelling down to the weakest tooling.
-The three numbers are not one number, and a gate that treated them as one would
-report a guarantee nothing established.
+Branches are gated here because Cobertura carries `condition-coverage` in the
+same document the lines come from, and coverage.py produces it on the stable
+interpreter. Go has no branch mode: `-covermode` offers set, count and atomic
+and all three count statements. Rust has one behind cargo-llvm-cov's unstable
+`--branch`, which needs a nightly compiler, and on stable (bolt on 1.98.1) the
+profile carries `BRF:0` and no `BRDA` records at all.
 
 The producer has to be asked for branches. coverage.py writes no
 `condition-coverage` unless it ran in branch mode, and a report without it
@@ -78,12 +63,9 @@ not an error. The jig's `tests` task therefore names `--cov-branch` explicitly, 
 
 # pylint: disable=duplicate-code
 #
-# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
-# by path from a directory that is not a package, so none can import another,
-# so anything two of them must both do is written twice. R0801 finds a different
-# pair each time one is dissolved: the coverage adapters' judgement, the
-# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
-# with what would retire it.
+# Every script in `bin/` and `adapters/` is spawned by path from a directory that
+# is not a package, so none can import another and shared code is written twice.
+# Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
 import argparse
 import pathlib
@@ -160,9 +142,9 @@ def counted(files):
 def test_failure(path):
     """Return a reason when the test run itself failed, else None.
 
-    Bolt captures the status to a file rather than passing it, so an absent or
-    unreadable one is treated as a failure: an adapter that assumed success
-    where it could not tell would report the guarantee it exists to check.
+    Bolt captures the status to a file rather than passing it. An absent or
+    unreadable one is treated as a failure, since the suite's outcome is then
+    unknown.
     """
     if not path:
         return None
@@ -199,11 +181,10 @@ def arguments():
     # that one of its arms ran, so the two have to be settable apart even when
     # they agree.
     #
-    # 80 is measured, not conventional. When it was set, the worst per-file
-    # branch figure across toolbox's own checkers was 84.1%
-    # (`bin/link-toolbox.py`) against a worst line figure of 91.8% in the same
-    # file, so 80 clears every file that has tests with a little headroom and
-    # fails one that has none.
+    # 80 comes from toolbox's own checkers: the worst per-file branch figure
+    # measured 84.1% (`bin/link-toolbox.py`) against a worst line figure of
+    # 91.8% in the same file, so 80 clears every file that has tests with a
+    # little headroom and fails one that has none.
     ap.add_argument("--min-branch", dest="min_branch", type=float, default=80.0)
     ap.add_argument("--exclude", action="append", default=[])
     ap.add_argument("--evidence", action="append", default=[])
@@ -231,9 +212,8 @@ def merged_report(paths):
 
 
 # The two metrics differ only in what they are called and what the denominator
-# is named in the reason, so they are described rather than written twice. That
-# also keeps `judge` below the cognitive limit: inlining both arms took it to 22
-# against a limit of 15, which is the shape complexipy exists to catch.
+# is named in the reason, so they are described rather than written twice, which
+# also keeps `judge` under the cognitive-complexity limit of 15.
 LINES = {
     "kind": "coverage-below-minimum",
     "unit": "lines covered",
@@ -347,8 +327,8 @@ def main():
 
     # This adapter is attached to the task that runs the tests, because that is
     # the task whose work directory holds the report. So it answers for the test
-    # run as well: a suite that failed while leaving a report behind would
-    # otherwise be reported as a pass with a coverage number beside it.
+    # run as well, and a failed suite fails the task even when it left a report
+    # behind.
     failed = test_failure(args.exitcode)
 
     if not args.evidence:

@@ -1,16 +1,15 @@
 # An exclusion flag can replace the defaults it should have joined
 
 The sibling lesson, `a-tool-can-accept-an-exclusion-and-exclude-nothing.md`,
-covers a flag that is accepted and does nothing. This is the other direction,
-and it is worse, because the flag does exactly what it says while silently
-undoing something else.
+covers a flag that is accepted and does nothing. This covers a flag that does
+what it says and silently undoes something else.
 
 **ruff's `--exclude` replaces its built-in default exclude list. That list
-already held `.venv`, `venv`, `build`, `dist` and the tool caches.**
+already holds `.venv`, `venv`, `build`, `dist` and the tool caches.**
 
-So `format` and `lint` were scoped with three directories and, in the same
-gesture, told to start reading every virtualenv in every adopter. The flag was
-added to narrow the run and it widened it.
+So scoping `format` and `lint` with `--exclude` and three directories also sets
+them reading every virtualenv in every adopter. A flag meant to narrow the run
+widens it.
 
 Measured against a violation planted in a fake `.venv`, counting
 findings in the virtualenv and in the project's own file:
@@ -22,34 +21,24 @@ findings in the virtualenv and in the project's own file:
 `ruff format` behaves identically. `--extend-exclude` adds to the defaults and
 is the correct spelling whenever a tool has defaults to keep.
 
-## Why it survived a year of the other lesson's method
-
-The planted-violation method that caught the four wrong spellings could not
-catch this one, and the reason generalises.
+## Why the other lesson's method misses it
 
 That method plants a violation in the directory being excluded and checks the
-finding count goes to zero. It answers *did the flag exclude what it named*.
-This flag did. Every one of those tests passed.
+finding count goes to zero. It answers *did the flag exclude what it named*, and
+for this flag the answer is yes.
 
-The question it does not ask is *what else changed*, and nothing about a
-passing exclusion test suggests there is a second question. A regression
-introduced by a correct-looking flag is invisible to a test aimed at the flag.
+It does not ask *what else changed*. A regression introduced by a
+correct-looking flag is invisible to a test aimed at the flag. Planting a
+violation in a `.venv` as well, because an adopter has one and toolbox does not,
+is what shows it.
 
-What found it was widening the fixture, not sharpening the assertion:
-planting a violation in a `.venv` as well, because an adopter has one and
-toolbox does not.
+## A zero beside a zero measures nothing
 
-## The measurement that nearly went wrong
-
-The first sweep reported four tools clean, with `venv:0` for each. Three of
-those four were wrong, and they were wrong because the fixture planted nothing
-those tools detect, so they found nothing anywhere and reported zero.
-
-A zero in the excluded column beside a zero in the control column is an
-unmeasured row wearing a pass. That is the false green this family of lessons
-describes, occurring inside the script written to detect it.
-The fixture now carries a violation for every tool at once and the control
-column is checked first.
+A sweep can report a tool clean with `venv:0` because the fixture planted
+nothing that tool detects, so it finds nothing anywhere. A zero in the excluded
+column beside a zero in the control column is an unmeasured row. The fixture
+carries a violation for every tool at once, and the control column is checked
+first.
 
 ## What to do
 
@@ -63,6 +52,6 @@ prefer the additive spelling wherever one exists:
     bandit       -x                     no defaults to lose
     interrogate  -e, once per path      already names .venv itself
 
-**Then plant a violation in a directory you did not name**, not only in one you
-did. The named directory tests the flag. The unnamed one tests the flag's
-side effects, and that is where this lived.
+**Then plant a violation in a directory you did not name** as well as in one you
+did. The named directory tests the flag, and the unnamed one tests its side
+effects.

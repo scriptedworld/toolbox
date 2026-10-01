@@ -10,8 +10,8 @@ outside this repository; this file holds the questions, and the tasks live there
 They are separate jigs and a project wanting both runs both. The runner has no
 overlay that merges tasks by id, so a language jig cannot adjust a common task
 without restating it, and nesting does not fill the gap, because a nested jig
-has no id to override. So a language either accepts the common thresholds or declares a
-second task that disagrees with them, and neither is right.
+has no id to override. A language therefore either accepts the common
+thresholds or declares a second task that disagrees with them.
 
 ### Whether a maintainability index belongs in the standard
 
@@ -40,9 +40,9 @@ change this repository can make alone.
 
 `checks test format format-check build clean install`, with the language's tools
 behind them, would make `just checks` mean one thing in every tree. A gate goes
-through bolt and writes evidence; `format` writes and is never a jig task. It
-was proposed on Rust's evidence alone, so the question is whether the verbs
-survive Go and Python, where the tool sets differ most.
+through bolt and writes evidence; `format` writes and is never a jig task. The
+evidence is Rust's alone, so the question is whether the verbs survive Go and
+Python, where the tool sets differ most.
 
 ### Whether the adapters share one vocabulary of reason kinds
 
@@ -52,13 +52,6 @@ metadata keys, such as `coverage-below` with `{file, value, threshold, mode}`.
 wrench's envelope schema is where that vocabulary could be enforced rather than
 agreed. Thresholds stay per language, because 15 from one tool is not 15 from
 another.
-
-### Whether to rewrite the commit messages before `06ec6c3`
-
-The wording check reads commits from `06ec6c3` on. Before it, from 2026-08-18
-to 2026-09-14, the messages carry nearly every tell the check names: long
-bodies, capitals leads, em-dashes, dates and third-person narration. Rewriting
-them means a force push, and clank cites several of those SHAs.
 
 ### Task ordering, for `entrypoint`
 
@@ -77,16 +70,15 @@ would likely be undone.
 
 ### Shared project files, starting with the `base` set
 
-Toolbox is where shared project files live. `just/base.just` is here because
-five repositories held byte-identical copies with no source and nothing
-detecting drift; they went out of step within hours of one being edited.
+Toolbox is where shared project files live. `just/base.just` is the one source
+for the recipes every adopter imports, so a copy cannot drift from it.
 
 The direction is a project template covering the three languages against
 library, CLI and MCP shapes, with the gate, the recipes and the standard
 documents present from the first commit instead of adopted afterwards. Copier
 is the mechanism, and the estate architecture already expects per-language
-templates to be where `just` recipe contents live. Earlier `python-` and
-`rust-` template repositories existed and are gone.
+templates to be where `just` recipe contents live. No template repository
+exists.
 
 Two things the `base` set does not solve yet, and a template would have to:
 
@@ -100,8 +92,7 @@ Two things the `base` set does not solve yet, and a template would have to:
 ### `just link-project <absolute path>`, and a subproject is a project
 
 Adoption should be a recipe, not a remembered command line, and a subdirectory
-that is its own project should hold its own link to toolbox. That is why
-`link-jigs` was renamed as well as moved.
+that is its own project should hold its own link to toolbox.
 
     just link-project /abs/path/to/repo/rust
     just link-project /abs/path/to/repo/python
@@ -124,34 +115,30 @@ once.
 
 This also dissolves the per-path problem above. A set landing at the same
 relative path is correct once the target is the subproject and not the
-repository, and `base.just` then lands once per pack because each pack is where
-it belongs.
+repository, and `base.just` then lands once per pack.
 
 ### Per-file coverage for Python and Rust
 
-This is built. Both jigs judge their `tests` task's report per file at 80% of
-lines, and the Python one also at 80% of branches. Two things came out of doing
-it:
+Both jigs judge their `tests` task's report per file at 80% of lines, and the
+Python one also at 80% of branches. Two limits remain:
 
 - Rust cannot gate branches on a stable toolchain. cargo-llvm-cov writes
   `BRF:0` and no `BRDA` records at all without its `--branch` flag, which is
-  unstable and needs nightly. The plan had assumed the data was already in the
-  file. The adapter reads branch records where they exist and reports
-  `branch_measured: false` where they do not, so nothing passes on an empty
-  denominator.
-- A spawned script is invisible to the parent's coverage. Every checker and
-  adapter tested only as a subprocess reported 0% with a full suite behind it.
-  `tests/conftest.py`'s `script_argv` routes them through
-  `coverage run --parallel-mode`, and the jig combines before reporting.
+  unstable and needs nightly. The adapter reads branch records where they
+  exist and reports `branch_measured: false` where they do not, so nothing
+  passes on an empty denominator.
+- A spawned script is invisible to the parent's coverage, so
+  `tests/conftest.py`'s `script_argv` routes every spawned checker and adapter
+  through `coverage run --parallel-mode`, and the jig combines before
+  reporting. An adopter's own spawned scripts need the same.
 
 ### The standalone scripts cannot import each other, so they duplicate
 
 Every script in `bin/` and `adapters/` is spawned by path from a directory that
 is not a package, so anything two of them must both do is written twice: the
 coverage adapters' whole judgement, the checkers' `SKIP_DIRS`, the adapters'
-`emit`. pylint's R0801 reports a different pair each time one is dissolved, and
-all nine scripts now carry one registered mark (S-3) in place of three separate
-arguments.
+`emit`. All nine scripts carry one registered mark for pylint's R0801, S-3 in
+`SUPPRESSIONS`.
 
 Deciding it means deciding one thing: whether `adapters/common/` and `bin/` gain
 shared modules, linked into every adopter through the `common` set and imported
@@ -169,9 +156,7 @@ extraction goes.
 `adapters/go/gofmt.py` and `adapters/go/govet.py` each read a record and write
 an envelope, and neither is wired to a task, so neither can currently fail.
 Wiring one before porting it produces an invalid envelope. Porting them buys
-back per-finding reasons. It does not change any verdict. A third,
-`adapters/common/lizard.py`, was deleted along with the `complexity` task it
-read for.
+back per-finding reasons. It does not change any verdict.
 
 ### Adoption records nothing about itself
 
@@ -179,19 +164,11 @@ read for.
 project adopted is written nowhere, so a wrong guess reports drift that does not
 exist. Fixing that is a precondition for `--check` becoming a gate task.
 
-### A jig per language beyond Go and Python
-
-Rust is the nearest, and it forces a change to the traceability checker's
-`LANGUAGES` table in the same commit, because a language with a jig and no
-entry there finds no tests, cites nothing, and fails every requirement at once.
-
 ## What blocks publication
 
-The gate is green, and the repository is pushed. `common-quality`,
-`python-std-quality` and `secrets` each report `success: true` under
-`--definitions toolbox`; `traceability` cites 100 of 100; the bandit findings are
-marked and registered as S-1 and S-4 in `SUPPRESSIONS`; `analyse` passes with the
-pylint allowlist in `pyproject.toml`.
+A push waits on the gate reading `success: true` in all three runs, a voice
+review of every document, comment and unpushed commit message with its findings
+cleared, and those messages rewritten where they fail.
 
 Neither the runner nor the schema library this repository depends on is
 published, so a clone cannot run a jig or the test suite. That ordering is not
@@ -201,21 +178,17 @@ this repository's to set.
 
 `REQUIREMENTS.md` is one file and no longer has to be. Both checkers read a
 directory or a single file, and a retired requirement can be named without a
-`## Retired` heading. Splitting a copy of this document into one file per
-requirement produced byte-identical checker output, so the split is available
-and is a separate change nobody has made.
+`## Retired` heading. Both forms give the checkers identical output, so the
+split changes no verdict and is not yet made.
 
 ---
 
 # Across the estate
 
-This part lives here and not in a file at the root of the checkouts, because
-that file belongs to a machine and this belongs to the project.
-
 ## The gate's invocation is part of its result, and nothing machine-readable says so
 
-Three variants, all of them load-bearing, and getting one wrong produces a wrong
-answer that looks like a real one:
+Each adopter's invocation differs, and a wrong one gives a wrong answer that
+looks like a real one:
 
     toolbox    bolt --definitions toolbox <jig> .
     skid       bolt --definitions skid <jig> .
@@ -232,10 +205,8 @@ that otherwise pass. The flag is for the child runs its jig composes, which run
 at a pack's base where that path is right. And without
 `--definitions go-std-quality`, infobot's and qwark's `entrypoint` resolves to
 the jig's default of `true`, so the entry-point coverage step never runs and
-`cmd/*/main.go` reports 0.0%.
-
-That last one is the worst of the three, because a coverage figure of 0% for a
-file nothing tests is exactly what a correct run would also report.
+`cmd/*/main.go` reports 0.0%, which a correct run also reports for a file
+nothing tests.
 
 A definitions file being named after the jig does not make it load.
 `bolt.go-std-quality.definitions.yaml` looks like it would be found by name and
@@ -244,8 +215,8 @@ says it anywhere.
 
 This is the same gap as `--check` needing its set list. Neither the sets a
 project adopted nor the command its gate is run with is recorded anywhere a
-program can read, so both are re-derived by whoever is looking, and both have
-been got wrong here. One small file per adopter answers both:
+program can read, so both are re-derived by whoever is looking. One small file
+per adopter answers both:
 
     sets: [rust]
     gate: bolt --definitions toolbox
@@ -275,10 +246,10 @@ Present today:
 | duplicate code | golangci `dupl` | pylint R0801 | **none** |
 
 1. Python has no vulnerability check at all, and is the only language that
-   does not. The jig's own footer already carries why it was deferred: Python
-   tools report every advisory touching an installed distribution, which is
-   noisier than `govulncheck`'s reachability. `pip-audit` against `uv.lock` is
-   the closest match. This is the largest real hole.
+   does not. The jig's footer gives the reason: Python tools report every
+   advisory touching an installed distribution, which is noisier than
+   `govulncheck`'s reachability. `pip-audit` against `uv.lock` is the closest
+   match.
 2. Licences for Go and Python. Rust gates them through cargo-deny and the other
    two do not, so the estate's licence position is one language's.
    `go-licenses` and `pip-licenses` exist; the policy in bolt's `deny.toml`
@@ -289,9 +260,8 @@ Present today:
 4. Docstrings for Go and Rust. interrogate has no sibling, but the guarantee
    does: `#![warn(missing_docs)]`, which bolt already sets per-project and could
    be a jig-level lint, and revive's exported rule inside golangci.
-5. SAST for Rust: leave the row empty and say so. `cargo-geiger` counts
-   `unsafe` and answers a different question. An empty row with a reason is
-   honest; a weak tool wearing the name is not.
+5. SAST for Rust: the row stays empty, with this as its reason. `cargo-geiger`
+   counts `unsafe` and answers a different question.
 
 Every addition lands with a threshold that can fail and an entry in `requires:`,
 because that list is what anvil builds an image from.
@@ -299,8 +269,8 @@ because that list is what anvil builds an image from.
 
 ## The Ruby jig, part-written
 
-`jigs.yaml` now declares a `ruby` set, so the jig can be adopted at all. Nothing
-has adopted it, so the jig has still never run.
+`jigs.yaml` declares a `ruby` set. Nothing has adopted it, so the jig has never
+run.
 
 `bolt.ruby-std-quality.yaml` is drafted and validates against wrench's
 `JIG_SCHEMA`. Seven tasks, two mechanisms, no bespoke adapters:
@@ -309,10 +279,10 @@ has adopted it, so the jig has still never run.
     duplication advisories          piped filter writing {work_dir}/output.yaml
     tests                           adapters/python/coverage.py, Cobertura
 
-`bin/flay-envelope` is written and works, verified both directions against a
-planted duplication. One cosmetic defect: its `kind` regex captures the whole
-phrase `Similar code found in :defn` where it wants `:defn`, so the message
-reads "duplicated Similar code found in :defn of mass 40".
+`bin/flay-envelope` passes and fails correctly against a planted duplication.
+One cosmetic defect: its `kind` regex captures the whole phrase
+`Similar code found in :defn` where it wants `:defn`, so the message reads
+"duplicated Similar code found in :defn of mass 40".
 
 Still to write: `bin/bundle-audit-envelope`, reading bundle-audit's text and
 failing when the project declares dependencies and ships no lockfile, because
@@ -329,9 +299,8 @@ filter judges what it printed.
 ## Adapters across the other three jigs
 
 23 of 27 tasks across common, Go, Python and Rust name no adapter, so their
-verdict is bolt's generic exit-code one. That is correct wherever the tool's
-exit code answers the task's question, and wrong wherever it does not. The known
-wrong ones:
+verdict is bolt's generic exit-code one. The tasks where the exit code does not
+answer the question:
 
     Go        format   `test -z "$(gofmt -l .)"` is a shell workaround for a
                        missing adapter; `adapters/go/gofmt.py` exists, is on the
@@ -341,5 +310,4 @@ wrong ones:
 
 `adapters/go/gofmt.py` reads an execution record on stdin. The current contract
 is command-line: bolt supplies `--evidence`, `--work-dir`, `--stdout` and
-`--exitcode` as paths, and `adapters/python/coverage.py` documents it. So
-gofmt.py is stale, not merely unwired.
+`--exitcode` as paths, and `adapters/python/coverage.py` documents it.

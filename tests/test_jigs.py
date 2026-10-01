@@ -13,31 +13,21 @@ from conftest import ROOT
 
 # `bolt.<name>.definitions.yaml` matches the same glob and is not a jig. It
 # supplies values for a jig's placeholders and validates against a different
-# schema, so a glob that swallows it fails every run here. The same shape of
-# mistake is why qwark names its adoption entries one at a time.
+# schema, so a glob that swallows it fails every run here.
 JIGS = sorted(path for path in ROOT.glob("bolt.*.yaml") if not path.name.endswith(".definitions.yaml"))
 
 DEFINITIONS = sorted(ROOT.glob("bolt.*.definitions.yaml"))
 
 # The schemas come from wrench and this repository keeps no copy.
 #
-# That settles NFR-6. wrench ships them and bolt is built from them, so a second
-# copy here could only ever be a description free to disagree with the one
-# being enforced. A copy did disagree, twice: on `allow-empty` when wrench added
-# it, and again when wrench renamed it to `optional`. Both times the drift was
-# caught by a test and not by anything failing, and both times the fix was to
-# copy the file again.
-#
-# Importing the pack removes the class of bug, not just the instance. There is
-# no local artefact to drift.
+# That is NFR-6. wrench ships them and bolt is built from them, so a copy here
+# could only be a description free to disagree with the one being enforced.
 #
 # This is the source and not what any binary enforces. Bolt embeds these at
-# build time, so a binary enforces whatever wrench said when it was last built:
-# a new field was in the bolt built at 20:11 and absent from the one built at
-# 13:11, seven hours after the field existed. Agreeing with this source is
-# therefore necessary and not sufficient, and a jig using a field
-# younger than an adopter's binary is accepted and silently ignored, because the
-# schema does not refuse unknown keys.
+# build time, so a binary enforces whatever wrench said when it was last built.
+# Agreeing with this source is necessary and not sufficient: a jig using a
+# field younger than an adopter's binary is accepted and silently ignored,
+# because the schema does not refuse unknown keys.
 #
 # wrench ships a compiled validator, not a document, and it attaches its own
 # registry, so a jig schema referencing the definitions schema by `$id`
@@ -91,14 +81,7 @@ def test_every_jig_validates_against_the_schema():
 
 # COVERS FR-1.2 | property
 def test_every_definitions_file_validates_against_its_own_schema():
-    """The definitions files were never validated against anything.
-
-    A jig has been held to its schema since the suite existed; the definitions
-    files beside it, which supply that jig's placeholder values, were not. They
-    have their own schema and wrench ships it, so the omission was that nobody
-    reached for it, not that it was unavailable. The constant was imported and
-    used nowhere.
-    """
+    """A definitions file supplies a jig's placeholder values and has a schema of its own, which wrench ships."""
     assert DEFINITIONS, "no bolt.*.definitions.yaml found; this proves nothing"
     for path in DEFINITIONS:
         DEFINITIONS_SCHEMA.validate(yaml.safe_load(path.read_text(encoding="utf-8")))
@@ -106,16 +89,10 @@ def test_every_definitions_file_validates_against_its_own_schema():
 
 # COVERS NFR-6 | regression
 def test_the_schema_comes_from_wrench_and_not_from_a_copy():
-    """The drift this replaces was silent and hid a dead gate in eight repos.
+    """The schema validated against is the object wrench ships, and no local copy exists.
 
-    A local copy required `id` and `command` long after wrench's required
-    `name`, so every jig validated in this suite while bolt refused the same
-    files. A test that checks a document against a copy of the rule nobody
-    enforces reports on the copy.
-
-    The copy is gone rather than resynced, which settles NFR-6. This asserts
-    the property that replaced it: the schema being validated against is the
-    object wrench ships, so there is no local artefact left to drift.
+    A test that checks a document against a copy of the rule nobody enforces
+    reports on the copy, so a jig could pass here while bolt refuses it.
     """
     assert SCHEMA is wrench.JIG_SCHEMA
     assert not (ROOT / "schema").exists(), "a local schema/ has reappeared; NFR-6 says wrench ships these and this repository keeps no copy"
@@ -145,9 +122,7 @@ def test_an_adapter_is_named_and_not_config_dir_prefixed():
     `adapter: adapters/go/coverage.py` is the correct form. Writing
     `{config_dir}/adapters/...` resolves twice and bolt reports the adapter as
     not being in the config directory. The path rule still holds; it is
-    satisfied by the resolution rather than by the spelling, which is why this
-    is pinned rather than left to be rediscovered by whoever `test_every_path`
-    sends looking.
+    satisfied by the resolution and not by the spelling.
     """
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -158,10 +133,9 @@ def test_an_adapter_is_named_and_not_config_dir_prefixed():
 
 # COVERS FR-1.5 | negative
 def test_no_jig_names_a_project_specific_entry_point():
-    """`entrypoint` hardcoded ./cmd/bolt and failed for every adopter.
+    """A shared jig names no project's main package or module path.
 
-    It looked like a rule and was a subject. Nothing shared may name one
-    project's main package, its binary, or its module path.
+    A task naming `./cmd/bolt` fails for every adopter that is not bolt.
     """
     for path in JIGS:
         jig = yaml.safe_load(path.read_text(encoding="utf-8"))

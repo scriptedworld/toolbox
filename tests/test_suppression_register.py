@@ -34,7 +34,7 @@ def project(tmp_path: Path, register: str | None, **sources: str) -> Path:
 
 # COVERS FR-5.3 | positive
 def test_no_pragmas_and_no_register_passes(checker, tmp_path):
-    """A project that silences nothing needs no register and is not suspicious."""
+    """A project that silences nothing needs no register."""
     tree = project(tmp_path, None, main_go="package main\n\nfunc main() {}\n")
     code, out = checker(register_checker, ARGV, tree)
     assert code == 0
@@ -45,13 +45,9 @@ def test_no_pragmas_and_no_register_passes(checker, tmp_path):
 def test_a_run_that_read_no_source_at_all_fails(checker, tmp_path):
     """Read nothing and found nothing are different results.
 
-    The old output said `no suppression pragmas anywhere` for both, and a
-    reader takes that as a clean bill. Over skid, which is Python, the Go-only
-    scan printed exactly that and exited 0 while five registered pragmas sat in
-    the tree.
-
-    It fails instead of warning on this repository's own decision that a task
-    which cannot fail is worse than an absent one.
+    One message for both reads as a clean bill over a tree the scan never
+    entered, such as a Python project read by a Go-only scan. It fails rather
+    than warns, per `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md`.
     """
     (tmp_path / "README.md").write_text("Prose, and no source.\n", encoding="utf-8")
     code, out = checker(register_checker, ARGV, tmp_path)
@@ -200,11 +196,11 @@ def test_prose_about_a_pragma_is_not_a_pragma(checker, tmp_path):
 
 # COVERS FR-5.2 | regression
 def test_a_pragma_after_a_comment_marker_is_still_a_pragma(checker, tmp_path):
-    """`// #nosec G304 -- reason` is how palette-print writes every one of its.
+    """`// #nosec G304 -- reason` is a pragma.
 
-    Requiring the pragma exactly at the comment opener missed three genuine Go
-    suppressions there, which is the false-negative direction: it turns a gate
-    green. The pragma may open the comment or be the first thing inside it.
+    Requiring the pragma exactly at the comment opener misses this form, which
+    turns a gate green. The pragma may open the comment or be the first thing
+    inside it.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -241,13 +237,9 @@ def test_a_pragma_with_a_trailing_reason_is_still_seen(checker, tmp_path):
     """Writing why beside a suppression is the good habit, and it hid one.
 
     A rule list running to end of line means `# noqa: BLE001 - the reason`
-    matches nothing and the pragma is invisible: the checker reported
-    `no suppression pragmas` over a tree holding one in exactly that form. A
-    false negative here turns a gate green, and it hides precisely the
-    suppressions whose authors documented them.
-
-    The codes end the pragma and prose may follow, which is how the `nosec`
-    spelling already works.
+    matches nothing and the pragma is invisible, which hides the suppressions
+    whose authors documented them. The codes end the pragma and prose may
+    follow, as with `nosec`.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -267,12 +259,10 @@ def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path)
 
     Both open their comment, so the position rule cannot separate them and the
     trailing text is what does: a bare spelling naming no codes must end the
-    line. Found in silo, in a lesson document about this checker, which was the
-    estate's only false positive.
+    line.
 
-    Requiring code before the comment was the other obvious rule and is wrong.
-    palette-print writes all twelve of its on their own line above the
-    statement, so that rule would have lost them all.
+    Requiring code before the comment would lose a pragma written on its own
+    line above the statement.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -286,15 +276,12 @@ def test_a_sentence_beginning_with_a_spelling_is_not_a_pragma(checker, tmp_path)
 
 # COVERS FR-5.2 | regression
 def test_a_triple_quote_inside_a_string_does_not_open_a_docstring(checker, tmp_path):
-    """The docstring skipper was defeated by its own source.
+    """A delimiter spelled inside a string is not a fence.
 
     `code_lines` finds a fence with `re.search(r'\"\"\"|...', line)`, and that
-    line spells the delimiter inside a raw string. Counting it as a fence
-    toggled the state, so every docstring after it in this checker read as code
-    and a sentence in its own documentation was reported as a suppression.
-
-    This is the third place in one file where the tool could be read as a use
-    of itself, after the pattern table and the test fixtures.
+    line spells the delimiter inside a raw string. Counted as a fence, it
+    toggles the state, so every later docstring reads as code and a sentence
+    about a pragma reads as one.
     """
     tree = tmp_path
     (tree / "SUPPRESSIONS").write_text("Register.\n", encoding="utf-8")
@@ -336,10 +323,8 @@ def test_a_root_register_is_read_from_a_pack_below_it(checker, tmp_path):
 
     Both spellings are correct and they are not the same string: a scan at
     `python/` calls the file `app.py` where the register at the root calls it
-    `python/app.py`. Comparing them as strings made one of the two wrong, and a
-    repository running the shared jig at two bases had no valid register at all.
-
-    Filed by wrench, who declined a task over it.
+    `python/app.py`. Compared as strings, one of the two is always wrong, and a
+    repository running the shared jig at two bases has no valid register.
     """
     tree = two_base_repo(tmp_path)
     (tree / "SUPPRESSIONS").write_text(
@@ -478,8 +463,7 @@ def test_both_checkers_skip_the_same_directories():
     """Two copies of one list, in scripts that share no module.
 
     They are loaded by path, so neither can import the other, and the list in
-    each is free to drift from the other. A tree skipped by one checker and
-    walked by the other is the kind of difference nobody looks for.
+    each is free to drift from the other, which this test catches.
     """
     traceability = load("bin/test-traceability.py")
     assert register_checker.SKIP_DIRS == traceability.SKIP_DIRS, (

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Turn a child bolt run's result into the composing task's envelope.
 
-This adapter is the whole of composition. Bolt retired nested jigs at
-`f3304d8`, so a jig that wants another jig run over a subdirectory writes an
-ordinary command task whose command is `bolt` and names this adapter:
+This adapter is the whole of composition. Bolt has no nested jigs, so a jig
+that wants another jig run over a subdirectory writes an ordinary command task
+whose command is `bolt` and names this adapter:
 
     - name: python-common
       command: bolt --config-dir . --definitions wrench common-quality python
@@ -12,14 +12,11 @@ ordinary command task whose command is `bolt` and names this adapter:
 
 Without it the composed task cannot fail. A task naming no adapter gets the
 generic exit-code one, and **bolt exits 0 whenever it carried a run out**,
-whatever the tools concluded. So every composed task would pass however badly
-the child failed: a green that answers a narrower question than the reader's.
+whatever the tools concluded, so every composed task would pass however badly
+the child failed.
 
-The child's stdout is one line, the path to the `result.yaml` that run wrote,
-by bolt FR-10.3a. That requirement landed with composition so this works on
-every path, a refusal included. Without it a refusal wrote a result and printed
-nothing, and an adapter would have read an empty file with nothing to say about
-a run that had genuinely refused.
+The child's stdout ends with the path to the `result.yaml` that run wrote, by
+bolt FR-10.3a, on every path including a refusal.
 
 The child's reasons come up to the parent, instead of the parent pointing down
 at the child. A parent whose only reason is "the child failed" sends a reader
@@ -35,12 +32,9 @@ though it said something.
 
 # pylint: disable=duplicate-code
 #
-# The duplication is structural. Every script in `bin/` and `adapters/` is spawned
-# by path from a directory that is not a package, so none can import another,
-# so anything two of them must both do is written twice. R0801 finds a different
-# pair each time one is dissolved: the coverage adapters' judgement, the
-# checkers' `SKIP_DIRS`, the adapters' `emit`. Registered as S-3 in SUPPRESSIONS,
-# with what would retire it.
+# Every script in `bin/` and `adapters/` is spawned by path from a directory that
+# is not a package, so none can import another and shared code is written twice.
+# Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
 from __future__ import annotations
 
@@ -101,12 +95,9 @@ def named_result(stdout: str | None) -> tuple[pathlib.Path | None, dict | None]:
             f"the child run printed nothing to {stdout}; it died before writing a result rather than completing with a verdict",
         )
     # The last line, not the first. FR-10.3a says bolt prints the path to the
-    # result it wrote, and the Rust build prints that alone. The Go build still
-    # on PATH prints a task-by-task transcript and a summary first, with the
-    # path last. Reading the first line got `always-fails-0`, a task name, and
-    # reported a missing result over a child that had written one. Taking the
-    # last line satisfies both builds, which matters while the cutover this
-    # adapter exists to unblock is still in progress.
+    # result it wrote, and the Rust build prints that alone. The Go build prints
+    # a task-by-task transcript and a summary first, with the path last, so its
+    # first line is a task name. The last line is the path from both builds.
     return pathlib.Path(lines[-1]), None
 
 
@@ -149,7 +140,7 @@ def fold(document: dict, where: pathlib.Path) -> list[dict]:
     envelope schema makes that document invalid and `child_verdict` has already
     refused it. Both `success: false` alone and `success: false` with
     `reasons: []` fail validation, so a validated failure carries at least one
-    reason. A fallback here would be a branch that cannot fire.
+    reason.
     """
     if document.get("success"):
         return []
