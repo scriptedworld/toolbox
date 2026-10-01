@@ -11,12 +11,6 @@
       "rule": "commit-length",
       "text": "26 body lines, at most 20",
       "reason": "Same commit, same reason. The body is six lines over the limit and the SHA is cited, so the entry stands where a reword cannot."
-    },
-    {
-      "file": "commit ddc1304ce65b",
-      "rule": "commit-length",
-      "text": "22 body lines, at most 20",
-      "reason": "Its body names each inbox entry it resolved, which is the record the inbox rule asks for, and clank 2309dde and two toolbox tasks cite the SHA, so it is not reworded."
     }
   ]
 }
