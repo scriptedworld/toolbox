@@ -329,7 +329,7 @@ def main(argv: list[str] | None = None, access: Access | None = None) -> int:
         f"{outcome.withdrawn} withdrawn by its own check, {outcome.dropped} dropped by verification, "
         f"{len(outcome.unanswered)} texts unanswered; {read}"
     )
-    document = {"status": "reviewed", "model": backend.model, "backend": backend.name, "findings": outcome.kept}
+    document: dict[str, Any] = {"status": "reviewed", "model": backend.model, "backend": backend.name, "findings": outcome.kept}
     document |= {"withdrawn": outcome.withdrawn, "dropped": outcome.dropped, "unanswered": outcome.unanswered}
     return finish(args.report, document, lines)
 
