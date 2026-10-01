@@ -18,8 +18,7 @@ at dotfiles `2979efd` on 2026-08-19, and `config/zsh` held ten fragments only
 until `f4d7837`, three days later. Nothing about the figure looked stale, and
 infobot designed a paragraph around it before finding it could not be checked.
 
-**A figure beside a checked one.** Re-measuring that figure caught the one next
-to it: `install.sh` recorded at 4,380 bytes against an actual 4,376. Nobody
+Re-measuring that figure also caught the one next to it: `install.sh` recorded at 4,380 bytes against an actual 4,376. Nobody
 re-measures a byte count unless it sits next to one under suspicion.
 
 ## The rule, which is infobot's
