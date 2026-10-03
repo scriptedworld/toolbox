@@ -154,9 +154,10 @@ extraction goes.
 ### Two adapters still speak a retired contract
 
 `adapters/go/gofmt.py` and `adapters/go/govet.py` each read a record and write
-an envelope, and neither is wired to a task, so neither can currently fail.
-Wiring one before porting it produces an invalid envelope. Porting them buys
-back per-finding reasons. It does not change any verdict.
+a valid envelope on stdout, and neither is wired to a task, so neither can
+currently fail. bolt hands an adapter flags and not a record on stdin, so
+wiring one needs it ported to the flag contract first. Porting them buys back
+per-finding reasons. It does not change any verdict.
 
 ### Adoption records nothing about itself
 

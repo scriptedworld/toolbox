@@ -11,8 +11,9 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
-from conftest import ROOT, script_argv
+from conftest import ROOT, envelope, script_argv
 
 FIXTURES = ROOT / "tests" / "fixtures"
 
@@ -137,3 +138,42 @@ def test_the_suite_spawns_only_the_interpreter_and_git():
                 first = hit.group(1)
                 assert first in SPAWNABLE or first.startswith(("script_argv", "argv")), f"{path.name}:{number} spawns {first}"
     assert calls, "no spawning test found, so the constraint is untested"
+
+
+# COVERS FR-3.9 | negative
+@pytest.mark.parametrize(
+    "document",
+    [{"reasons": []}, {"success": False}, {"success": False, "reasons": [{"message": "no kind"}]}, ["not", "a", "mapping"]],
+)
+def test_an_envelope_bolt_would_refuse_fails_the_test_that_read_it(document):
+    """No verdict, a failure with no reasons, a reason with no kind, and a list all fail through the shared helper."""
+    with pytest.raises(pytest.fail.Exception, match="an envelope bolt would refuse"):
+        envelope(document)
+
+
+# COVERS FR-3.9 | positive
+def test_a_valid_envelope_passes_through_unchanged():
+    """A failure carrying a kind and a message, and a bare pass, are returned as read."""
+    failing = {"success": False, "reasons": [{"kind": "coverage-below", "message": "a.go at 40%"}]}
+    assert envelope(failing) is failing and envelope({"success": True}) == {"success": True}
+
+
+# The conftest helpers that validate the envelope they read (FR-3.9).
+VALIDATING = re.compile(r"\b(adapter|run_flag_adapter|read_envelope|envelope)\(")
+
+
+def spellings(path: Path) -> tuple[str, ...]:
+    """The two ways a test names an adapter: a slash path, or `ROOT / "adapters" / ...` parts."""
+    parts = path.relative_to(ROOT).parts
+    return "/".join(parts), " / ".join(f'"{part}"' for part in parts)
+
+
+# COVERS FR-3.10 | property
+def test_every_adapter_is_reached_through_a_validating_helper():
+    """An adapter whose tests read its envelope some other way would never have it validated."""
+    tests = {path: source(path) for path in sorted((ROOT / "tests").glob("test_*.py"))}
+    assert ADAPTERS, "no adapters found, so the rule is untested"
+    for adapter in ADAPTERS:
+        naming = [text for text in tests.values() if any(spelled in text for spelled in spellings(adapter))]
+        assert naming, f"{adapter.relative_to(ROOT)} is named by no test"
+        assert any(VALIDATING.search(text) for text in naming), f"{adapter.relative_to(ROOT)} is tested without a validating helper"

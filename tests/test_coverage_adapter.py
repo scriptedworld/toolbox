@@ -15,8 +15,7 @@ from __future__ import annotations
 
 import subprocess  # nosec B404
 
-import yaml
-from conftest import ROOT, script_argv
+from conftest import ROOT, read_envelope, script_argv
 
 ADAPTER = ROOT / "adapters" / "go" / "coverage.py"
 
@@ -57,7 +56,7 @@ def run(tmp_path, *args, profile: str | None = PROFILE, exitcode="0"):
     argv += ["--exitcode", str(status), *args]
 
     subprocess.run(argv, check=True, capture_output=True)  # nosec B603
-    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    return read_envelope(work)
 
 
 # COVERS FR-3.4 | positive
@@ -156,6 +155,6 @@ def test_two_profiles_merge_by_taking_the_higher_count(tmp_path):
         check=True,
         capture_output=True,
     )
-    envelope = yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    envelope = read_envelope(work)
     assert envelope["success"] is True, envelope
     assert envelope["metadata"]["statistics"]["total_percent"] == 100.0

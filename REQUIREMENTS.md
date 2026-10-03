@@ -60,6 +60,8 @@ requirement it marks is testable.
 | FR-3.4 | An adapter emits one reason per finding, naming its `checker` and, where the tool supplies them, the file and line. Where the fix is mechanical, the reason carries the fix. | [D] |
 | FR-3.5 | An adapter omits an optional block instead of emitting it empty. `reasons: []` on a pass reads as "checked and found nothing to say", which is a different claim from having nothing to report. | [D] |
 | FR-3.6 | An adapter that cannot recognise the output of a checker which also exited non-zero reports a failure it cannot name, never a pass. | [D] |
+| FR-3.9 | Every envelope an adapter test reads is validated against wrench's `ENVELOPE_SCHEMA` by the shared helper that read it, so an adapter writing an envelope bolt would refuse fails its own suite first. This is toolbox's half of bolt's FR-6.7 and its retired FR-6.8. | [A] |
+| FR-3.10 | Every adapter under `adapters/` is reached by a test through one of those validating helpers. | [A] |
 | FR-3.7 | `[?]` **Every adapter emits `statistics` on pass as well as on fail.** A number is only useful as a series, and a task that reports nothing when it passes can show no trend. True of the three coverage adapters, `adapters/{go,python,lcov}/coverage.py`, which report their totals on a pass as well as on a failure. `gofmt.py` and `govet.py` do not; both are stdin-contract adapters wired to no task, so neither reports anything either way. | [?] |
 
 ## FR-4, Traceability

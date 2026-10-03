@@ -23,6 +23,7 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+import wrench
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -77,6 +78,26 @@ def script_argv(path: Path | str, *args: str) -> list[str]:
     return [sys.executable, str(path), *args]
 
 
+def envelope(document: object) -> dict:
+    """An adapter's envelope, failing the test unless it validates against wrench's `ENVELOPE_SCHEMA`.
+
+    bolt validates every envelope at the merge, so an invalid one would fail in
+    an adopter's gate at run time. Every helper below that reads an envelope
+    goes through here, so an adapter's own suite fails first.
+    """
+    try:
+        wrench.ENVELOPE_SCHEMA.validate(document)
+    except wrench.ValidationError as invalid:
+        pytest.fail(f"the adapter wrote an envelope bolt would refuse: {invalid}")
+    assert isinstance(document, dict)
+    return document
+
+
+def read_envelope(work: Path) -> dict:
+    """The validated envelope a flag-contract adapter wrote to `output.yaml` in its work directory."""
+    return envelope(yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8")))
+
+
 def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode="0"):
     """Invoke a flag-contract adapter as bolt does and read the envelope it wrote.
 
@@ -115,7 +136,7 @@ def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode
     argv += ["--exitcode", str(status), *args]
 
     subprocess.run(script_argv(*argv), check=True, capture_output=True)  # nosec B603
-    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    return read_envelope(work)
 
 
 @pytest.fixture
@@ -151,8 +172,7 @@ def adapter(
         captured = io.StringIO()
         with contextlib.redirect_stdout(captured):
             module.main()
-        loaded = yaml.safe_load(captured.getvalue())
-        return loaded if isinstance(loaded, dict) else {}
+        return envelope(yaml.safe_load(captured.getvalue()))
 
     return run
 

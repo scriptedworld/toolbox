@@ -40,6 +40,7 @@ def reasons_from(text):
             continue
         reason = {
             "checker": CHECKER,
+            "kind": "vet-diagnostic",
             "file": m.group("file").lstrip("./"),
             "line": int(m.group("line")),
             "message": m.group("msg").strip(),
@@ -73,6 +74,7 @@ def main():
                 "reasons": [
                     {
                         "checker": CHECKER,
+                        "kind": "vet-failed",
                         "message": f"go vet exited {code} with no diagnostic this adapter could parse",
                         "detail": text.strip()[:2000],
                     }

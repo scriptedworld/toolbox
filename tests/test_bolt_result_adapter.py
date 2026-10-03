@@ -16,7 +16,7 @@ from __future__ import annotations
 import subprocess  # nosec B404
 
 import yaml
-from conftest import ROOT, script_argv
+from conftest import ROOT, read_envelope, script_argv
 
 ADAPTER = ROOT / "adapters" / "common" / "bolt-result.py"
 
@@ -36,7 +36,7 @@ def run(tmp_path, stdout_text=None):
         captured.write_text(stdout_text, encoding="utf-8")
         argv += ["--stdout", str(captured)]
     subprocess.run(argv, check=True, capture_output=True)  # nosec B603
-    return yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8"))
+    return read_envelope(work)
 
 
 def child(tmp_path, document) -> str:

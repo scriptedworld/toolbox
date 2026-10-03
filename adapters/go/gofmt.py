@@ -34,6 +34,7 @@ def main():
     reasons = [
         {
             "checker": CHECKER,
+            "kind": "not-formatted",
             "file": f.lstrip("./"),
             "message": f"{f.lstrip('./')} is not gofmt-clean",
             "fix": "gofmt -w " + f,
