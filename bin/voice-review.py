@@ -13,8 +13,11 @@ Each document, each file's comments and each commit message goes to the model
 whole, one request apiece, with the prompt in
 `config/prompts/voice-findings.md`. The model drafts findings, each a line, a
 rule and a quote, then checks each draft against its rule before answering, and
-only a draft its own check holds is kept. That check is what makes repeated runs
-agree; a sampling parameter cannot, since none is sent. A kept finding stands
+only a draft its own check holds is kept. Each text is asked twice by default
+(`--agree`), and a finding stands only when both answers report it on the same
+line under the same rule; measured over three runs of five documents, two
+answers agreed on every pass or fail where one answer did not, and three
+answers did no better. No sampling parameter is sent. A kept finding stands
 only when its rule is one the prompt asks for and its quote starts on the line
 it names; anything else is dropped and counted.
 
@@ -54,6 +57,8 @@ API_VERSION = "2023-06-01"
 REQUEST_SECONDS = 600
 PROMPT = Path(__file__).resolve().parent.parent / "config" / "prompts" / "voice-findings.md"
 RULES = frozenset({"closing-aphorism", "emphatic-contrast", "narrated-history", "restated-elsewhere", "table-stakes", "rule-of-three"})
+# Independent answers per text by default; a finding stands only when every one reports it.
+AGREE = 2
 # A quote starts on its line and may run onto this many more where the sentence wraps.
 WRAP_LINES = 2
 
@@ -242,13 +247,23 @@ def verified(text: Any, finding: dict) -> bool:
     return 0 <= window.find(quote) < max(len(first), 1)
 
 
-def review_text(backend: Backend, prompt: str, text: Any) -> dict:
-    """One text's findings, split into those that verify and those that do not."""
+def answered(backend: Backend, prompt: str, text: Any) -> tuple[list[dict], int, int]:
+    """One answer for a text: its verified findings, how many verification dropped, and how many its check withdrew."""
     body = "\n".join(f"{number}| {line}" for number, line in text.lines)
-    answer = backend.ask(prompt, f"text: {text.where}\nkind: {text.kind}\n\n{body}\n")
-    found, withdrawn = parse_findings(answer)
-    kept = [{"where": text.where, **item} for item in found if verified(text, item)]
-    return {"where": text.where, "kept": kept, "dropped": len(found) - len(kept), "withdrawn": withdrawn}
+    found, withdrawn = parse_findings(backend.ask(prompt, f"text: {text.where}\nkind: {text.kind}\n\n{body}\n"))
+    kept = [item for item in found if verified(text, item)]
+    return kept, len(found) - len(kept), withdrawn
+
+
+def review_text(backend: Backend, prompt: str, text: Any, agree: int = 1) -> dict:
+    """One text's findings: those every one of `agree` independent answers reports, by line and rule."""
+    answers = [answered(backend, prompt, text) for _ in range(max(agree, 1))]
+    keyed = [{(item["line"], item["rule"]): item for item in kept} for kept, _, _ in answers]
+    agreed = set(keyed[0]).intersection(*keyed[1:])
+    seen = set().union(*keyed)
+    kept = [{"where": text.where, **item} for key, item in keyed[0].items() if key in agreed]
+    dropped, withdrawn = sum(answer[1] for answer in answers), sum(answer[2] for answer in answers)
+    return {"where": text.where, "kept": kept, "dropped": dropped, "withdrawn": withdrawn, "disagreed": len(seen - agreed)}
 
 
 @dataclass
@@ -258,10 +273,11 @@ class Outcome:
     kept: list[dict] = field(default_factory=list)
     dropped: int = 0
     withdrawn: int = 0
+    disagreed: int = 0
     unanswered: list[dict] = field(default_factory=list)
 
 
-def review(backend: Backend, prompt: str, texts: list, workers: int) -> Outcome:
+def review(backend: Backend, prompt: str, texts: list, workers: int, agree: int = 1) -> Outcome:
     """Every text, in parallel.
 
     An unreachable model anywhere ends the review, because a partial review
@@ -269,7 +285,7 @@ def review(backend: Backend, prompt: str, texts: list, workers: int) -> Outcome:
     """
     outcome = Outcome()
     with ThreadPoolExecutor(max_workers=max(workers, 1)) as pool:
-        jobs = [(text, pool.submit(review_text, backend, prompt, text)) for text in texts if text.lines]
+        jobs = [(text, pool.submit(review_text, backend, prompt, text, agree)) for text in texts if text.lines]
         for text, job in jobs:
             try:
                 result = job.result()
@@ -279,6 +295,7 @@ def review(backend: Backend, prompt: str, texts: list, workers: int) -> Outcome:
             outcome.kept += result["kept"]
             outcome.dropped += result["dropped"]
             outcome.withdrawn += result["withdrawn"]
+            outcome.disagreed += result["disagreed"]
     return outcome
 
 
@@ -292,7 +309,8 @@ def arguments(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--prompt", type=Path, default=PROMPT, help="the prompt every request sends")
     parser.add_argument("--model", default="claude-sonnet-5")
     parser.add_argument("--fallback", choices=("cli", "none"), default="cli", help="what to use when ANTHROPIC_API_KEY is not set")
-    parser.add_argument("--workers", type=int, default=8, help="requests in flight at once")
+    parser.add_argument("--workers", type=int, default=8, help="texts in review at once")
+    parser.add_argument("--agree", type=int, default=AGREE, help="independent answers per text; a finding stands only when all report it")
     return tells.check_modes(parser, parser.parse_args(argv))
 
 
@@ -318,7 +336,7 @@ def main(argv: list[str] | None = None, access: Access | None = None) -> int:
         return 2
     try:
         backend = resolve_backend(args.model, args.fallback, access)
-        outcome = review(backend, prompt, texts, args.workers)
+        outcome = review(backend, prompt, texts, args.workers, args.agree)
     except Unreachable as problem:
         notice = f"voice review: NOT RUN, no model could be reached ({problem.why}): {problem.detail}"
         return finish(args.report, {"status": "unreachable", "why": problem.why, "detail": problem.detail}, [notice])
@@ -327,10 +345,11 @@ def main(argv: list[str] | None = None, access: Access | None = None) -> int:
     lines.append(
         f"voice review by {backend.model} through the {backend.name}: {len(outcome.kept)} findings, "
         f"{outcome.withdrawn} withdrawn by its own check, {outcome.dropped} dropped by verification, "
-        f"{len(outcome.unanswered)} texts unanswered; {read}"
+        f"{outcome.disagreed} not in all {args.agree} answers, {len(outcome.unanswered)} texts unanswered; {read}"
     )
-    document: dict[str, Any] = {"status": "reviewed", "model": backend.model, "backend": backend.name, "findings": outcome.kept}
-    document |= {"withdrawn": outcome.withdrawn, "dropped": outcome.dropped, "unanswered": outcome.unanswered}
+    document: dict[str, Any] = {"status": "reviewed", "model": backend.model, "backend": backend.name, "agree": args.agree}
+    document |= {"findings": outcome.kept, "withdrawn": outcome.withdrawn, "dropped": outcome.dropped}
+    document |= {"disagreed": outcome.disagreed, "unanswered": outcome.unanswered}
     return finish(args.report, document, lines)
 
 

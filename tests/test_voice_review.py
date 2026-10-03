@@ -86,9 +86,10 @@ def api_access(api: FakeAPI):
 
 
 def run(tree: Path, access, *flags: str, capsys) -> tuple[int, dict, str]:
-    """One in-process review over the whole tree: exit code, report and output."""
+    """One in-process review over the whole tree, one answer per text unless the flags say otherwise."""
     report = tree.parent / "review.json"
-    code = review.main(["--all-files", "--base", str(tree), "--report", str(report), *flags], access)
+    agree = () if "--agree" in flags else ("--agree", "1")
+    code = review.main(["--all-files", "--base", str(tree), "--report", str(report), *agree, *flags], access)
     return code, json.loads(report.read_text(encoding="utf-8")), capsys.readouterr().out
 
 
@@ -246,7 +247,7 @@ def test_a_commit_message_file_is_reviewed_through_the_wording_modes(tmp_path, c
     message.write_text("fix: a typo\n\nThe typo is gone.\n", encoding="utf-8")
     api = FakeAPI()
 
-    code = review.main(["--commit-msg-filename", str(message)], api_access(api))
+    code = review.main(["--commit-msg-filename", str(message), "--agree", "1"], api_access(api))
 
     assert code == 0
     assert [request["messages"][0]["content"].splitlines()[:2] for request in api.requests] == [["text: COMMIT_EDITMSG", "kind: commits"]]
@@ -390,6 +391,52 @@ def test_an_answer_with_findings_but_no_checks_is_unanswered(tmp_path, capsys):
     _, report, _ = run(tree, api_access(FakeAPI(lambda where, user: unchecked)), capsys=capsys)
 
     assert report["findings"] == [] and [item["where"] for item in report["unanswered"]] == ["README.md"]
+
+
+def alternating(*answers: dict):
+    """An answer function returning each answer in turn, one per request."""
+    calls = iter(range(10_000))
+    return lambda where, user: answers[next(calls) % len(answers)]
+
+
+# COVERS FR-10.9 | positive
+def test_a_finding_stands_only_when_every_answer_reports_it(tmp_path, capsys):
+    """Two answers share one finding and differ on another: the shared one stands and the other is counted."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n\nA plain sentence.\n"})
+    shared = {"line": 3, "rule": "closing-aphorism", "quote": APHORISM}
+    extra = {"line": 5, "rule": "table-stakes", "quote": "A plain sentence."}
+    api = FakeAPI(alternating(checked([shared, extra]), checked([shared])))
+
+    _, report, output = run(tree, api_access(api), "--agree", "2", capsys=capsys)
+
+    assert len(api.requests) == 2
+    assert [(f["line"], f["rule"]) for f in report["findings"]] == [(3, "closing-aphorism")]
+    assert report["agree"] == 2 and report["disagreed"] == 1
+    assert "1 not in all 2 answers" in output
+
+
+# COVERS FR-10.9 | positive
+def test_two_answers_per_text_is_the_default(tmp_path, capsys):
+    """With no flag, each text is asked twice."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n"})
+    api = FakeAPI()
+    report = tmp_path / "review.json"
+
+    review.main(["--all-files", "--base", str(tree), "--report", str(report)], api_access(api))
+
+    assert len(api.requests) == 2 and json.loads(report.read_text(encoding="utf-8"))["agree"] == 2
+
+
+# COVERS FR-10.9 | edge
+def test_answers_that_share_nothing_leave_no_finding(tmp_path, capsys):
+    """Each answer finds something different, so nothing stands and both are counted as not agreed."""
+    tree = repository(tmp_path, {"README.md": f"# r\n\n{APHORISM}\n\nA plain sentence.\n"})
+    first = checked([{"line": 3, "rule": "closing-aphorism", "quote": APHORISM}])
+    second = checked([{"line": 5, "rule": "table-stakes", "quote": "A plain sentence."}])
+
+    _, report, _ = run(tree, api_access(FakeAPI(alternating(first, second))), "--agree", "2", capsys=capsys)
+
+    assert report["findings"] == [] and report["disagreed"] == 2
 
 
 # COVERS FR-10.4 | positive

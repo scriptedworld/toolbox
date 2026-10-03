@@ -191,6 +191,7 @@ since repeated reviews of one repository disagree on many of their findings;
 | FR-10.6 | With `ANTHROPIC_API_KEY` set the Messages API is asked with no sampling parameter; without it, `claude -p` is asked only where the fallback is `cli`. | [A] |
 | FR-10.7 | `--report` writes the status, the model and backend, every standing finding, the withdrawn and dropped counts and the unanswered texts as JSON. | [A] |
 | FR-10.8 | The model checks each finding it drafted against its rule before it answers, and the answer carries the drafts and one check per draft. Only a draft whose check holds is kept; the rest are counted as withdrawn. An answer without drafts and checks leaves the text unanswered. | [A] |
+| FR-10.9 | Each text is asked `--agree` times, two by default, and a finding stands only when every answer reports it on the same line under the same rule. The rest are counted as not agreed, and the report carries the count and the number of answers. | [A] |
 
 ## Non-functional
 
