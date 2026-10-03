@@ -15,9 +15,9 @@ whole, one request apiece, with the prompt in
 rule and a quote, then checks each draft against its rule before answering, and
 only a draft its own check holds is kept. Each text is asked twice by default
 (`--agree`), and a finding stands only when both answers report it on the same
-line under the same rule; measured over three runs of five documents, two
-answers agreed on every pass or fail where one answer did not, and three
-answers did no better. No sampling parameter is sent. A kept finding stands
+line under the same rule. Two answers keep a document's pass or fail steady
+across runs where one does not, and a third adds nothing. No sampling
+parameter is sent. A kept finding stands
 only when its rule is one the prompt asks for and its quote starts on the line
 it names; anything else is dropped and counted.
 

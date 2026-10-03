@@ -277,9 +277,9 @@ def enclosing_directories(path: Path, root: Path) -> Iterator[Path]:
     """Every directory holding a document, from its own up to the root.
 
     Bounded at the root. Walking to the filesystem root instead reads whatever
-    happens to be above the repository: a tree archived as `holder.retired/`,
-    or a checkout beneath one, would retire every requirement in it, nothing
-    would be held to coverage, and the run would pass.
+    happens to be above the repository: a checkout beneath a directory named
+    like `holder.retired/` would have every requirement in it retired, and the
+    run would pass with nothing held to coverage.
     """
     current = path.parent
     while True:
@@ -713,8 +713,8 @@ def report(failures: list[str], declared: dict[str, str], cited: set[str], scope
     """Print the findings and return the exit status.
 
     A scoped run holds this tree to the rows that name it and to the rows that
-    name no tree at all. The others are exempt exactly as an open row is: out of
-    the denominator, reported as context, and never a failure. They stay in
+    name no tree at all. The others are exempt exactly as an open row is (FR-4.23).
+    They stay in
     `declared` instead of being dropped, so a test in this tree citing one is
     still told the id exists and is answered by parity's `cited by X but scoped
     to Y`, not by this checker claiming the requirement does not exist.

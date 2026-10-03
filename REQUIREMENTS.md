@@ -29,7 +29,7 @@ requirement it marks is testable.
 | ID | Requirement | |
 |---|---|---|
 | FR-1.7 | A jig is one `bolt.*.yaml` file holding a set of tasks, and bolt runs one jig over one directory. Composition is a task: a jig runs another through bolt as a child, and an adapter folds the child's verdict into the parent's, because bolt exits 0 whenever it carried a run out. | [D] |
-| FR-1.2 | Every jig here validates against `schema/jig.schema.json`. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
+| FR-1.2 | Every jig here validates against the jig schema wrench ships (NFR-6), and every definitions file against wrench's definitions schema. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
 | FR-1.3 | A jig carries the rule and never the subject. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
 | FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |
 | FR-1.5 | A shared jig states no project-specific name. A main package path such as `./cmd/bolt` is a subject, so a task that must name one, like `entrypoint`, belongs to the adopter. | [A] |
@@ -108,7 +108,7 @@ recorded in `bin/suppression-register.py`.
 | FR-5.1 | Every suppression pragma in the source appears in the register, and every row of the register names a pragma that is really there. Both directions fail. | [A] |
 | FR-5.2 | The count is part of the comparison, so a second pragma added to an already-registered file is caught instead of hiding behind the first. | [A] |
 | FR-5.3 | A project with no pragmas and no register passes. A project that has pragmas and no register does not. | [A] |
-| FR-5.4 | `[?]` **The register covers every language this repository ships a jig for.** It walks `*.go` only and requires gosec or `//nolint` rule ids, so a Python `# nosec` is silenced and unseen instead of silenced and justified: a false green in a gate. Open because fixing it newly fails every adopter carrying an unregistered pragma. See `NEXT_STEPS.md` item 7. | [?] |
+| FR-5.4 | `[?]` **The register covers every language this repository ships a jig for.** It reads Go, Python, shell, Rust and Ruby. It reads no TypeScript, which the Node, Deno and TypeScript jigs ship, so a pragma there is silenced and unseen instead of silenced and justified. Open until `clank/tasks/toolbox/shared-checkers/40` closes that gap. | [?] |
 | FR-5.5 | `--register` accepts a directory as well as a file, reading every `.md` beneath it. Counts add across documents, so one file per suppression totals what one document listing them all totals. | [D] |
 
 ## FR-6, Adoption
@@ -141,7 +141,7 @@ Adoption is therefore a set of symlinks.
 | FR-7.9 | Consent is asked for or declared, never assumed. A run with no terminal to ask at refuses instead of proceeding, and `--yes` is how a script says it meant to. | [A] |
 | FR-7.10 | Running twice changes nothing, and says so instead of relinking what is already correct. | [D] |
 | FR-7.11 | `--check` writes nothing, exits 1 on drift, and passes on a project that is set up. It is the form this grows into as a jig task, so one command has to both detect drift and confirm health. | [A] |
-| FR-7.12 | Drift is found in both directions: a link pointing at the wrong file is repaired, and a link left behind by a dropped set is reported. A stale link reads as a working path right up until it is followed. | [D] |
+| FR-7.12 | Drift is found in both directions: a link pointing at the wrong file is repaired, and a link left behind by a dropped set is reported. | [D] |
 | FR-7.13 | The default is to enumerate, ask, then act, which is the shape `bolt plan` and `bolt` already have. `--plan` says what would happen and stops. | [A] |
 | FR-7.14 | A link whose destination resolves outside the target project is refused. Adoption cannot write through a symlink that leaves the repository. | [D] |
 
@@ -199,9 +199,9 @@ since repeated reviews of one repository disagree on many of their findings;
 
 ## FR-11, The shell jig
 
-*Derives from:* a bash repository's own source being read by no jig, and the
-entry-point shims of a Go repository being read by nothing;
-`bolt.shell-std-quality.yaml` and `bin/shell-files.py`.
+*Derives from:* the need for shell source, extensionless entry points
+included, to be read by a jig; `bolt.shell-std-quality.yaml` and
+`bin/shell-files.py`.
 
 | ID | Requirement | |
 |---|---|---|

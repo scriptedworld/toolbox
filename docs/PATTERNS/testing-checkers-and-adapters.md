@@ -4,9 +4,9 @@ How this repository tests the code it ships, and why the two kinds of code get
 two different shapes of test.
 
 A checker is what a task runs, taking `argv` and the filesystem and returning a
-verdict as its exit code. An adapter takes an execution record on stdin and
-returns an envelope on stdout, and its own exit code means nothing. The
-split below is that distinction applied to tests.
+verdict as its exit code. An adapter is handed the paths of what bolt captured
+and writes an envelope to `output.yaml` in its work directory. The split below
+is that distinction applied to tests.
 
 ---
 
@@ -25,12 +25,16 @@ The contract decides what a test is able to assert.
 
 | | **Checker** (`bin/`) | **Adapter** (`adapters/`) |
 |---|---|---|
-| Input | `argv`, and the filesystem | `argv`, and a **record** on stdin |
-| Output | text on stdout, **exit code is the verdict** | an **envelope** on stdout, exit code means nothing |
-| Pure? | No, it reads a project tree | **Yes**: no clock, no filesystem, no network |
+| Input | `argv`, and the filesystem | flags naming bolt's captures: `--stdout`, `--exitcode`, `--evidence`, `--work-dir` |
+| Output | text on stdout, **exit code is the verdict** | an **envelope** in `{work_dir}/output.yaml` |
+| Reads | a project tree | only the files it is handed (FR-3.8): no clock, no network |
 | Needs the real tool? | No, it *is* the tool | No, it parses text the tool once produced |
-| Test gives it | a tree built under `tmp_path` | a record dict |
-| Test asserts on | `(exit code, stdout)` | the parsed envelope |
+| Test gives it | a tree built under `tmp_path` | captured output written under `tmp_path` |
+| Test asserts on | `(exit code, stdout)` | the envelope, validated against wrench's schema |
+
+`adapters/go/gofmt.py` and `govet.py` still read a record on stdin and print
+their envelope, the retired contract; neither is wired to a task. The
+`adapter` fixture serves that shape.
 
 **Neither kind of test ever runs the tool it is about.** An adapter test does not
 run `gofmt`; it feeds the adapter text `gofmt` produced. That keeps the suite
@@ -49,15 +53,20 @@ a package. Tests load them by path instead, which `tests/conftest.py` does once:
 traceability = load("bin/test-traceability.py")
 ```
 
-**Tests call `main()` in-process, never through a subprocess.** A subprocess is
-slower and its assertion failures are opaque. More importantly, `coverage run -m
-pytest` sees nothing a subprocess does, so a suite built on subprocesses would
-report the checkers at 0% covered while testing them thoroughly. In-process is
-what makes the `tests` task's coverage figure mean anything.
+**A checker's tests call `main()` in-process**, where the assertion failures are
+readable. An adapter is spawned, because where it writes its envelope is part of
+its contract: `run_flag_adapter` and `read_envelope` in `conftest.py` run it as
+bolt does and read `output.yaml`. A spawned script is still measured, because
+`script_argv` runs it under `coverage run --parallel-mode` when the suite is
+under coverage (NFR-2).
 
-The cost is that `main()` has to be reached with `argv`, the working directory
-and stdin all set. `conftest.py` provides one fixture per contract so that no
-test does it by hand:
+**Every helper that reads an envelope validates it** against wrench's
+`ENVELOPE_SCHEMA` (FR-3.9), so an adapter writing one bolt would refuse fails its
+own suite first, and a convention test fails any adapter no test reaches that
+way (FR-3.10).
+
+In-process, `main()` has to be reached with `argv`, the working directory and
+stdin set, and `conftest.py` provides fixtures so that no test does it by hand:
 
 ```python
 def test_something(checker, tmp_path):
@@ -73,10 +82,9 @@ def test_something_else(adapter):
 Both restore what they changed through `monkeypatch`, so a test failing mid-way
 does not leave the next one running in the wrong directory.
 
-**One subprocess test per script, and no more.** In-process testing cannot catch
-a script that is not executable, has a broken shebang, or crashes on import, and
-those are exactly the failures that break a task for every adopter at once. One
-smoke test per script covers the wiring, and everything else stays in-process.
+**Every checker gets one subprocess test.** In-process testing cannot catch a
+script that is not executable, has a broken shebang, or crashes on import, and
+those are exactly the failures that break a task for every adopter at once.
 
 ## Fixtures are captured, never composed
 
@@ -98,8 +106,8 @@ capture. A tool changing its output format is the break these adapters exist to
 absorb, and a fixture with no provenance cannot tell you whether it ever matched
 reality.
 
-Composing a record by hand is fine for the *shape* around the payload: an empty
-stdout, a missing `captures` block, a non-zero exit code. It is not fine for the
+Composing by hand is fine for the *shape* around the payload: an empty stdout, a
+missing evidence file, a non-zero exit code. It is not fine for the
 payload itself.
 
 ## What a test asserts
@@ -138,7 +146,7 @@ the happy path cannot show:
 ```
 pyproject.toml              pytest and coverage configuration; declares no package
 tests/
-  conftest.py               the loader and the two fixtures
+  conftest.py               the loader, the fixtures and the envelope helpers
   test_traceability.py      bin/test-traceability.py
   test_suppression_register.py   bin/suppression-register.py
   test_gofmt_adapter.py     adapters/go/gofmt.py
@@ -165,8 +173,9 @@ test's job to prove.
 
 **It does not test bolt.** A test here that ran `bolt` would be testing the
 runner through this repository, and that is the dependency the three-repository
-split avoids. The `record` a test composes stands in for bolt, and the schema
-wrench ships, which `tests/test_jigs.py` imports, holds the two ends together.
+split avoids. The captures a test writes stand in for bolt, and the schemas
+wrench ships, which `tests/test_jigs.py` and `conftest.py` import, hold the two
+ends together.
 
 It does not assert on exact prose. Checker output is read by people and will
 be reworded. A test asserts that a finding *names* the file, id or count, never
