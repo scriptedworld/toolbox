@@ -14,8 +14,7 @@
 # 1. It reads the verdict out of result.yaml and never bolt's exit status.
 #    bolt exits 0 whenever it carried a run out, whatever the tools concluded:
 #    a jig with one passing and one failing task writes "success": false into
-#    result.yaml and exits 0. Reading the artifact and not the exit status is
-#    a standing rule here.
+#    result.yaml and exits 0.
 #
 #    bolt's own --result-to-exitcode does make the status carry the verdict,
 #    and is still not used: it collapses a refusal, where no result was
@@ -39,14 +38,10 @@
 #
 # Without the flag, the failure does not look like a missing flag. The
 # placeholder keeps its default and the jig reports a problem in the adopter's
-# own tree: qwark's `entrypoint` stayed `true`, so cover-entrypoint.sh never ran
-# and main.go read 0.0% against an 80% floor. Skid's `requirements` stayed the
-# retired single-file path, so traceability and suppressions both failed. On a
-# fixture, the task passes with the flag and fails without it, and nothing in
-# either message says "definitions".
-#
-# So the symptom points at the adopter's coverage or requirements
-# configuration, and the cause is a missing --definitions here.
+# own tree: an `entrypoint` left at `true` never runs its coverage script, so
+# main.go reads 0.0%, and a `requirements` left at its default fails
+# traceability and suppressions. Neither message says "definitions", so when
+# coverage or requirements fail unexpectedly, check this flag first.
 _verdict jig *flags:
     #!/usr/bin/env bash
     set -euo pipefail
