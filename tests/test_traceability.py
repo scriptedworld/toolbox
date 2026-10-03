@@ -417,6 +417,74 @@ def test_a_bats_test_citing_nothing_is_named_by_its_string(checker, tmp_path):
     assert "dry run changes nothing" in out
 
 
+# ---- typescript and ruby ------------------------------------------------------
+
+
+# COVERS FR-4.7, FR-4.28 | positive
+@pytest.mark.parametrize(
+    ("name", "call"),
+    [
+        ("links.test.ts", 'test("links a skill", () => {});'),
+        ("links_test.ts", "Deno.test('links a skill', () => {});"),
+        ("links.test.mjs", "  it(`links a skill`, () => {});"),
+        ("links_test.ts", 'void test("links a skill", async () => {});'),
+    ],
+)
+def test_a_typescript_test_call_is_found(checker, tmp_path, name, call):
+    """node:test's `test` and `it`, and Deno's `Deno.test`, each with its COVERS line above."""
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {f"src/{name}": f"// COVERS FR-1.1 | positive\n{call}\n"})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS FR-4.28 | negative
+def test_a_typescript_test_citing_nothing_is_named(checker, tmp_path):
+    """The failure names the test by its string."""
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"src/a.test.ts": 'test("refuses an empty list", () => {});\n'})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "refuses an empty list" in out
+
+
+# COVERS FR-4.7, FR-4.28 | positive
+def test_rspec_and_minitest_tests_are_found(checker, tmp_path):
+    """An rspec `it "..."` and a minitest `def test_...`, each citing a requirement."""
+    tree = project(
+        tmp_path,
+        requirements(("FR-1.1", "[A]"), ("FR-1.2", "[A]")),
+        {
+            "spec/flay_spec.rb": '# COVERS FR-1.1 | positive\nit "reads a duplication" do\nend\n',
+            "test/test_flay.rb": "# COVERS FR-1.2 | positive\ndef test_reads_a_duplication\nend\n",
+        },
+    )
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# Which `LANGUAGES` entries each shipped language jig's tests are read by.
+JIG_LANGUAGES = {
+    "go": {"go"},
+    "python": {"python"},
+    "rust": {"rust"},
+    "shell": {"bats"},
+    "typescript": {"typescript"},
+    "node": {"typescript"},
+    "deno": {"typescript"},
+    "ruby": {"rspec", "minitest"},
+}
+
+
+# COVERS FR-4.7 | property
+def test_every_shipped_language_jig_has_a_language_entry():
+    """Derived from the jigs on disk, so a new language jig with no entry fails here."""
+    jigs = sorted(path.name.removeprefix("bolt.").removesuffix("-std-quality.yaml") for path in ROOT.glob("bolt.*-std-quality.yaml"))
+    entries = {language.name for language in traceability.LANGUAGES}
+    assert jigs, "no language jigs found, so the rule is untested"
+    for jig in jigs:
+        assert jig in JIG_LANGUAGES, f"bolt.{jig}-std-quality.yaml ships with no entry in JIG_LANGUAGES"
+        assert JIG_LANGUAGES[jig] <= entries, f"{jig} needs {JIG_LANGUAGES[jig] - entries} in LANGUAGES"
+
+
 # COVERS FR-2.5 | regression
 def test_cargo_build_output_is_not_scanned(checker, tmp_path):
     """`target/` carries vendored `.rs` sources, and bolt's held twelve."""

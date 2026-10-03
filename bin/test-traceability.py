@@ -209,6 +209,29 @@ LANGUAGES = (
         attribute=re.compile(r"^\s*#\[(?:\w+::)*test\b"),
     ),
     Language(
+        name="typescript",
+        # The files `node --test` and `deno test` both pick up by default. A test
+        # is a call, `test("name", ...)` under node:test or `Deno.test(...)`,
+        # and `it(...)` inside a node:test `describe`. `void` or `await` may
+        # come first, because node:test returns a promise a linter wants
+        # handled.
+        globs=tuple(f"*{sep}test.{ext}" for sep in (".", "_") for ext in ("ts", "tsx", "mts", "js", "mjs")),
+        declaration=re.compile(r"""^\s*(?:(?:void|await)\s+)?(?:Deno\.)?(?:test|it)\s*\(\s*(?:"([^"]+)"|'([^']+)'|`([^`$]+)`)"""),
+        comment="//",
+    ),
+    Language(
+        name="rspec",
+        globs=("*_spec.rb",),
+        declaration=re.compile(r"""^\s*it\s*\(?\s*(?:"([^"]+)"|'([^']+)')"""),
+        comment="#",
+    ),
+    Language(
+        name="minitest",
+        globs=("test_*.rb", "*_test.rb"),
+        declaration=re.compile(r"^\s*def (test_\w+)"),
+        comment="#",
+    ),
+    Language(
         name="bats",
         # bats names a test with a quoted string, which becomes its name here.
         globs=("*.bats",),
