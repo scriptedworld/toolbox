@@ -39,10 +39,30 @@ though it said something.
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
+import sys
 
-import wrench
-import yaml
+
+def refusal(missing: ImportError) -> dict:
+    """The failing envelope for a package this interpreter cannot import (FR-3.11).
+
+    bolt reports a crashed adapter only as the status it exited with, which
+    names neither the package nor the interpreter.
+    """
+    need = f"{pathlib.Path(sys.argv[0]).name} needs the Python package {missing.name}"
+    have = f"{sys.executable} (Python {sys.version.split()[0]}) cannot import it"
+    return {"success": False, "reasons": [{"kind": "adapter-dependency-missing", "message": f"{need}, and {have}"}]}
+
+
+# JSON is valid YAML, so writing the refusal needs no yaml.
+try:
+    import wrench
+    import yaml
+except ImportError as missing:
+    WORK = sys.argv[sys.argv.index("--work-dir") + 1] if "--work-dir" in sys.argv[:-1] else "."
+    pathlib.Path(WORK, "output.yaml").write_text(json.dumps(refusal(missing)), encoding="utf-8")
+    sys.exit(0)
 
 CHECKER = "bolt-result"
 

@@ -62,6 +62,7 @@ requirement it marks is testable.
 | FR-3.6 | An adapter that cannot recognise the output of a checker which also exited non-zero reports a failure it cannot name, never a pass. | [D] |
 | FR-3.9 | Every envelope an adapter test reads is validated against wrench's `ENVELOPE_SCHEMA` by the shared helper that read it, so an adapter writing an envelope bolt would refuse fails its own suite first. This is toolbox's half of bolt's FR-6.7 and its retired FR-6.8. | [A] |
 | FR-3.10 | Every adapter under `adapters/` is reached by a test through one of those validating helpers. | [A] |
+| FR-3.11 | An adapter whose interpreter cannot import a package it needs writes a failing envelope whose reason, of kind `adapter-dependency-missing`, names the package and the interpreter with its version, and exits 0 so bolt takes that envelope. bolt reports a crashed adapter only as the status it exited with. | [A] |
 | FR-3.7 | `[?]` **Every adapter emits `statistics` on pass as well as on fail.** A number is only useful as a series, and a task that reports nothing when it passes can show no trend. True of the three coverage adapters, `adapters/{go,python,lcov}/coverage.py`, which report their totals on a pass as well as on a failure. `gofmt.py` and `govet.py` do not; both are stdin-contract adapters wired to no task, so neither reports anything either way. | [?] |
 
 ## FR-4, Traceability

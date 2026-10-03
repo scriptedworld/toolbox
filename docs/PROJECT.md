@@ -187,4 +187,6 @@ global one.
 the adapters need PyYAML: it works by ambient availability, and
 `pyproject.toml` carries a mypy override in place of the `types-PyYAML` stub
 package. anvil cannot install the adapters' libraries from a declaration until
-one exists.
+one exists. Meanwhile an adapter whose interpreter lacks one fails with an
+envelope naming the package and the interpreter (FR-3.11), not with a status
+bolt can only report as a number.

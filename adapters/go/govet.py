@@ -15,10 +15,25 @@ Reads an execution record on stdin, writes an envelope on stdout.
 # is not a package, so none can import another and shared code is written twice.
 # Registered as S-3 in SUPPRESSIONS, with what would retire it.
 
+import json
 import re
 import sys
+from pathlib import Path
 
-import yaml
+
+def refusal(missing: ImportError) -> dict:
+    """The failing envelope for a package this interpreter cannot import (FR-3.11)."""
+    need = f"{Path(sys.argv[0]).name} needs the Python package {missing.name}"
+    have = f"{sys.executable} (Python {sys.version.split()[0]}) cannot import it"
+    return {"success": False, "reasons": [{"kind": "adapter-dependency-missing", "message": f"{need}, and {have}"}]}
+
+
+# JSON is valid YAML, so printing the refusal needs no yaml.
+try:
+    import yaml
+except ImportError as missing:
+    print(json.dumps(refusal(missing)))
+    sys.exit(0)
 
 DIAGNOSTIC = re.compile(r"^(?P<file>[^:\s]+\.go):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<msg>.+)$")
 

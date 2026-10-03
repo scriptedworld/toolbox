@@ -8,12 +8,13 @@ no test; it cannot tell that a fixture was captured rather than composed.
 from __future__ import annotations
 
 import re
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
 import pytest
 import yaml
-from conftest import ROOT, envelope, script_argv
+from conftest import ROOT, argv_without_site, envelope, load, script_argv
 
 FIXTURES = ROOT / "tests" / "fixtures"
 
@@ -156,6 +157,33 @@ def test_a_valid_envelope_passes_through_unchanged():
     """A failure carrying a kind and a message, and a bare pass, are returned as read."""
     failing = {"success": False, "reasons": [{"kind": "coverage-below", "message": "a.go at 40%"}]}
     assert envelope(failing) is failing and envelope({"success": True}) == {"success": True}
+
+
+# COVERS FR-3.11 | negative
+@pytest.mark.parametrize("path", ADAPTERS, ids=lambda path: str(path.relative_to(ROOT)))
+def test_an_adapter_missing_a_package_names_it_and_the_interpreter(tmp_path, path):
+    """Spawned without site-packages, every adapter writes a failing envelope saying what it lacked and where."""
+    work = tmp_path / "work"
+    work.mkdir()
+    flags = "--work-dir" in source(path)
+    argv = argv_without_site(path, "--work-dir", str(work)) if flags else argv_without_site(path)
+
+    result = subprocess.run(argv, input="", capture_output=True, text=True, check=False)  # nosec B603
+
+    assert result.returncode == 0, result.stderr
+    written = (work / "output.yaml").read_text(encoding="utf-8") if flags else result.stdout
+    reason = envelope(yaml.safe_load(written))["reasons"][0]
+    assert reason["kind"] == "adapter-dependency-missing"
+    assert "needs the Python package" in reason["message"] and sys.executable in reason["message"]
+
+
+# COVERS FR-3.11 | positive
+@pytest.mark.parametrize("path", ADAPTERS, ids=lambda path: str(path.relative_to(ROOT)))
+def test_each_adapters_refusal_names_the_package_and_is_an_envelope(path):
+    """The refusal itself, called in process, so the reasoning it carries is measured."""
+    refused = envelope(load(str(path.relative_to(ROOT))).refusal(ImportError("no module", name="wrench")))
+    assert refused["success"] is False
+    assert "the Python package wrench" in refused["reasons"][0]["message"]
 
 
 # The conftest helpers that validate the envelope they read (FR-3.9).

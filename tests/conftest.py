@@ -98,6 +98,11 @@ def read_envelope(work: Path) -> dict:
     return envelope(yaml.safe_load((work / "output.yaml").read_text(encoding="utf-8")))
 
 
+def argv_without_site(path: Path, *args: str) -> list[str]:
+    """A script spawned by an interpreter that cannot see site-packages, so no installed package imports."""
+    return [sys.executable, "-S", str(path), *args]
+
+
 def run_flag_adapter(adapter, tmp_path, evidence_name, evidence, *args, exitcode="0"):
     """Invoke a flag-contract adapter as bolt does and read the envelope it wrote.
 
