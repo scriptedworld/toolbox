@@ -45,6 +45,7 @@ per-finding detail. The Ruby jig has never run.
 | `bolt.go-std-quality.yaml` | Go: `gofmt`, `go mod tidy`, build, `vet`, `golangci-lint`, race-and-shuffle tests, per-file coverage, `govulncheck` |
 | `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `ruff` complexity, `vulture`, `interrogate`, `bandit`, `pytest`, per-file line **and branch** coverage |
 | `bolt.rust-std-quality.yaml` | Rust: `cargo fmt`, `clippy`, build, tests, per-file coverage, `cargo-audit`, `cargo-deny` |
+| `bolt.shell-std-quality.yaml` | Shell, chosen by extension, startup-file name or shebang: `shfmt` and `shellcheck`; zsh is formatted and not linted |
 | `bolt.typescript-std-quality.yaml`, `bolt.node-std-quality.yaml`, `bolt.deno-std-quality.yaml`, `bolt.ruby-std-quality.yaml` | TypeScript, Node, Deno and Ruby; each jig's header lists its tasks |
 | `bolt.secrets.yaml` | `gitleaks` and `detect-secrets` |
 

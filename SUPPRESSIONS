@@ -7,7 +7,7 @@ between a silenced check and nobody remembering why.
 
 ## S-1, bandit's subprocess findings in the test tree
 
-Eighteen marks, two rules, eight files, and every one is a test. `B404` for
+Twenty marks, two rules, nine files, and every one is a test. `B404` for
 importing `subprocess`, `B603` for calling it without `shell=True`.
 
     tests/conftest.py                         # nosec B404    import subprocess
@@ -24,6 +24,8 @@ importing `subprocess`, `B603` for calling it without `shell=True`.
     tests/test_gofmt_adapter.py               # nosec B603    the script-runs-as-a-script case
     tests/test_suppression_register.py        # nosec B404    import subprocess
     tests/test_suppression_register.py        # nosec B603    the script-runs-as-a-script case
+    tests/test_shell_files.py                 # nosec B404    import subprocess
+    tests/test_shell_files.py                 # nosec B603    the script-runs-as-a-script case
     tests/test_traceability.py                # nosec B404    import subprocess
     tests/test_traceability.py                # nosec B603    the script-runs-as-a-script case
 

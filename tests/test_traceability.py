@@ -10,6 +10,7 @@ from __future__ import annotations
 import subprocess  # nosec B404
 from pathlib import Path
 
+import pytest
 from conftest import ROOT, load, script_argv
 
 traceability = load("bin/test-traceability.py")
@@ -392,6 +393,28 @@ def test_a_rust_unit_test_inside_src_is_found(checker, tmp_path):
     )
     code, out = checker(traceability, ARGV, tree)
     assert code == 0, out
+
+
+# ---- bats, which names a test with a string ---------------------------------
+
+
+# COVERS FR-4.7, FR-4.27 | positive
+@pytest.mark.parametrize("quote", ['"', "'"])
+def test_a_bats_test_is_found_and_cites_its_requirement(checker, tmp_path, quote):
+    """Either quoting of `@test "name" {` is a test, and its COVERS line counts."""
+    test = f"#!/usr/bin/env bats\n\n# COVERS FR-1.1 | positive\n@test {quote}install links a skill{quote} {{\n  run true\n}}\n"
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"test/install.bats": test})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
+# COVERS FR-4.27 | negative
+def test_a_bats_test_citing_nothing_is_named_by_its_string(checker, tmp_path):
+    """The failure names the test by the description bats gives it."""
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"test/install.bats": '@test "dry run changes nothing" {\n  run true\n}\n'})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "dry run changes nothing" in out
 
 
 # COVERS FR-2.5 | regression

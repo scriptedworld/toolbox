@@ -88,6 +88,13 @@ sets:
       - adapters/lcov/coverage.py
       - config/rust/clippy.toml
 
+  # The shell jig, and the selector its tasks pipe the tracked files through.
+  shell:
+    includes: [common]
+    files:
+      - bolt.shell-std-quality.yaml
+      - bin/shell-files.py
+
   # The Ruby jig. Its coverage task reads a
   # Cobertura report, which is the Python adapter's format, so the two sets
   # share that file the way `rust` and `typescript` share the lcov one.

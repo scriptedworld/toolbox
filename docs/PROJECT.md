@@ -47,6 +47,8 @@ simply name a jig that lives elsewhere.
     bolt.rust-std-quality.yaml   Rust: format, lint, build, tests with per-file
                                  coverage, vuln, licences. Lines, not branches:
                                  cargo-llvm-cov needs nightly for those.
+    bolt.shell-std-quality.yaml  shell: shfmt and shellcheck over files chosen by
+                                 extension, startup-file name or shebang
     bolt.typescript-std-quality.yaml, bolt.node-std-quality.yaml,
     bolt.deno-std-quality.yaml, bolt.ruby-std-quality.yaml
                                  the other languages; the Ruby jig has never run
@@ -65,6 +67,8 @@ simply name a jig that lives elsewhere.
       voice-review.py          a model's findings on the same text, run by hand,
                                never a gate
       flay-envelope            flay's report as an envelope, for the Ruby jig
+      shell-files.py           the shell files among the tracked ones, for the
+                               shell jig
     adapters/       record -> envelope, per task that needs one
       common/bolt-result.py    a child bolt run's verdict becomes this task's
       go/{gofmt,govet,coverage}.py

@@ -1,0 +1,72 @@
+# Standard quality gate for shell source. Run it with bolt.common-quality,
+# which holds traceability, suppressions and secrets.
+#
+#     bolt shell-std-quality .
+#
+# The path rule: a path resolves against {config_dir} if it travels with this
+# file; it stays relative to the base if it belongs to the project being checked.
+#
+# ---- what it reads ------------------------------------------------------------
+#
+# Tracked files whose extension, name or shebang names a shell, chosen by
+# `bin/shell-files.py` from `git ls-files`. Not by extension alone: an entry
+# point under `bin/` or a hook under `home/` usually has none, and the small
+# extensionless script at the edge of a repository is often the one a user
+# runs. Symlinks are skipped, because in an adopter a link under `bin/` is
+# toolbox's own checker. Untracked files are not read, so `.ephemera/` needs no
+# exclusion.
+#
+# The selector prints how many files it chose on stderr, and fails the task
+# when the project holds no shell file at all, so a run that read nothing does
+# not pass.
+#
+# ---- what it does not cover ---------------------------------------------------
+#
+# zsh is formatted and not linted: shellcheck parses sh, bash, dash and ksh,
+# and refuses zsh. The lint task's stderr says how many zsh files it left out.
+#
+# Tests: the common jig's traceability reads `*.bats` files (`@test "name" {`).
+# A project testing its scripts from another language, as infobot does from Go,
+# is read through that language's entry. There is no coverage task, because no
+# shell coverage tool measures per file without instrumenting the shell.
+#
+# Every task gates on its exit code. `shfmt -d` exits 1 when any file would
+# change, and shellcheck exits 1 on any finding. `xargs -r` runs nothing when
+# nothing was selected, which matters for shfmt: with no file arguments it
+# reads stdin.
+#
+# Each step writes a file in the work directory and the steps are joined by
+# `&&`, not piped. A pipeline's status is its last command's, so a selector
+# that crashed would hand xargs nothing and the task would pass having read
+# nothing; `pipefail` is not POSIX, and bolt runs commands under `sh`.
+
+version: "1.0.0"
+
+requires:
+  - git
+  - python3
+  - shfmt
+  - shellcheck
+
+tasks:
+  # Layout as shfmt prints it, the dialect taken from each file's extension or
+  # shebang. No style flag is passed, so shfmt reads the project's
+  # `.editorconfig` (`indent_style`, `indent_size`, `[*.sh]` sections) and
+  # falls back to tabs; an adopter indenting with spaces says so there. The
+  # diff it prints is the fix.
+  - name: format
+    description: every shell file is shfmt-clean
+    command: >-
+      git ls-files -z > {work_dir}/tracked &&
+      python3 {config_dir}/bin/shell-files.py < {work_dir}/tracked > {work_dir}/shell &&
+      xargs -r -0 shfmt -d < {work_dir}/shell
+
+  # Every severity, so a style finding fails too. `--external-sources` lets a
+  # `source` of another tracked file be followed instead of reported as
+  # unreadable.
+  - name: lint
+    description: shellcheck, every severity, over every sh, bash, dash and ksh file
+    command: >-
+      git ls-files -z > {work_dir}/tracked &&
+      python3 {config_dir}/bin/shell-files.py --for shellcheck < {work_dir}/tracked > {work_dir}/shell &&
+      xargs -r -0 shellcheck --external-sources < {work_dir}/shell

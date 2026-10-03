@@ -208,6 +208,13 @@ LANGUAGES = (
         interposed=(r"#\[",),
         attribute=re.compile(r"^\s*#\[(?:\w+::)*test\b"),
     ),
+    Language(
+        name="bats",
+        # bats names a test with a quoted string, which becomes its name here.
+        globs=("*.bats",),
+        declaration=re.compile(r"""^\s*@test\s+(?:"([^"]+)"|'([^']+)')\s*\{"""),
+        comment="#",
+    ),
 )
 
 
@@ -657,7 +664,9 @@ def scan_file(path: Path, language: Language, declared: dict[str, str], retired:
         if language.attribute and not any(language.attribute.match(above) for above in block):
             continue
 
-        where = f"{path}:{number + 1}: {test.group(1)}"
+        # The first group that matched is the name: bats offers two quotings.
+        name = next(group for group in test.groups() if group)
+        where = f"{path}:{number + 1}: {name}"
         found = annotation_of(block, language)
         if not found:
             failures.append(f"{where} {missing_mark(block, language)}")

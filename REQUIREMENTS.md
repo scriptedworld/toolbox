@@ -95,6 +95,7 @@ requirement it marks is testable.
 | FR-4.24 | The tree to read may be named with `--dir PATH` as well as given positionally, so a scoped run says which rows and which tree separately instead of repeating one word: `--scope go --dir ./go`. Giving both is a usage error, not a precedence, because a caller who wrote two directories meant one of them and choosing for them reads the tree they did not mean. The positional stays: this checker is symlinked into several repositories and their jigs pass it today. | [D] |
 | FR-4.23 | `--scope NAME` holds one tree to the rows that name it and to the rows that name no tree, so a repository with several trees against one document holds each to its own coverage and not to the union of all of them. Without it a row covered in one tree alone passes the whole repository, and a tree holding none of a requirement is invisible. The scope clause is the lowercase half of a row's marker, `[A/D python]`; a row also scoping KINDS, `[A go,python:edge,negative]`, stays in scope everywhere, because the rest of that row is still expected in every tree and this checker never asks by which kind. A scoped-out row is exempt exactly as an open one is: out of the denominator, reported as context, never a failure, and still declared so a test citing it is not told the id does not exist. | [D] |
 | FR-4.26 | A mark written `COVERS:` with a colon fails, naming the line and the form to write instead. Read as merely absent, it would tell its author the test cites nothing while the citation sits in plain view. `COVERS` must be followed by whitespace, so `COVERSFR-1.1` is not a mark. | [D] |
+| FR-4.27 | A bats test is an `@test` line naming it with a double- or single-quoted string, and a failure names the test by that string. | [A] |
 
 ## FR-5, The suppression register
 
@@ -194,6 +195,19 @@ since repeated reviews of one repository disagree on many of their findings;
 | FR-10.7 | `--report` writes the status, the model and backend, every standing finding, the withdrawn and dropped counts and the unanswered texts as JSON. | [A] |
 | FR-10.8 | The model checks each finding it drafted against its rule before it answers, and the answer carries the drafts and one check per draft. Only a draft whose check holds is kept; the rest are counted as withdrawn. An answer without drafts and checks leaves the text unanswered. | [A] |
 | FR-10.9 | Each text is asked `--agree` times, two by default, and a finding stands only when every answer reports it on the same line under the same rule. The rest are counted as not agreed, and the report carries the count and the number of answers. | [A] |
+
+## FR-11, The shell jig
+
+*Derives from:* a bash repository's own source being read by no jig, and the
+entry-point shims of a Go repository being read by nothing;
+`bolt.shell-std-quality.yaml` and `bin/shell-files.py`.
+
+| ID | Requirement | |
+|---|---|---|
+| FR-11.1 | A file is shell when its extension, its name as a shell startup file, or its shebang names a shell, so a script with no extension is read. Only the paths it is handed are considered, and a symlink is skipped. | [A] |
+| FR-11.2 | Given no shell file at all, the selector fails, so a shell jig with nothing to read does not pass. It reports on stderr how many it selected. | [A] |
+| FR-11.3 | For shellcheck, zsh is left out and counted, because shellcheck cannot parse it; zsh is still formatted. | [A] |
+| FR-11.4 | Every step of a shell-jig task is joined by `&&` through files in the work directory and never piped, so a failing selector fails the task. | [A] |
 
 ## Non-functional
 
