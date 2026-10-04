@@ -302,6 +302,49 @@ def staged_files(base: Path, git: str | None) -> list[Path]:
     return [path for path in sorted({Path(name) for name in names}) if not is_skipped(path)]
 
 
+HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(?P<start>\d+)(?:,(?P<count>\d+))? @@")
+
+
+def added_lines(base: Path, git: str | None) -> dict[str, set[int] | None]:
+    """For each staged file, the line numbers the commit adds, or None for a file that is new.
+
+    Read from `git diff --cached -U0 -M`, so a rename with nothing changed adds
+    no lines, and text already in history is not judged again for moving.
+    """
+    if not git:
+        return {}
+    diff = subprocess.run([git, "-C", str(base), "diff", "--cached", "-U0", "-M", "--no-color"], capture_output=True, check=False)  # nosec B603
+    scope: dict[str, set[int] | None] = {}
+    current: str | None = None
+    new = False
+    for line in diff.stdout.decode("utf-8", "replace").splitlines():
+        if line.startswith("--- "):
+            new = line == "--- /dev/null"
+        elif line.startswith("+++ b/"):
+            current = line[len("+++ b/") :]
+            scope[current] = None if new else set()
+        elif current is not None and (hunk := HUNK.match(line)):
+            lines = scope[current]
+            if lines is not None:
+                start, count = int(hunk.group("start")), int(hunk.group("count") or 1)
+                lines.update(range(start, start + count))
+    return scope
+
+
+def in_scope(found: Finding, scope: dict[str, set[int] | None]) -> bool:
+    """Whether a finding sits where a commit adds text: anywhere in a new file, or on an added line."""
+    lines = scope.get(found.where, set())
+    return lines is None or found.line in lines
+
+
+def judged(found: list[Finding], args: argparse.Namespace, base: Path, git: str | None) -> list[Finding]:
+    """The findings a mode answers for. The hook's mode, staged files with no mode named, answers only for what the commit adds (FR-9.17)."""
+    if args.files or args.all_files or args.from_ref or args.commit_msg_filename:
+        return found
+    scope = added_lines(base, git)
+    return [one for one in found if in_scope(one, scope)]
+
+
 def changed_files(base: Path, git: str | None, from_ref: str, to_ref: str) -> list[Path]:
     """Files that differ between the refs, from where the two branches parted."""
     names = git_lines(git, base, "diff", "--name-only", "-z", "--diff-filter=ACMR", f"{from_ref}...{to_ref}")
@@ -670,7 +713,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"voice tells: {unreadable}")
         return 2
     entries, wrong = accepted_entries(base, args.baseline)
-    standing, accepted, stale = against_baseline(findings(texts), entries, args.all_files)
+    standing, accepted, stale = against_baseline(judged(findings(texts), args, base, git), entries, args.all_files)
     found = standing + stale + wrong
     for each in found:
         print(each.render())

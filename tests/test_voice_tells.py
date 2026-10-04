@@ -574,6 +574,41 @@ def test_a_staged_instance_fails_even_when_the_working_tree_is_clean(tmp_path, c
     assert "README.md:3: em-dash" in capsys.readouterr().out
 
 
+OLD_DASH = f"# old\n\nOld text {DASH} already in history.\n"
+
+
+# COVERS FR-9.17 | edge
+def test_a_line_already_in_history_is_not_judged_again(tmp_path, capsys):
+    """Adding a clean line to a file that already carries a finding passes: only what the commit adds is read."""
+    tree = repository(tmp_path, {"old.md": OLD_DASH})
+    (tree / "old.md").write_text(OLD_DASH + "\nA clean new line.\n", encoding="utf-8")
+    git(tree, "add", "old.md")
+
+    assert tells.main(["--base", str(tree)]) == 0, capsys.readouterr().out
+
+
+# COVERS FR-9.17 | edge
+def test_a_rename_adds_no_lines(tmp_path, capsys):
+    """Moving a task directory renames every file in it, and nothing in them enters history anew."""
+    tree = repository(tmp_path, {"tasks/10-a.ready/TASK.md": OLD_DASH})
+    git(tree, "mv", "tasks/10-a.ready", "tasks/10-a.complete")
+
+    assert tells.main(["--base", str(tree)]) == 0, capsys.readouterr().out
+
+
+# COVERS FR-9.17 | negative
+def test_an_added_line_and_a_new_file_are_still_judged(tmp_path, capsys):
+    """A finding on an added line fails, and a new file is read whole."""
+    tree = repository(tmp_path, {"old.md": "# old\n\nClean.\n"})
+    (tree / "old.md").write_text(f"# old\n\nClean.\n\nNew {DASH} line.\n", encoding="utf-8")
+    (tree / "new.md").write_text(OLD_DASH, encoding="utf-8")
+    git(tree, "add", "old.md", "new.md")
+
+    assert tells.main(["--base", str(tree)]) == 1
+    out = capsys.readouterr().out
+    assert "old.md:5: em-dash" in out and "new.md:3: em-dash" in out
+
+
 # COVERS FR-9.18 | positive
 def test_named_files_are_the_only_ones_read(tmp_path, capsys):
     """One file named, another left alone, and no commits read."""
