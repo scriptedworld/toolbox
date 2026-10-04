@@ -16,8 +16,8 @@ A checker is only exercised by the repository it is pointed at, and the shared
 ones are pointed at repositories their author has never seen.
 `docs/LESSONS/a-checker-only-meets-the-repository-it-is-pointed-at.md` has the
 case: a sort key that raised on any lettered requirement id passed every run
-against a repository with none. The suite is where both a crash and a gate that
-passes when it should not are caught before an adopter meets them.
+against a repository with none. So the suite feeds each script the inputs no
+single adopter shows it: lettered ids, other languages, empty trees.
 
 ## Two contracts, two shapes of test
 

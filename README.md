@@ -94,8 +94,6 @@ plus one check at the root that no pack could run because it reads all three.
 **Adopt at the root** when the subdirectories are parts of one project rather
 than projects in their own right.
 
-A subdirectory that should be able to fail on its own adopts on its own.
-
 ### What your project supplies
 
 | File | Read by | Absent means |
@@ -192,9 +190,8 @@ looks like the adopter's own. The foot of `bolt.go-std-quality.yaml` shows where
 it belongs.
 
 **A task that cannot fail.** Where no adapter can read a tool's output yet, the
-task is left out, not shipped green. An absent check tells you the gate
-does not cover that property; a green one claims a guarantee it never
-established. `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md` has the
+task is left out, not shipped green, so the jig claims nothing about that
+property. `docs/DECISIONS/a-task-that-cannot-fail-leaves-the-jig.md` has the
 worked case.
 
 ## Documentation
