@@ -131,6 +131,9 @@ SKIP_DIRS = frozenset(
         # Cargo's build output, which carries vendored `.rs` sources that
         # reading every `.rs` file would otherwise reach.
         "target",
+        # Agent worktrees, each a checkout of this repository whose tests would
+        # be read a second time.
+        ".claude",
     }
 )
 

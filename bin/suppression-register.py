@@ -106,6 +106,18 @@ SPELLINGS = (
     ("shellcheck", r"#\s*shellcheck\s+disable=(?P<rules>SC\d+(?:[ \t,]+SC\d+)*)"),
     ("allow", r"#!?\[allow\((?P<rules>[^)]+)\)\]"),
     ("rubocop", r"#\s*rubocop:disable\s+(?P<rules>[\w/,\- \t]+)"),
+    # eslint's line, next-line and block forms. A rule starts with a letter or
+    # `@`, so the `-- reason` eslint allows after the list is not read as one.
+    (
+        "eslint",
+        r"(?://|/\*)\s*eslint-disable(?:-next-line|-line)?"
+        r"(?:[ \t]+(?P<rules>[@\w][@\w/\-]*(?:[ \t]*,[ \t]*[@\w][@\w/\-]*)*))?",
+    ),
+    ("deno-lint", r"//\s*deno-lint-ignore(?:-file)?(?:[ \t]+(?P<rules>[\w\-]+(?:[ \t]+[\w\-]+)*))?"),
+    # TypeScript's own directives name no rule; the directive is the rule.
+    ("ts", r"//\s*@ts-(?P<rules>ignore|expect-error|nocheck)\b"),
+    # detect-secrets' allowlist, in either comment syntax.
+    ("detect-secrets", r"(?:#|//)\s*pragma:[ \t]*allowlist(?:[ \t]+nextline)?[ \t]+secret\b"),
 )
 
 PRAGMAS = tuple((kind, re.compile(pattern)) for kind, pattern in SPELLINGS)
@@ -142,13 +154,16 @@ def in_a_string(line: str, column: int) -> bool:
     return _scan(line, column)[0] is not None
 
 
-def _scan(line: str, stop: int) -> tuple[str | None, int]:
+def _scan(line: str, stop: int, hashes: bool = True) -> tuple[str | None, int]:
     """Walk a line to `stop`, returning the open quote and the comment opener.
 
     Tracks the delimiter, not the parity. A test fixture spelling
     `'\"\"\"prose\"\"\"'` has four quotes before its `#`, an even count, so
     counting quotes would call it code. Remembering which quote opened the
     string reads it correctly.
+
+    `hashes` is False for TypeScript and JavaScript, where `#` opens no comment
+    and a `#private` field before a `//` would otherwise hide the pragma after it.
     """
     delim: str | None = None
     opener = -1
@@ -163,21 +178,22 @@ def _scan(line: str, stop: int) -> tuple[str | None, int]:
                 delim = None
         elif char in "\"'":
             delim = char
-        elif opener < 0 and (char == "#" or line.startswith("//", index)):
+        elif opener < 0 and ((hashes and char == "#") or line.startswith(("//", "/*"), index)):
             opener = index
         index += 1
     return delim, opener
 
 
-def comment_opens_at(line: str) -> int:
+def comment_opens_at(line: str, hashes: bool = True) -> int:
     """Where the line's comment or attribute begins, or -1.
 
-    `#` for Python, shell and Ruby, `//` for Go and Rust, and `#[` for a Rust
-    attribute, which is not a comment but sits in the same position and is the
-    same kind of declaration. The first one outside a string wins, so a `#`
-    inside a quoted string does not open a comment.
+    `#` for Python, shell and Ruby, `//` for Go, Rust and TypeScript, `/*` for a
+    block comment, and `#[` for a Rust attribute, which is not a comment but sits
+    in the same position and is the same kind of declaration. The first one
+    outside a string wins, so a `#` inside a quoted string does not open a
+    comment.
     """
-    return _scan(line, len(line))[1]
+    return _scan(line, len(line), hashes)[1]
 
 
 def pragma_may_start_at(line: str, opens_at: int) -> frozenset[int]:
@@ -193,7 +209,7 @@ def pragma_may_start_at(line: str, opens_at: int) -> frozenset[int]:
     """
     if opens_at < 0 or in_a_string(line, opens_at):
         return frozenset()
-    marker = 2 if line.startswith("//", opens_at) else 1
+    marker = 2 if line.startswith(("//", "/*"), opens_at) else 1
     body = opens_at + marker
     while body < len(line) and line[body] in " \t":
         body += 1
@@ -230,7 +246,7 @@ def code_lines(text: str) -> Iterator[str]:
         yield line
 
 
-def pragmas_in(text: str) -> list[tuple[str, frozenset[str]]]:
+def pragmas_in(text: str, hashes: bool = True) -> list[tuple[str, frozenset[str]]]:
     """Every pragma in a blob of text, as (kind, rules) pairs.
 
     The kind is carried because two spellings can name the same id and mean
@@ -239,7 +255,7 @@ def pragmas_in(text: str) -> list[tuple[str, frozenset[str]]]:
     """
     found = []
     for line in code_lines(text):
-        starts = pragma_may_start_at(line, comment_opens_at(line))
+        starts = pragma_may_start_at(line, comment_opens_at(line, hashes))
         for kind, pattern in PRAGMAS:
             for match in pattern.finditer(line):
                 # A pragma starts the comment it is in. Prose about a pragma
@@ -283,11 +299,31 @@ SKIP_DIRS = frozenset(
         "testdata",
         "site-packages",
         "target",
+        # Agent worktrees live under `.claude/worktrees/`, each a checkout of
+        # this same repository, so every pragma would reappear at a second path.
+        ".claude",
     }
 )
 
 
-SUFFIXES = frozenset({".go", ".py", ".sh", ".bash", ".zsh", ".rs", ".rb"})
+# TypeScript and JavaScript, where `#` opens no comment.
+SCRIPT_SUFFIXES = frozenset({".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"})
+SUFFIXES = frozenset({".go", ".py", ".sh", ".bash", ".zsh", ".rs", ".rb"}) | SCRIPT_SUFFIXES
+
+
+def in_a_nested_checkout(path: Path, root: Path) -> bool:
+    """Whether a directory between the scan root and the file holds its own `.git`.
+
+    A nested checkout is another repository, answerable to its own register,
+    whether it is a vendored clone or an agent's worktree of this one.
+    """
+    top = root.resolve()
+    for parent in path.resolve().parents:
+        if parent == top or top not in parent.parents:
+            return False
+        if (parent / ".git").exists():
+            return True
+    return False
 
 
 def is_source(path: Path) -> bool:
@@ -328,7 +364,7 @@ def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], 
     """
     found: Counter[tuple[Path, str, frozenset[str]]] = Counter()
     read = 0
-    for path in sorted(p for p in root.rglob("*") if is_source(p)):
+    for path in sorted(p for p in root.rglob("*") if is_source(p) and not in_a_nested_checkout(p, root)):
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -344,7 +380,7 @@ def scan_source(root: Path) -> tuple[Counter[tuple[Path, str, frozenset[str]]], 
         #
         # Both sides resolve to an absolute path, so the frames agree.
         key = path.resolve()
-        for kind, rules in pragmas_in(text):
+        for kind, rules in pragmas_in(text, hashes=path.suffix not in SCRIPT_SUFFIXES):
             found[(key, kind, rules)] += 1
     return found, read
 

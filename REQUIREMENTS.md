@@ -46,7 +46,7 @@ requirement it marks is testable.
 | FR-2.2 | A checker written here reports every finding on stdout, naming the file, line or identifier it is about, so a reader can go to it. | [D] |
 | FR-2.3 | A checker given a document that is absent fails instead of raising. A traceback is not a verdict, and the adopter who has not yet written the document is the reader most in need of an instruction. | [D] |
 | FR-2.4 | A checker refuses to pass vacuously. Zero requirements agreeing with zero citations describes a gate with nothing in it, and it must never read as a pass. | [A] |
-| FR-2.5 | A checker does not walk trees it is not answerable for: `.venv`, `node_modules`, `vendor`, `testdata`, and `.ephemera`. A vendored suite full of unannotated tests must not fail the project that vendored it, and neither must a scratch file in `.ephemera`. | [D] |
+| FR-2.5 | A checker does not walk trees it is not answerable for: `.venv`, `node_modules`, `vendor`, `testdata`, `.ephemera`, and `.claude`, where agent worktrees live. A vendored suite full of unannotated tests must not fail the project that vendored it, and neither must a scratch file in `.ephemera`. | [D] |
 
 ## FR-3, Adapters
 
@@ -109,8 +109,10 @@ recorded in `bin/suppression-register.py`.
 | FR-5.1 | Every suppression pragma in the source appears in the register, and every row of the register names a pragma that is really there. Both directions fail. | [A] |
 | FR-5.2 | The count is part of the comparison, so a second pragma added to an already-registered file is caught instead of hiding behind the first. | [A] |
 | FR-5.3 | A project with no pragmas and no register passes. A project that has pragmas and no register does not. | [A] |
-| FR-5.4 | `[?]` **The register covers every language this repository ships a jig for.** It reads Go, Python, shell, Rust and Ruby. It reads no TypeScript, which the Node, Deno and TypeScript jigs ship, so a pragma there is silenced and unseen instead of silenced and justified. Open until `clank/tasks/toolbox/shared-checkers/40` closes that gap. | [?] |
+| FR-5.4 | The register covers every language this repository ships a jig for: Go, Python, shell, Rust, Ruby, and TypeScript and JavaScript with eslint's line, next-line and block forms, `deno-lint-ignore` and the `@ts-` directives. In TypeScript `#` opens no comment, so a `#private` field does not hide a pragma after it. An unread language leaves its pragmas silenced and unseen instead of silenced and justified. | [A] |
 | FR-5.5 | `--register` accepts a directory as well as a file, reading every `.md` beneath it. Counts add across documents, so one file per suppression totals what one document listing them all totals. | [D] |
+| FR-5.6 | detect-secrets' `pragma: allowlist secret`, in either comment syntax, is a pragma like any other. | [A] |
+| FR-5.7 | A directory holding its own `.git` below the scan root is another checkout, such as an agent's worktree, and is not read. | [A] |
 
 ## FR-6, Adoption
 
