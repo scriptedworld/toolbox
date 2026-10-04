@@ -135,14 +135,14 @@ had copied a subprocess block, which was dissolved and not marked.
 
 ## S-4, bandit's subprocess findings in the checkers themselves
 
-Eight marks, two rules, three checkers. These are not tests: they are the
+Nine marks, two rules, three checkers. These are not tests: they are the
 production path, where a checker runs the tool it is a checker for.
 
     bin/tool-versions.py                      # nosec B404    import subprocess
     bin/tool-versions.py                      # nosec B603    each required tool, asked for its version
     bin/voice-review.py                       # nosec B404    import subprocess
     bin/voice-tells.py                        # nosec B404    import subprocess
-    bin/voice-tells.py                   ×4   # nosec B603    git: ls-files, show, rev-parse, log
+    bin/voice-tells.py                   ×5   # nosec B603    git: ls-files, show, rev-parse, log, diff --cached
 
 Asked and answered on the same terms as S-1: mark each site rather than skip the
 two rules for `bin/`, so a new subprocess call in a checker still has to be
