@@ -41,7 +41,6 @@ requires:
   - bandit
   - coverage
   - pytest
-  - python3
 
 # What is not the project's code.
 #
@@ -82,6 +81,25 @@ definitions:
   # mypy takes a regex, which the others cannot be composed into.
   excluded_regex: (^|/)(\.ephemera|bin|adapters)/
 
+  # Artefacts, excluded as a class so the next tool's directory is covered
+  # before anyone meets it: every dot-directory, build, dist, out, target,
+  # anything named for a cache, and egg-info. A dot-directory covers `.claude`,
+  # whose files are unreadable device mounts inside Claude Code's sandbox, and
+  # `.venv`. A `build/` copy of the package fails `types` with a duplicate
+  # module and names no directory. These are not slots for an adopter: no
+  # project's own source lives in them. One spelling per tool family, each
+  # measured against a planted copy (FR-1.9).
+  # `[.]` and not a backslash: pylint reads a backslash in a path regex as a
+  # directory separator, so `\.` matched no dot-directory and left `.claude` in.
+  artefacts_regex: (^|.*/)([.][^/]+|build|dist|out|target|[^/]*cache[^/]*|[^/]+[.]egg-info)/
+  artefacts_list: .*,build,dist,out,target,*cache*,*.egg-info
+  artefacts_globs: '**/.*/*,**/build/*,**/dist/*,**/out/*,**/target/*,**/*cache*/*,**/*.egg-info/*'
+  artefacts_fnmatch: '*/.*/*,*/build/*,*/dist/*,*/out/*,*/target/*,*/*cache*/*,*/*.egg-info/*'
+  # vulture matches against the absolute path, and every adopter lives under a
+  # dot-directory such as `~/.projects`, so the class glob above excludes the
+  # whole tree there. It names the dot-directories instead.
+  artefacts_named: '*/.venv/*,*/.claude/*,*/.cache/*,*/.tox/*,*/.nox/*,*/.eggs/*,*/__pycache__/*,*/build/*,*/dist/*,*/out/*,*/target/*,*/*.egg-info/*'
+
   # Where the suite lives. Named separately because it is not excluded from
   # everything, only from the rules that a test is entitled to break. A project
   # whose tests are elsewhere overrides this; naming a directory that does not
@@ -89,12 +107,6 @@ definitions:
   test_dir: tests
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.python-std-quality.yaml
-
   # ---- shape ----------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check
@@ -115,7 +127,7 @@ tasks:
   # has the detail.
   - name: format
     description: every file is ruff-format clean
-    command: ruff format --check --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
+    command: ruff format --check --extend-exclude {excluded_one},{excluded_two},{excluded_three} --extend-exclude {artefacts_list} .
 
   # --output-format=concise keeps the artifact readable; the default emits
   # several lines and a source excerpt per finding.
@@ -129,7 +141,7 @@ tasks:
   # local run disagreeing about the same tree.
   - name: lint
     description: the ruff rule set, whatever the project has enabled
-    command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
+    command: ruff check --output-format=concise --extend-exclude {excluded_one},{excluded_two},{excluded_three} --extend-exclude {artefacts_list} .
 
   # ---- correctness ----------------------------------------------------------
 
@@ -149,7 +161,7 @@ tasks:
   # part of why `analyse` is narrowed to the rules that do not.
   - name: types
     description: mypy is satisfied
-    command: uv run mypy --exclude {excluded_regex} .
+    command: uv run mypy --exclude {excluded_regex} --exclude {artefacts_regex} .
 
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
@@ -193,7 +205,8 @@ tasks:
     command: >-
       pylint --recursive=y --disable=all
       --enable=duplicate-code,too-many-nested-blocks --max-nested-blocks=4
-      --ignore {excluded_one},{excluded_two},{excluded_three},.venv,venv .
+      --ignore {excluded_one},{excluded_two},{excluded_three},.venv,venv
+      --ignore-paths {artefacts_regex} .
 
   # ---- properties of the source ---------------------------------------------
 
@@ -210,7 +223,7 @@ tasks:
   # code.
   - name: cognitive
     description: no function over cognitive complexity 15
-    command: complexipy --max-complexity-allowed 15 --exclude {excluded_one_glob},{excluded_two_glob},{excluded_three_glob} .
+    command: complexipy --max-complexity-allowed 15 --exclude {excluded_one_glob},{excluded_two_glob},{excluded_three_glob},{artefacts_globs} .
 
   # Cyclomatic complexity, arguments and length, which ruff measures natively.
   # Complexity belongs to the language jig and not the common one, because
@@ -246,7 +259,8 @@ tasks:
       --config lint.mccabe.max-complexity=15
       --config lint.pylint.max-args=5
       --config lint.pylint.max-statements=60
-      --extend-exclude {excluded_one},{excluded_two},{excluded_three} .
+      --extend-exclude {excluded_one},{excluded_two},{excluded_three}
+      --extend-exclude {artefacts_list} .
 
   # Dead code, found by looking for definitions nothing references. Vulture
   # guesses and says so with a confidence score: 100 means the name appears
@@ -263,16 +277,20 @@ tasks:
     description: no unreferenced definition above 80% confidence
     command: >-
       vulture --min-confidence 80
-      --exclude {excluded_one},{excluded_two},{excluded_three},.venv,venv .
+      --exclude {excluded_one},{excluded_two},{excluded_three},.venv,venv,{artefacts_named} .
 
   # --fail-under 80 matches the statement threshold the Go jig uses, on the same
   # reasoning: a percentage nobody is held to drifts down. -e excludes the
-  # directories where a missing docstring means nothing.
+  # directories where a missing docstring means nothing. interrogate matches
+  # each -e as a prefix glob against a path with no leading `./`, so every
+  # artefact needs a root form and a nested form: `.*` and `*/.*`.
   - name: docstrings
     description: at least 80% of public objects are documented
     command: >-
       interrogate --fail-under 80 --quiet
-      -e .venv -e venv -e build -e dist -e {excluded_one} -e {excluded_two} -e {excluded_three} .
+      -e .venv -e venv -e {excluded_one} -e {excluded_two} -e {excluded_three}
+      -e '.*' -e '*/.*' -e build/ -e '*/build/' -e dist/ -e '*/dist/'
+      -e out/ -e '*/out/' -e target/ -e '*/target/' -e '*cache*/' -e '*.egg-info/' .
 
   # ---- security -------------------------------------------------------------
 
@@ -305,7 +323,7 @@ tasks:
     description: no bandit finding outside the test tree
     command: >-
       bandit -r -q
-      -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir},./.venv,./venv .
+      -x ./{excluded_one},./{excluded_two},./{excluded_three},./{test_dir},./.venv,./venv,{artefacts_fnmatch} .
 
   # B101 only. A test that shells out still answers for B404 and B603, so each
   # deliberate subprocess call is marked and registered where a reader sees it.

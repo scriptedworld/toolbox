@@ -199,6 +199,31 @@ def test_a_python_task_that_excludes_anything_keeps_a_virtualenv_out():
             )
 
 
+# COVERS FR-1.9 | property
+def test_every_python_task_that_excludes_also_excludes_artefacts():
+    """The adoption slots and the artefact class travel together, so no tool reads a `build/` copy or `.claude`.
+
+    Each tool's spelling was measured against a fixture with a defect planted in
+    every artefact directory and in real source; this holds the commands to
+    naming one of the measured spellings, so a later edit cannot drop it from
+    one tool and not the others.
+    """
+    spellings = ("{artefacts_regex}", "{artefacts_list}", "{artefacts_globs}", "{artefacts_fnmatch}", "{artefacts_named}", "-e '*/.*'")
+    jig = yaml.safe_load((ROOT / "bolt.python-std-quality.yaml").read_text(encoding="utf-8"))
+    tasks = list(excluding_tasks(jig))
+    assert tasks, "no excluding tasks found, so the rule is untested"
+    for task, command in tasks:
+        assert any(spelled in command for spelled in spellings), f"{task} excludes the slots and no artefacts: {command!r}"
+
+
+# COVERS FR-1.9 | property
+def test_go_format_reads_only_tracked_files():
+    """`gofmt -l .` walked untracked scratch and build output; the task reads `git ls-files`."""
+    jig = yaml.safe_load((ROOT / "bolt.go-std-quality.yaml").read_text(encoding="utf-8"))
+    command = next(task["command"] for task in jig["tasks"] if task["name"] == "format")
+    assert command.startswith("git ls-files -z -- '*.go' > {work_dir}/") and "|" not in command
+
+
 # COVERS FR-1.6 | property
 def test_every_slot_a_jig_uses_has_a_default_and_an_override():
     """A slot with no default fails only in the adopter that first runs it.

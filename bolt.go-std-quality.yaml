@@ -62,13 +62,21 @@ tasks:
   # ---- shape ----------------------------------------------------------------
 
   # gofmt lists unformatted files on stdout and exits 0 either way, so its exit
-  # status answers "did gofmt run", never "is this formatted". `test -z` on its
-  # output is what makes this a gate. The file list is lost from the verdict and
-  # returns with the adapter in `port-the-jigs/10`; it is still in captured
-  # stdout meanwhile.
+  # status answers "did gofmt run", never "is this formatted". `test ! -s` on
+  # its list is what makes this a gate, and `cat` puts the list in captured
+  # stdout. The list is not in the verdict until the adapter returns with
+  # `port-the-jigs/10`.
+  #
+  # The files are the tracked `.go` files, so an untracked scratch file under
+  # `.ephemera` or a build directory is not read; `gofmt -l .` walked them all.
+  # Each step writes into the work directory and the steps are joined by `&&`,
+  # so a failing `git ls-files` fails the task instead of handing gofmt nothing.
   - name: format
-    description: every file is gofmt-clean
-    command: test -z "$(gofmt -l .)"
+    description: every tracked Go file is gofmt-clean
+    command: >-
+      git ls-files -z -- '*.go' > {work_dir}/go-files &&
+      xargs -0 -r gofmt -l < {work_dir}/go-files > {work_dir}/unformatted &&
+      cat {work_dir}/unformatted && test ! -s {work_dir}/unformatted
 
   # -diff exits non-zero when go.mod or go.sum would change, without changing
   # them, so the check leaves the tree as it found it.
