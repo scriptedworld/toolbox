@@ -7,6 +7,7 @@ no test; it cannot tell that a fixture was captured rather than composed.
 
 from __future__ import annotations
 
+import ast
 import re
 import subprocess  # nosec B404
 import sys
@@ -184,6 +185,32 @@ def test_each_adapters_refusal_names_the_package_and_is_an_envelope(path):
     refused = envelope(load(str(path.relative_to(ROOT))).refusal(ImportError("no module", name="wrench")))
     assert refused["success"] is False
     assert "the Python package wrench" in refused["reasons"][0]["message"]
+
+
+# Every shipped script, extensionless ones included, by its shebang.
+SHIPPED = sorted(
+    path
+    for folder in ("bin", "adapters")
+    for path in (ROOT / folder).rglob("*")
+    if path.is_file() and (path.suffix == ".py" or path.read_bytes().startswith(b"#!/usr/bin/env python3"))
+)
+
+
+# COVERS NFR-7 | property
+@pytest.mark.parametrize("path", SHIPPED, ids=lambda path: str(path.relative_to(ROOT)))
+def test_every_shipped_script_parses_as_python_3_12(path):
+    """`except A, B:` parses on 3.14 and not on 3.13, so a newer formatter can break an adopter's older interpreter."""
+    ast.parse(source(path), filename=str(path), feature_version=(3, 12))
+
+
+# COVERS FR-1.10 | property
+def test_every_uv_run_in_the_python_jig_is_locked():
+    """A plain `uv run` relocks a stale lock and the gate rewrites a tracked file."""
+    jig = yaml.safe_load((ROOT / "bolt.python-std-quality.yaml").read_text(encoding="utf-8"))
+    runs = [(task["name"], part) for task in jig["tasks"] for part in task["command"].split("&&") if "uv run" in part]
+    assert runs, "no uv run found, so the rule is untested"
+    for name, part in runs:
+        assert "uv run --locked" in part, f"{name} runs uv without --locked: {part.strip()!r}"
 
 
 # The conftest helpers that validate the envelope they read (FR-3.9).

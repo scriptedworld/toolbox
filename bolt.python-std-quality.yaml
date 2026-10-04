@@ -155,13 +155,17 @@ tasks:
   # a global installation: against wrench's pack, a PATH mypy reported six
   # errors about `yaml`, `jsonschema` and `referencing` and none about wrench.
   #
+  # `--locked` on every `uv run`: a stale `uv.lock` fails the task naming the
+  # lock, where plain `uv run` relocks it silently and the gate rewrites a
+  # tracked file (FR-1.10).
+  #
   # These are the only two tasks here that need it. ruff, complexipy, vulture,
   # interrogate and bandit read source without importing it, so a global
   # installation answers the same question. pylint would need it too, which is
   # part of why `analyse` is narrowed to the rules that do not.
   - name: types
     description: mypy is satisfied
-    command: uv run mypy --exclude {excluded_regex} --exclude {artefacts_regex} .
+    command: uv run --locked mypy --exclude {excluded_regex} --exclude {artefacts_regex} .
 
   # The analysis ruff cannot do, because it needs to see more than one file at a
   # time. Slow by nature, importing the code to reason about it.
@@ -360,9 +364,9 @@ tasks:
   - name: tests
     description: the suite, and coverage judged per file for lines and branches
     command: >-
-      uv run coverage run --branch --parallel-mode -m pytest -q &&
-      uv run coverage combine &&
-      uv run coverage xml -o {work_dir}/coverage.xml
+      uv run --locked coverage run --branch --parallel-mode -m pytest -q &&
+      uv run --locked coverage combine &&
+      uv run --locked coverage xml -o {work_dir}/coverage.xml
     evidence:
       - coverage.xml
     adapter: adapters/python/coverage.py
