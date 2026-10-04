@@ -417,6 +417,38 @@ def test_a_bats_test_citing_nothing_is_named_by_its_string(checker, tmp_path):
     assert "dry run changes nothing" in out
 
 
+# ---- rows the grammar must read, or refuse -------------------------------------
+
+
+# COVERS FR-4.29 | positive
+def test_a_two_letter_suffix_is_a_requirement(checker, tmp_path):
+    """`FR-10.8ca` is read and held to coverage, so leaving it uncited fails."""
+    tree = project(tmp_path, requirements(("FR-10.8ca", "[A]"), ("FR-10.8cb", "[A]")), {"test_it.py": "# COVERS FR-10.8ca | positive\ndef test_it():\n    pass\n"})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "FR-10.8cb" in out and "1 of 2" in out
+
+
+# COVERS FR-4.29 | negative
+@pytest.mark.parametrize("bad", ["FR-1.2.3", "FR-x", "NFR-1.A"])
+def test_a_row_whose_id_cannot_be_read_fails_naming_it(checker, tmp_path, bad):
+    """A row shaped like a requirement drops out of the denominator unless refusing it is the rule."""
+    document = HEADER + f"| FR-1.1 | A row. | [A] |\n| {bad} | Another. | [A] |\n"
+    tree = project(tmp_path, document, {"test_it.py": "# COVERS FR-1.1 | positive\ndef test_it():\n    pass\n"})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 1
+    assert "cannot read" in out and f"REQUIREMENTS.md:6: {bad}" in out
+
+
+# COVERS FR-4.8 | edge
+def test_a_rust_attribute_wrapped_over_lines_does_not_hide_the_mark(checker, tmp_path):
+    """`#[should_panic(` with its argument on the next lines sits between the mark and the `fn`."""
+    test = '// COVERS FR-1.1 | negative\n#[test]\n#[should_panic(\n    expected = "boom"\n)]\nfn it_panics() {\n    panic!("boom");\n}\n'
+    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"tests/panics.rs": test})
+    code, out = checker(traceability, ARGV, tree)
+    assert code == 0, out
+
+
 # ---- typescript and ruby ------------------------------------------------------
 
 

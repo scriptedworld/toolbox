@@ -101,10 +101,16 @@ from pathlib import Path
 
 KINDS = ("positive", "negative", "edge", "property", "regression")
 
-REQ_ID = re.compile(r"\b((?:FR|NFR)-\d+(?:\.\d+)?[a-z]?)\b")
+# An id is a number, an optional point and number, and any lowercase letters:
+# `FR-4.13a` and `FR-10.8ca` are both ids.
+REQ_ID = re.compile(r"\b((?:FR|NFR)-\d+(?:\.\d+)?[a-z]*)\b")
 # A requirement is declared by a table row: the id in the first cell, and the
 # status marker (if the document uses one) in the last.
-REQ_ROW = re.compile(r"^\|\s*((?:FR|NFR)-\d+(?:\.\d+)?[a-z]?)\s*\|(?P<rest>.*)$")
+REQ_ROW = re.compile(r"^\|\s*((?:FR|NFR)-\d+(?:\.\d+)?[a-z]*)\s*\|(?P<rest>.*)$")
+# A row that starts like a requirement. One this matches and `REQ_ROW` does not
+# carries an id the grammar cannot read, and it fails the run (FR-4.29) where it
+# would otherwise drop silently out of the denominator.
+ROW_SHAPE = re.compile(r"^\|\s*(?:FR|NFR)-")
 CELL = re.compile(r"(?<!\\)\|")
 MARKER = re.compile(r"^\[[^\]]*\]$")
 # A `## Retired` heading switches which set the rows below it land in, and any
@@ -559,6 +565,16 @@ def read_requirements(
     return declared, retired, duplicated
 
 
+def unreadable_rows(path: Path) -> list[str]:
+    """Every line, across the documents a path names, shaped like a requirement row with an id the grammar rejects."""
+    found = []
+    for document in requirement_documents(path):
+        for number, line in enumerate(document.read_text(encoding="utf-8").splitlines(), 1):
+            if ROW_SHAPE.match(line) and not REQ_ROW.match(line):
+                found.append(f"{document}:{number}: {line.split('|')[1].strip()}")
+    return found
+
+
 def is_open(marker: str) -> bool:
     """An open decision cannot have a test yet, so it is exempt from coverage."""
     return "?" in marker
@@ -858,9 +874,12 @@ def main() -> int:
     # reports a crash instead of a verdict.
     try:
         declared, retired, duplicated = read_requirements(args.requirements)
+        malformed = unreadable_rows(args.requirements)
     except OSError as unreadable:
         print(f"{args.requirements} cannot be read: {unreadable.strerror}")
         return 1
+    if malformed:
+        return print_rows(f"{len(malformed)} requirement row(s) carry an id this checker cannot read:", malformed)
     if not declared:
         print(f"{args.requirements} declares no requirements; refusing to pass vacuously")
         return 1

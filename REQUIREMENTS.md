@@ -98,6 +98,7 @@ requirement it marks is testable.
 | FR-4.26 | A mark written `COVERS:` with a colon fails, naming the line and the form to write instead. Read as merely absent, it would tell its author the test cites nothing while the citation sits in plain view. `COVERS` must be followed by whitespace, so `COVERSFR-1.1` is not a mark. | [D] |
 | FR-4.27 | A bats test is an `@test` line naming it with a double- or single-quoted string, and a failure names the test by that string. | [A] |
 | FR-4.28 | A test that is a call is found by the call: `test(...)`, `it(...)` or `Deno.test(...)`, optionally after `void` or `await`, in the files `node --test` and `deno test` read, and an rspec `it "..."` in a `_spec.rb`. A failure names the test by its string. A minitest `def test_...` is found by its name. | [A] |
+| FR-4.29 | An id is `FR-` or `NFR-`, a number, an optional point and number, and any lowercase letters, so `FR-10.8ca` is read. A row shaped like a requirement whose id the grammar still cannot read fails the run, naming the document, the line and the id, where it would otherwise drop out of the denominator. | [A] |
 
 ## FR-5, The suppression register
 
