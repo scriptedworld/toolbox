@@ -305,8 +305,7 @@ def two_base_repo(tmp_path):
     """A repository with two packs, one register at its root.
 
     The `.git` marker is what makes the root discoverable, and it is how a real
-    adopter is shaped. Without it the checker falls back to the scan root, which
-    is the behaviour it had before a frame existed.
+    adopter is shaped. Without it the checker falls back to the scan root.
     """
     (tmp_path / ".git").mkdir()
     for pack, name in (("python", "app.py"), ("go", "main.go")):
@@ -438,9 +437,7 @@ def test_a_vendored_or_scratch_pragma_is_not_the_projects(checker, tmp_path):
         path.write_text("package main\n\nfunc f() { g() } //nolint:errcheck\n", encoding="utf-8")
     # The project's own file, carrying nothing. Without it this tree holds no
     # readable source at all, and the run fails for having read nothing rather
-    # than passing for having correctly skipped what it should skip. The two
-    # outcomes agreed before that distinction existed, which is why the fixture
-    # did not need it.
+    # than passing for having correctly skipped what it should skip.
     (tmp_path / "main.go").write_text("package main\n\nfunc main() {}\n", "utf-8")
     code, out = checker(register_checker, ARGV, tmp_path)
     assert code == 0, out
@@ -474,7 +471,11 @@ def tree_with(tmp_path: Path, register: str, files: dict[str, str]) -> Path:
 
 SPELLED = [
     ("src/a.ts", "const x = y; // eslint-disable-line no-unused-vars", "eslint-disable-line no-unused-vars"),
-    ("src/a.ts", "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the shape is open", "eslint-disable-next-line @typescript-eslint/no-explicit-any"),
+    (
+        "src/a.ts",
+        "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the shape is open",
+        "eslint-disable-next-line @typescript-eslint/no-explicit-any",
+    ),
     ("src/a.mjs", "/* eslint-disable no-console */", "eslint-disable no-console"),
     ("src/a.ts", "// deno-lint-ignore no-explicit-any", "deno-lint-ignore no-explicit-any"),
     ("src/a.tsx", "// @ts-expect-error the fixture is malformed on purpose", "@ts-expect-error"),

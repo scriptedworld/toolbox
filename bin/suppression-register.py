@@ -110,8 +110,10 @@ SPELLINGS = (
     # `@`, so the `-- reason` eslint allows after the list is not read as one.
     (
         "eslint",
-        r"(?://|/\*)\s*eslint-disable(?:-next-line|-line)?"
-        r"(?:[ \t]+(?P<rules>[@\w][@\w/\-]*(?:[ \t]*,[ \t]*[@\w][@\w/\-]*)*))?",
+        (
+            r"(?://|/\*)\s*eslint-disable(?:-next-line|-line)?"
+            r"(?:[ \t]+(?P<rules>[@\w][@\w/\-]*(?:[ \t]*,[ \t]*[@\w][@\w/\-]*)*))?"
+        ),
     ),
     ("deno-lint", r"//\s*deno-lint-ignore(?:-file)?(?:[ \t]+(?P<rules>[\w\-]+(?:[ \t]+[\w\-]+)*))?"),
     # TypeScript's own directives name no rule; the directive is the rule.
@@ -201,8 +203,8 @@ def pragma_may_start_at(line: str, opens_at: int) -> frozenset[int]:
 
     The comment opener, or the first thing inside it. palette-print writes
     `// #nosec G304 -- reason`, where the marker is `//` and the pragma starts
-    three characters later, and requiring the opener alone would miss it. A
-    missed pragma turns a gate green.
+    three characters later, and requiring the opener alone would miss it and
+    pass the gate.
 
     Prose about a pragma is still excluded, because it mentions the spelling
     mid-sentence and not at either position.

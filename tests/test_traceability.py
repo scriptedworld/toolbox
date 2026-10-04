@@ -832,8 +832,7 @@ def test_a_retired_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path):
     """A `.retired` document the glob misses holds no id at all.
 
     Nothing then stops the id being declared again, and every existing
-    reference to it silently means something else. That is the failure the
-    never-reuse rule exists to prevent, arrived at by an invisible file.
+    reference to it silently means something else.
     """
     tree = split(
         tmp_path,
@@ -929,8 +928,7 @@ def test_a_superseded_file_is_read_so_its_id_cannot_be_reused(checker, tmp_path)
 # supporting material: repro evidence, captured output, whatever has to travel
 # with the row. The note's name is fixed instead of matching the directory
 # stem, because retiring is then a single directory rename with nothing inside
-# to touch. A stem-matching note would stop matching the moment the directory
-# was renamed, which is the one operation the shape exists to make cheap.
+# to touch, where a stem-matching note would stop matching on the rename.
 
 
 # COVERS FR-4.19 | positive
@@ -1053,8 +1051,7 @@ def test_a_note_at_the_root_does_not_swallow_the_tree(checker, tmp_path):
     Unbounded, a `requirement.md` written one level too high makes the root a
     requirement directory, so every document beneath it resolves to the root as
     its nearest holder and becomes supporting material. The declared ids vanish
-    and the run passes, which is the one outcome this checker exists to
-    prevent.
+    and the run passes.
 
     FR-4.20 bounds the retirement walk at the root for exactly this reason. The
     sibling rule is bounded here for the same one.
