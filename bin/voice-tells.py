@@ -96,7 +96,6 @@ class Rule:
     pattern: re.Pattern[str]
     reads: frozenset[str] = EVERYWHERE
     blank: re.Pattern[str] | None = None
-    notes_exempt: bool = False
 
 
 def rule(
@@ -106,10 +105,13 @@ def rule(
     ignore_case: bool = False,
     reads: frozenset[str] = EVERYWHERE,
     blank: re.Pattern[str] | None = None,
-    notes_exempt: bool = False,
 ) -> Rule:
     """A rule compiled once, with the vocabulary it is not about blanked first."""
-    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads, blank, notes_exempt)
+    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads, blank)
+
+
+# The rules a working note is not held to.
+NOTES_EXEMPT = frozenset({"audit-date"})
 
 
 # Working notes, where a dated measurement with its command is what the writing
@@ -145,7 +147,6 @@ LINE_RULES = (
         "audit-date",
         r"\b(checked|measured|re-?measured|verified|confirmed|re-?tested|decided|corrected|re-?derived|held|observed)\b[^.\n]{0,24}?\b\d{4}-\d{2}-\d{2}\b",
         ignore_case=True,
-        notes_exempt=True,
     ),
     rule("audit-marker", r"\b(DECIDED|CORRECTED|RETESTED|SUPERSEDED)\b|\bHELD\s+\d{4}-"),
     # `the owner` alone is also a file's owner, so it counts only as someone who decides.
@@ -491,14 +492,12 @@ def message_text(path: Path) -> Text:
 
 def line_findings(text: Text) -> list[Finding]:
     """Every line rule that reads this kind of text, at most one finding per rule per line."""
-    note = is_working_note(text.where)
+    rules = [each for each in LINE_RULES if text.kind in each.reads and not (each.name in NOTES_EXEMPT and is_working_note(text.where))]
     return [
         Finding(text.where, number, each.name, line.strip()[:160])
         for number, line in text.lines
-        for each in LINE_RULES
-        if text.kind in each.reads
-        and not (note and each.notes_exempt)
-        and re.search(each.pattern, each.blank.sub("_", line) if each.blank else line)
+        for each in rules
+        if re.search(each.pattern, each.blank.sub("_", line) if each.blank else line)
     ]
 
 
