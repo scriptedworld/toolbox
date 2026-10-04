@@ -171,5 +171,3 @@ sets:
   secrets:
     files:
       - bolt.secrets.yaml
-      # Every jig's `versions` task runs it, and every set reaches this one.
-      - bin/tool-versions.py

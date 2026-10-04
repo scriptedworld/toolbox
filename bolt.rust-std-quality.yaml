@@ -39,7 +39,6 @@ requires:
   - cargo-llvm-cov
   - cargo-audit
   - cargo-deny
-  - python3
 
 definitions:
   # Not the compiler's default of 0. Failing on the first warning is what makes
@@ -47,12 +46,6 @@ definitions:
   deny: warnings
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.rust-std-quality.yaml
-
   # ---- shape ----------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check

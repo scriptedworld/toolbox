@@ -20,7 +20,6 @@ requires:
   - gofmt
   - golangci-lint
   - govulncheck
-  - python3
 
 # The entrypoint step, defaulted so a project without a binary is unaffected.
 #
@@ -60,12 +59,6 @@ definitions:
   entrypoint: 'true'
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.go-std-quality.yaml
-
   # ---- shape ----------------------------------------------------------------
 
   # gofmt lists unformatted files on stdout and exits 0 either way, so its exit

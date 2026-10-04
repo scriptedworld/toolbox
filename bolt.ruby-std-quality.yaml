@@ -51,7 +51,6 @@ requires:
   # envelope validated against wrench's `envelope.schema.json`.
   - flay-envelope
   - bundle-audit-envelope
-  - python3
 
 # What is not the project's code. Adoption links this repository's checkers into
 # the adopter's `bin/` and its adapters into `adapters/`, and a tool reading
@@ -64,12 +63,6 @@ definitions:
   test_dir: test
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.ruby-std-quality.yaml
-
   # ---- shape ----------------------------------------------------------------
 
   # The Layout cops are the formatter, and rufo is deliberately not used. Two

@@ -49,12 +49,6 @@ requires:
   - shellcheck
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.shell-std-quality.yaml
-
   # Layout as shfmt prints it, the dialect taken from each file's extension or
   # shebang. No style flag is passed, so shfmt reads the project's
   # `.editorconfig` (`indent_style`, `indent_size`, `[*.sh]` sections) and

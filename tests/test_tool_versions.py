@@ -109,13 +109,10 @@ def test_a_jig_naming_no_tools_is_refused(capsys, tmp_path):
     sorted(path for path in ROOT.glob("bolt.*.yaml") if not path.name.endswith(".definitions.yaml")),
     ids=lambda path: path.name,
 )
-def test_every_jig_records_its_versions_first(path):
-    """The first task runs the recorder over the jig's own file, so every name in `requires:` is recorded."""
+def test_the_reader_finds_every_jigs_requires(path):
+    """Read line by line, every shipped jig's `requires:` agrees with what YAML reads, comments between entries and all."""
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
-    first = document["tasks"][0]
-    assert first["name"] == "versions"
-    assert first["command"] == f"python3 {{config_dir}}/bin/tool-versions.py {{config_dir}}/{path.name}"
-    assert versions.required(path) == document["requires"], "the line reader and YAML disagree on requires"
+    assert versions.required(path) == document["requires"]
 
 
 # COVERS NFR-3 | positive

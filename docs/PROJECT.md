@@ -69,8 +69,8 @@ simply name a jig that lives elsewhere.
       flay-envelope            flay's report as an envelope, for the Ruby jig
       shell-files.py           the shell files among the tracked ones, for the
                                shell jig
-      tool-versions.py         every required tool's version, each jig's
-                               first task
+      tool-versions.py         every required tool's version; wired into no
+                               jig until adoption is one link (FR-1.8)
     adapters/       record -> envelope, per task that needs one
       common/bolt-result.py    a child bolt run's verdict becomes this task's
       go/{gofmt,govet,coverage}.py

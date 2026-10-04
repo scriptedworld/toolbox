@@ -113,8 +113,8 @@ def test_a_project_of_zsh_alone_passes_lint_with_nothing_selected(monkeypatch, c
 # COVERS FR-11.4 | property
 def test_no_shell_jig_task_pipes_its_steps():
     """A pipeline's status is its last command's, so a selector failing mid-pipe would be hidden."""
-    tasks = [task for task in yaml.safe_load(JIG.read_text(encoding="utf-8"))["tasks"] if task["name"] != "versions"]
-    assert tasks, "the jig has no checking tasks, so the rule is untested"
+    tasks = yaml.safe_load(JIG.read_text(encoding="utf-8"))["tasks"]
+    assert tasks, "the jig has no tasks, so the rule is untested"
     for task in tasks:
         command = task["command"]
         assert "|" not in command, f"{task['name']} pipes its steps"

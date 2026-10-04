@@ -38,13 +38,11 @@
 version: "1.0.0"
 
 requires:
-  # deno, which is the whole point of this toolchain, and python3 for the
-  # `versions` task alone. Every check below is a
+  # One entry, which is the whole point of this toolchain. Every task below is a
   # deno subcommand, so there is no second binary to check and no
   # `node_modules/.bin` that PATH cannot see. The Node jig needs a `toolchain`
   # task for exactly that reason and this one does not.
   - deno
-  - python3
 
 definitions:
   # What `docs` reads. `deno doc --lint` will not take a project and will not
@@ -97,12 +95,6 @@ definitions:
   excluded_regex: (^|/)(\.ephemera|bin|adapters|node_modules)/
 
 tasks:
-  # The version of every tool `requires:` names, read from this file, so a
-  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
-  - name: versions
-    description: the version of every required tool, recorded in this run's output
-    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.deno-std-quality.yaml
-
   # ---- shape ------------------------------------------------------------------
 
   # --check reports without writing. A formatter that reformats during a check
