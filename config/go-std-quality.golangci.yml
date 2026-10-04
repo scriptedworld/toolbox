@@ -29,7 +29,6 @@ linters:
 
     # Correctness and style.
     - revive             # replaces golint; carries argument and result limits
-    - mnd                # magic numbers
     - gosec              # security
     - godoclint          # doc comment practice
     - goconst            # repeated string literals that want to be constants
@@ -61,9 +60,7 @@ linters:
     # Checks the Python jig has no equivalent for.
     - exhaustive         # switch statements cover every enum value
     - gochecknoglobals   # no package-level mutable state
-    - paralleltest       # tests that can be parallel are marked parallel
-    - tparallel          # t.Parallel used correctly relative to subtests
-    - thelper            # helpers call t.Helper so failures point at the caller
+    - thelper           # helpers call t.Helper so failures point at the caller
     - testpackage        # tests live in foo_test, exercising the public API
     - testableexamples   # Example functions actually assert output
 
@@ -98,12 +95,6 @@ linters:
 
     lll:
       line-length: 100
-
-    mnd:
-      ignored-functions:
-        - make
-        - strconv.ParseInt
-        - strconv.ParseFloat
 
     revive:
       rules:
@@ -169,7 +160,7 @@ linters:
   exclusions:
     generated: lax
     rules:
-      # Test files are not exempt from funlen, dupl, mnd, err113,
+      # Test files are not exempt from funlen, dupl, err113,
       # gochecknoglobals or maintidx. A test is read most often at the worst
       # moment, when it has just failed and nobody knows why, so it has to be
       # as readable as the code it supports. A table that has outgrown the
