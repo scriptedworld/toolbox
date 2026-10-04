@@ -7,6 +7,8 @@ against the path rule that decides whether it is adoptable at all.
 
 from __future__ import annotations
 
+import re
+
 import wrench
 import yaml
 from conftest import ROOT
@@ -222,6 +224,23 @@ def test_go_format_reads_only_tracked_files():
     jig = yaml.safe_load((ROOT / "bolt.go-std-quality.yaml").read_text(encoding="utf-8"))
     command = next(task["command"] for task in jig["tasks"] if task["name"] == "format")
     assert command.startswith("git ls-files -z -- '*.go' > {work_dir}/") and "|" not in command
+
+
+# COVERS FR-1.11 | property
+def test_detect_secrets_skips_only_a_pinned_revision():
+    """Both branches pass the exclusion, and its pattern matches a revision and not a credential."""
+    jig = yaml.safe_load((ROOT / "bolt.secrets.yaml").read_text(encoding="utf-8"))
+    command = next(task["command"] for task in jig["tasks"] if task["name"] == "detect-secrets")
+    assert command.count("--exclude-lines {revision_line}") == 2
+    pattern = re.compile(jig["definitions"]["revision_line"])
+    # Built at run time, so no high-entropy literal sits in this file for the
+    # scanners themselves to find.
+    revision = "a1" * 20
+    assert pattern.search(f'  "rev": "{revision}",')
+    assert pattern.search(f'"commit": "{revision}"')
+    assert not pattern.search(f'"token": "{revision}"')
+    assert not pattern.search('"rev": "main"')
+    assert not pattern.search(f'"rev": "{revision.upper()}"')
 
 
 # COVERS FR-1.6 | property
