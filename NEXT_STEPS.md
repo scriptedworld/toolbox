@@ -271,7 +271,11 @@ because that list is what anvil builds an image from.
 ## The Ruby jig, part-written
 
 `jigs.yaml` declares a `ruby` set. Nothing has adopted it, so the jig has never
-run.
+run, and as written it cannot: `requires:` names `rubocop-minitest`,
+`rubocop-rake` and `rubocop-rspec`, which are gems loaded as rubocop plugins
+and not executables, and `flay-envelope` and `bundle-audit-envelope`, which are
+toolbox scripts and not on PATH. bolt refuses a run when a required name is not
+on PATH, and the `versions` task reports all five as not found.
 
 `bolt.ruby-std-quality.yaml` is drafted and validates against wrench's
 `JIG_SCHEMA`. Seven tasks, two mechanisms, no bespoke adapters:

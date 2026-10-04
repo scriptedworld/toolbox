@@ -163,6 +163,7 @@ requires:
   - node
   - npm
   - npx
+  - python3
 
 definitions:
   # What `types` compiles. Named explicitly rather than left to discovery, so
@@ -264,6 +265,12 @@ definitions:
   security_rules: '{"security/detect-unsafe-regex":"error","security/detect-non-literal-regexp":"error","security/detect-non-literal-require":"error","security/detect-eval-with-expression":"error","security/detect-pseudoRandomBytes":"error","security/detect-possible-timing-attacks":"error","security/detect-no-csrf-before-method-override":"error","security/detect-buffer-noassert":"error","security/detect-child-process":"error","security/detect-disable-mustache-escape":"error","security/detect-new-buffer":"error","security/detect-bidi-characters":"error"}'
 
 tasks:
+  # The version of every tool `requires:` names, read from this file, so a
+  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
+  - name: versions
+    description: the version of every required tool, recorded in this run's output
+    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.node-std-quality.yaml
+
   # ---- the toolchain ---------------------------------------------------------
 
   # Not one of the four categories. It is `requires` for tools PATH cannot see.

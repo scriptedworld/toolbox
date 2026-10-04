@@ -7,7 +7,7 @@ between a silenced check and nobody remembering why.
 
 ## S-1, bandit's subprocess findings in the test tree
 
-Twenty-two marks, two rules, ten files, and every one is a test. `B404` for
+Twenty-four marks, two rules, eleven files, and every one is a test. `B404` for
 importing `subprocess`, `B603` for calling it without `shell=True`.
 
     tests/conftest.py                         # nosec B404    import subprocess
@@ -28,6 +28,8 @@ importing `subprocess`, `B603` for calling it without `shell=True`.
     tests/test_suppression_register.py        # nosec B603    the script-runs-as-a-script case
     tests/test_shell_files.py                 # nosec B404    import subprocess
     tests/test_shell_files.py                 # nosec B603    the script-runs-as-a-script case
+    tests/test_tool_versions.py               # nosec B404    import subprocess
+    tests/test_tool_versions.py               # nosec B603    the script-runs-as-a-script case
     tests/test_traceability.py                # nosec B404    import subprocess
     tests/test_traceability.py                # nosec B603    the script-runs-as-a-script case
 
@@ -133,9 +135,11 @@ had copied a subprocess block, which was dissolved and not marked.
 
 ## S-4, bandit's subprocess findings in the checkers themselves
 
-Six marks, two rules, two checkers. These are not tests: they are the
+Eight marks, two rules, three checkers. These are not tests: they are the
 production path, where a checker runs the tool it is a checker for.
 
+    bin/tool-versions.py                      # nosec B404    import subprocess
+    bin/tool-versions.py                      # nosec B603    each required tool, asked for its version
     bin/voice-review.py                       # nosec B404    import subprocess
     bin/voice-tells.py                        # nosec B404    import subprocess
     bin/voice-tells.py                   ×4   # nosec B603    git: ls-files, show, rev-parse, log

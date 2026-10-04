@@ -29,6 +29,7 @@ requirement it marks is testable.
 | ID | Requirement | |
 |---|---|---|
 | FR-1.7 | A jig is one `bolt.*.yaml` file holding a set of tasks, and bolt runs one jig over one directory. Composition is a task: a jig runs another through bolt as a child, and an adapter folds the child's verdict into the parent's, because bolt exits 0 whenever it carried a run out. | [D] |
+| FR-1.8 | Every jig's first task, `versions`, records the version of every tool its `requires:` names, read from the jig's own file: the line of the tool's version report that carries the number, the shipping toolchain's version for a tool with none of its own, or the digest of the binary for one answering no version flag. A required tool not on PATH fails the task. | [A] |
 | FR-1.2 | Every jig here validates against the jig schema wrench ships (NFR-6), and every definitions file against wrench's definitions schema. One that does not is a jig bolt may accept today and reject tomorrow. | [D] |
 | FR-1.3 | A jig carries the rule and never the subject. Whatever does the checking travels with the jig; whatever is being checked belongs to the project. Bundle a document *about a codebase* into a jig and it has stopped being adoptable, because every adopter is then judged against its author's answers. | [A] |
 | FR-1.4 | `{config_dir}` resolves a path against the directory of the jig that names it; every other path stays relative to the run root. Getting this backwards stays invisible in a repository whose jig sits at its own root, where the two directories are the same one. | [A] |

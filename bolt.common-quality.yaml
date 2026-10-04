@@ -28,6 +28,12 @@ definitions:
   voice_start_file: .voice-review-start
 
 tasks:
+  # The version of every tool `requires:` names, read from this file, so a
+  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
+  - name: versions
+    description: the version of every required tool, recorded in this run's output
+    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.common-quality.yaml
+
   # ---- documents held against the source ------------------------------------
 
   # Fails both directions: a test citing nothing, and a settled requirement no

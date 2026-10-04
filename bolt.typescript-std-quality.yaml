@@ -67,6 +67,7 @@ requires:
   # run on a machine with no deno installed, which is every default adopter.
   # The engine's own absence surfaces on its own task instead.
   - bolt
+  - python3
 
 definitions:
   # The engine whose full standard this composite runs. Node by default, because
@@ -98,6 +99,12 @@ definitions:
   deno_permission_three: --no-prompt
 
 tasks:
+  # The version of every tool `requires:` names, read from this file, so a
+  # verdict records what produced it (FR-1.8). Fails when a tool reports none.
+  - name: versions
+    description: the version of every required tool, recorded in this run's output
+    command: python3 {config_dir}/bin/tool-versions.py {config_dir}/bolt.typescript-std-quality.yaml
+
   # ---- the standard, once -----------------------------------------------------
 
   # The adapter is required. Bolt exits 0 whenever it carried a run out, whatever the
