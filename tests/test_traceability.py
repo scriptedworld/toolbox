@@ -423,7 +423,11 @@ def test_a_bats_test_citing_nothing_is_named_by_its_string(checker, tmp_path):
 # COVERS FR-4.29 | positive
 def test_a_two_letter_suffix_is_a_requirement(checker, tmp_path):
     """`FR-10.8ca` is read and held to coverage, so leaving it uncited fails."""
-    tree = project(tmp_path, requirements(("FR-10.8ca", "[A]"), ("FR-10.8cb", "[A]")), {"test_it.py": "# COVERS FR-10.8ca | positive\ndef test_it():\n    pass\n"})
+    tree = project(
+        tmp_path,
+        requirements(("FR-10.8ca", "[A]"), ("FR-10.8cb", "[A]")),
+        {"test_it.py": "# COVERS FR-10.8ca | positive\ndef test_it():\n    pass\n"},
+    )
     code, out = checker(traceability, ARGV, tree)
     assert code == 1
     assert "FR-10.8cb" in out and "1 of 2" in out

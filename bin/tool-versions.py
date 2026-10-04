@@ -62,7 +62,8 @@ def version_line(tool: str, output: str) -> str | None:
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     numbered = [line for line in lines if NUMBER.search(line)]
     named = [line for line in numbered if tool.lower() in line.lower()]
-    return (named or numbered or lines or [None])[0]
+    candidates = named or numbered or lines
+    return candidates[0] if candidates else None
 
 
 def version_of(tool: str) -> str | None:
