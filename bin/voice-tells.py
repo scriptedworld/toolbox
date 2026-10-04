@@ -96,6 +96,7 @@ class Rule:
     pattern: re.Pattern[str]
     reads: frozenset[str] = EVERYWHERE
     blank: re.Pattern[str] | None = None
+    notes_exempt: bool = False
 
 
 def rule(
@@ -105,9 +106,25 @@ def rule(
     ignore_case: bool = False,
     reads: frozenset[str] = EVERYWHERE,
     blank: re.Pattern[str] | None = None,
+    notes_exempt: bool = False,
 ) -> Rule:
     """A rule compiled once, with the vocabulary it is not about blanked first."""
-    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads, blank)
+    return Rule(name, re.compile(pattern, re.IGNORECASE if ignore_case else 0), reads, blank, notes_exempt)
+
+
+# Working notes, where a dated measurement with its command is what the writing
+# standard asks for and not an audit trail: clank's `tasks/` and `inbox/`, any
+# `.ephemera/` or `evidence/` directory, and the task, finding and handoff files
+# by name wherever they sit.
+NOTE_ROOTS = frozenset({"tasks", "inbox"})
+NOTE_DIRS = frozenset({".ephemera", "evidence"})
+NOTE_NAMES = frozenset({"TASK.md", "FINDING.md", "START_HERE.md", "test-plan.md", "code-plan.md"})
+
+
+def is_working_note(where: str) -> bool:
+    """Whether a path is a working note, where dated measurements belong (FR-9.27)."""
+    parts = Path(where).parts
+    return bool(parts) and (parts[0] in NOTE_ROOTS or not NOTE_DIRS.isdisjoint(parts) or parts[-1] in NOTE_NAMES)
 
 
 # A finding at `error` fails the run. A `suggestion` is printed and never fails.
@@ -128,6 +145,7 @@ LINE_RULES = (
         "audit-date",
         r"\b(checked|measured|re-?measured|verified|confirmed|re-?tested|decided|corrected|re-?derived|held|observed)\b[^.\n]{0,24}?\b\d{4}-\d{2}-\d{2}\b",
         ignore_case=True,
+        notes_exempt=True,
     ),
     rule("audit-marker", r"\b(DECIDED|CORRECTED|RETESTED|SUPERSEDED)\b|\bHELD\s+\d{4}-"),
     # `the owner` alone is also a file's owner, so it counts only as someone who decides.
@@ -473,11 +491,14 @@ def message_text(path: Path) -> Text:
 
 def line_findings(text: Text) -> list[Finding]:
     """Every line rule that reads this kind of text, at most one finding per rule per line."""
+    note = is_working_note(text.where)
     return [
         Finding(text.where, number, each.name, line.strip()[:160])
         for number, line in text.lines
         for each in LINE_RULES
-        if text.kind in each.reads and re.search(each.pattern, each.blank.sub("_", line) if each.blank else line)
+        if text.kind in each.reads
+        and not (note and each.notes_exempt)
+        and re.search(each.pattern, each.blank.sub("_", line) if each.blank else line)
     ]
 
 
