@@ -119,16 +119,24 @@ NOTES_EXEMPT = frozenset({"audit-date"})
 # Working notes, where a dated measurement with its command is what the writing
 # standard asks for and not an audit trail: clank's `tasks/` and `inbox/`, any
 # `.ephemera/` or `evidence/` directory, and the task, finding and handoff files
-# by name wherever they sit.
+# by name wherever they sit. A member's records sit in `work/<member>/`; with
+# no roster to consult, any subdirectory of `work/` counts and a file directly
+# under `work/` does not.
 NOTE_ROOTS = frozenset({"tasks", "inbox"})
 NOTE_DIRS = frozenset({".ephemera", "evidence"})
 NOTE_NAMES = frozenset({"TASK.md", "FINDING.md", "START_HERE.md", "test-plan.md", "code-plan.md"})
+MEMBER_ROOT = "work"
+
+
+def is_member_record(parts: tuple[str, ...]) -> bool:
+    """Whether a path lies inside a subdirectory of a leading `work/`, where members keep records (FR-9.27)."""
+    return len(parts) > 2 and parts[0] == MEMBER_ROOT
 
 
 def is_working_note(where: str) -> bool:
     """Whether a path is a working note, where dated measurements belong (FR-9.27)."""
     parts = Path(where).parts
-    return bool(parts) and (parts[0] in NOTE_ROOTS or not NOTE_DIRS.isdisjoint(parts) or parts[-1] in NOTE_NAMES)
+    return bool(parts) and (parts[0] in NOTE_ROOTS or not NOTE_DIRS.isdisjoint(parts) or parts[-1] in NOTE_NAMES or is_member_record(parts))
 
 
 # A finding at `error` fails the run. A `warning` or a `suggestion` is printed

@@ -186,7 +186,7 @@ that every rule in it fails on a single instance; `bin/voice-tells.py`.
 | FR-9.24 | `.voice-baseline.json` at the repository root names the findings accepted as exceptions, each carrying the file, the rule, the finding's text and the reason it stands. A finding an entry matches does not fail, and is counted as accepted. A project adopts with no baseline, and no command writes entries. | [A] |
 | FR-9.25 | An entry carrying no reason fails, and so does a baseline that cannot be read. | [A] |
 | FR-9.26 | Under `--all-files` an entry that matches no finding fails as stale. The other modes do not judge staleness, because a file an entry names may not have been among those read. | [A] |
-| FR-9.27 | A dated measurement is not an audit trail in a working note, where the writing standard asks for one: a path whose first component is `tasks` or `inbox`, one passing through `.ephemera` or `evidence`, or a file named `TASK.md`, `FINDING.md`, `START_HERE.md`, `test-plan.md` or `code-plan.md`. The audit-date rule does not read those; every other rule still does. | [A] |
+| FR-9.27 | A dated measurement is not an audit trail in a working note, where the writing standard asks for one: a path whose first component is `tasks` or `inbox`, a file inside any subdirectory of a first component `work`, where members keep their records (`work/<member>/...`; the checker holds no roster, and a file directly in `work/` is not a note), one passing through `.ephemera` or `evidence`, or a file named `TASK.md`, `FINDING.md`, `START_HERE.md`, `test-plan.md` or `code-plan.md`. The audit-date rule does not read those; every other rule still does. | [A] |
 
 ## FR-10, The voice review
 

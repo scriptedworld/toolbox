@@ -138,28 +138,31 @@ NOTE_LINE = "# Note\n\nChecked 2026-10-04: `docker build -f .devcontainer/Docker
         "docs/runs/evidence/run.md",
         "START_HERE.md",
         "work/TASK.md",
+        "work/eloise/intake/commit-request-ffbb922-d046b1f2.md",
+        "work/ramona/a-job/report.md",
     ],
 )
 def test_a_dated_measurement_in_a_working_note_passes(tmp_path, capsys, path):
-    """Task files, inbox entries, evidence and handoffs are where a dated measurement with its command belongs."""
+    """Task files, inbox entries, evidence, handoffs and member records are where a dated measurement with its command belongs."""
     tree = repository(tmp_path, {path: NOTE_LINE})
     code, report, _ = run(tree, capsys)
     assert code == 0, report["findings"]
 
 
 # COVERS FR-9.27 | negative
-@pytest.mark.parametrize("path", ["docs/guide.md", "README.md", "src/tasks/notes.md"])
+@pytest.mark.parametrize("path", ["docs/guide.md", "README.md", "src/tasks/notes.md", "work/README.md", "docs/work/ramona/report.md"])
 def test_a_dated_measurement_in_a_document_still_fails(tmp_path, capsys, path):
-    """A document states what is true; `tasks` counts only as the first component, not anywhere in the path."""
+    """A document states what is true; `tasks` and `work` count only as the first component, and `work/` needs a member directory."""
     tree = repository(tmp_path, {path: NOTE_LINE})
     code, report, _ = run(tree, capsys)
     assert code == 1 and [finding["rule"] for finding in report["findings"]] == ["audit-date"]
 
 
 # COVERS FR-9.27 | edge
-def test_a_working_note_is_still_held_to_every_other_rule(tmp_path, capsys):
-    """Only the audit-date rule steps aside; an em-dash in a task file still fails."""
-    tree = repository(tmp_path, {"tasks/x/TASK.md": f"# Task\n\nChecked 2026-10-04: one {DASH} two.\n"})
+@pytest.mark.parametrize("path", ["tasks/x/TASK.md", "work/ramona/report.md"])
+def test_a_working_note_is_still_held_to_every_other_rule(tmp_path, capsys, path):
+    """Only the audit-date rule steps aside; an em-dash in a task file or a member record still fails."""
+    tree = repository(tmp_path, {path: f"# Task\n\nChecked 2026-10-04: one {DASH} two.\n"})
     code, report, _ = run(tree, capsys)
     assert code == 1 and [finding["rule"] for finding in report["findings"]] == ["em-dash"]
 
