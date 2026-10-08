@@ -63,7 +63,7 @@ def test_a_clean_tree_passes_and_says_what_it_read(tmp_path, capsys):
 
     assert code == 0
     assert report["passed"] is True and report["findings"] == []
-    assert "0 errors, 0 suggestions, 0 accepted (none)" in output
+    assert "0 errors, 0 warnings, 0 suggestions, 0 accepted (none)" in output
     assert "no start commit is recorded" in output
 
 
@@ -291,16 +291,31 @@ def test_bold_in_a_short_document_passes(tmp_path, capsys):
 
 
 # COVERS FR-9.6 | positive
-def test_a_commit_body_over_twenty_lines_is_found(tmp_path, capsys):
-    """Twenty-one body lines fail and twenty pass."""
+def test_a_commit_body_over_twenty_five_lines_is_found(tmp_path, capsys):
+    """Twenty-six body lines fail, and twenty-five are only a warning."""
     tree = repository(tmp_path)
     start_here(tree)
-    commit(tree, "long\n\n" + "\n".join(f"line {n}" for n in range(21)))
-    commit(tree, "fits\n\n" + "\n".join(f"line {n}" for n in range(20)))
+    commit(tree, "long\n\n" + "\n".join(f"line {n}" for n in range(26)))
+    commit(tree, "fits\n\n" + "\n".join(f"line {n}" for n in range(25)))
+
+    code, report, _ = run(tree, capsys)
+
+    assert code == 1
+    found = [(f["rule"], f["text"], f["severity"]) for f in report["findings"]]
+    assert found == [("commit-length", "25 body lines, over 20", "warning"), ("commit-length", "26 body lines, at most 25", "error")]
+
+
+# COVERS FR-9.6 | edge
+@pytest.mark.parametrize(("lines", "expected"), [(20, []), (21, [("21 body lines, over 20", "warning")])])
+def test_the_warning_starts_after_twenty_lines(tmp_path, capsys, lines, expected):
+    """Twenty body lines are nothing and twenty-one are a warning."""
+    tree = repository(tmp_path)
+    start_here(tree)
+    commit(tree, "subject\n\n" + "\n".join(f"line {n}" for n in range(lines)))
 
     _, report, _ = run(tree, capsys)
 
-    assert [(f["rule"], f["text"]) for f in report["findings"]] == [("commit-length", "21 body lines, at most 20")]
+    assert [(f["text"], f["severity"]) for f in report["findings"]] == expected
 
 
 # COVERS FR-9.7 | negative
@@ -417,7 +432,7 @@ def test_an_accepted_finding_does_not_fail(tmp_path, capsys):
 
     assert code == 0 and report["passed"] is True
     assert report["findings"] == [] and len(report["accepted"]) == 1
-    assert "0 errors, 0 suggestions, 1 accepted" in output
+    assert "0 errors, 0 warnings, 0 suggestions, 1 accepted" in output
 
 
 # COVERS FR-9.24 | negative
@@ -716,7 +731,22 @@ def test_a_suggestion_is_reported_and_does_not_fail(tmp_path, capsys):
     assert code == 0 and report["passed"] is True
     assert [(f["rule"], f["severity"]) for f in report["findings"]] == [("excess-vocabulary", "suggestion")]
     assert "README.md: excess-vocabulary (suggestion): 6 in" in output
-    assert "0 errors, 1 suggestions" in output
+    assert "0 errors, 0 warnings, 1 suggestions" in output
+
+
+# COVERS FR-9.11 | positive
+def test_a_warning_is_reported_and_does_not_fail(tmp_path, capsys):
+    """A commit body of twenty-two lines prints as a warning, marked and counted apart, and exits 0."""
+    tree = repository(tmp_path)
+    start_here(tree)
+    commit(tree, "subject\n\n" + "\n".join(f"line {n}" for n in range(22)))
+
+    code, report, output = run(tree, capsys)
+
+    assert code == 0 and report["passed"] is True
+    assert [(f["rule"], f["severity"]) for f in report["findings"]] == [("commit-length", "warning")]
+    assert ": commit-length (warning): 22 body lines, over 20" in output
+    assert "0 errors, 1 warnings, 0 suggestions" in output
 
 
 # COVERS FR-9.11 | negative

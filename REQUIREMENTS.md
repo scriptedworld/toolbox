@@ -165,12 +165,12 @@ that every rule in it fails on a single instance; `bin/voice-tells.py`.
 | FR-9.3 | The audit trail: a `FACT`, `CLAIM` or `PREFERENCE` badge, a checking or deciding verb followed by a date, a `DECIDED`, `CORRECTED`, `RETESTED` or `SUPERSEDED` marker, strikethrough, and narration of what a document, file or note once said. | [A] |
 | FR-9.4 | Who is speaking: `our user` and `the project owner` everywhere, `the owner` when it is followed by a verb of deciding or wanting, since alone it is also a file's owner, and a session or agent narrated as the actor in commit messages only, where sessions are not a project's subject. A multiplexer's session is a thing and never an actor, so `tmux`, `zellij`, `herdr` and `screen` are read past, including in the possessive. | [A] |
 | FR-9.5 | Stock phrasing: `worth knowing` and its kin, the stock phrases the writing standard names, and a run of three or more ALL-CAPS words. | [A] |
-| FR-9.6 | Density: `rather than` more than twice in one document or commit message, bold in more than 30% of a document's paragraphs once it has six, and a commit body over 20 lines. | [A] |
+| FR-9.6 | Density: `rather than` more than twice in one document or commit message, bold in more than 30% of a document's paragraphs once it has six, and a commit body over 25 lines. A body of 21 to 25 lines is a warning. | [A] |
 | FR-9.7 | Text a document reports and does not assert is not read: fenced and indented code, block quotes, inline code, and spans in double quotes or in single quotes that stand apart from letters, so a contraction is not a quote. | [A] |
 | FR-9.8 | The paths the voice review never sends (FR-8.10) are not read, and neither are symlinks or comment lines carrying a directive. | [A] |
 | FR-9.9 | Commits are read only after the start the repository records, the same file the voice review reads. With none recorded, commits are not read and the output says so. A start that is not a commit fails. | [A] |
 | FR-9.10 | The check asks no model and no network, so the same tree gives the same verdict on every run. | [D] |
-| FR-9.11 | Every rule is an error except excess vocabulary, which is a suggestion. A suggestion is printed and written to the report with its severity and never changes the exit status. | [A] |
+| FR-9.11 | Every rule is an error except excess vocabulary, which is a suggestion, and a commit body of 21 to 25 lines, which is a warning. A warning or a suggestion is printed and written to the report with its severity, counted apart in the summary, and never changes the exit status. | [A] |
 | FR-9.12 | Assistant voice: an attribution trailer naming a model or its tool, an assistant opener such as `Certainly!` or `Great question`, and in commit messages a `This commit adds` or `In this change` preamble. | [A] |
 | FR-9.13 | An emoji in a comment or a commit message. | [A] |
 | FR-9.14 | A hedging opener: `it's worth noting`, `it is important to note` and kin. | [A] |

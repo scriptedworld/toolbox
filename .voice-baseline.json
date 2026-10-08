@@ -9,8 +9,8 @@
     {
       "file": "commit 6bcf7b65e8f0",
       "rule": "commit-length",
-      "text": "26 body lines, at most 20",
-      "reason": "Same commit, same reason. The body is six lines over the limit and the SHA is cited, so the entry stands where a reword cannot."
+      "text": "26 body lines, at most 25",
+      "reason": "Same commit, same reason. The body is one line over the limit and the SHA is cited, so the entry stands where a reword cannot."
     }
   ]
 }

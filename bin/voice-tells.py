@@ -11,7 +11,8 @@ its source and configuration, and commit messages. The modes are pre-commit's,
 so the same script serves a hook and the jig. With no files named and no mode,
 the staged copies are read, which is what a commit would carry.
 
-Every instance of a rule below is printed as `where:line: rule: text`. Exits 0
+Every instance of a rule below is printed as `where:line: rule: text`, the
+rule marked `(warning)` or `(suggestion)` where it is not an error. Exits 0
 when no error was found, 1 when one was, and 2 when the command or the
 repository is wrong, such as a start file naming something that is not a commit.
 
@@ -66,7 +67,8 @@ RATHER_THAN = re.compile(r"\brather than\b", re.IGNORECASE)
 RATHER_THAN_PER_TEXT = 2
 BOLD_SHARE = 0.3
 BOLD_MIN_PARAGRAPHS = 6
-COMMIT_BODY_LINES = 20
+COMMIT_BODY_WARN = 20
+COMMIT_BODY_LINES = 25
 
 
 @dataclass(frozen=True)
@@ -129,8 +131,9 @@ def is_working_note(where: str) -> bool:
     return bool(parts) and (parts[0] in NOTE_ROOTS or not NOTE_DIRS.isdisjoint(parts) or parts[-1] in NOTE_NAMES)
 
 
-# A finding at `error` fails the run. A `suggestion` is printed and never fails.
-ERROR, SUGGESTION = "error", "suggestion"
+# A finding at `error` fails the run. A `warning` or a `suggestion` is printed
+# and never fails.
+ERROR, WARNING, SUGGESTION = "error", "warning", "suggestion"
 PROSE_AND_COMMITS = frozenset({COMMENTS, COMMITS})
 COMMENT_OPENER = r"^(?:#+|//+|/\*+|\*+)?\s*"
 
@@ -255,7 +258,7 @@ class Finding:
     severity: str = ERROR
 
     def render(self) -> str:
-        """`where:line: rule: text`, or `where: rule: text` for a whole-text rule, with a suggestion marked."""
+        """`where:line: rule: text`, or `where: rule: text` for a whole-text rule, with a warning or a suggestion marked."""
         place = f"{self.where}:{self.line}" if self.line else self.where
         name = self.rule if self.severity == ERROR else f"{self.rule} ({self.severity})"
         return f"{place}: {name}: {self.text}"
@@ -581,12 +584,16 @@ def bold_density(text: Text) -> list[Finding]:
 
 
 def commit_length(text: Text) -> list[Finding]:
-    """A commit body over twenty lines."""
+    """A commit body over twenty-five lines, and a warning over twenty."""
     if text.kind != COMMITS:
         return []
     body = text.raw.splitlines()[1:]
     lines = len("\n".join(body).strip("\n").splitlines())
-    return [Finding(text.where, 0, "commit-length", f"{lines} body lines, at most {COMMIT_BODY_LINES}")] if lines > COMMIT_BODY_LINES else []
+    if lines > COMMIT_BODY_LINES:
+        return [Finding(text.where, 0, "commit-length", f"{lines} body lines, at most {COMMIT_BODY_LINES}")]
+    if lines > COMMIT_BODY_WARN:
+        return [Finding(text.where, 0, "commit-length", f"{lines} body lines, over {COMMIT_BODY_WARN}", WARNING)]
+    return []
 
 
 def excess_vocabulary(text: Text) -> list[Finding]:
@@ -721,8 +728,10 @@ def main(argv: list[str] | None = None) -> int:
     for each in found:
         counts[each.rule] = counts.get(each.rule, 0) + 1
     errors = sum(each.severity == ERROR for each in found)
+    warnings = sum(each.severity == WARNING for each in found)
     summary = ", ".join(f"{name} {count}" for name, count in sorted(counts.items())) or "none"
-    print(f"voice tells: {errors} errors, {len(found) - errors} suggestions, {len(accepted)} accepted ({summary}); {commits}")
+    tally = f"{errors} errors, {warnings} warnings, {len(found) - errors - warnings} suggestions"
+    print(f"voice tells: {tally}, {len(accepted)} accepted ({summary}); {commits}")
     if args.report:
         document = {
             "passed": not errors,
