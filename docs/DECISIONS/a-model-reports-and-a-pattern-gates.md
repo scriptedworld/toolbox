@@ -50,3 +50,13 @@ finding stands only when its quote starts on the line it names.
 
 A rule the model applies consistently reaches the gate by becoming a pattern in
 `bin/voice-tells.py`.
+
+## Whether a review ran is in its report, not its exit status
+
+The review exits 0 whatever it found (FR-10.4), and exits 0 when no model could
+be reached, saying NOT RUN with the cause (FR-10.5). Its exit status therefore
+answers nothing about findings, and a caller that needs to know whether a review
+happened reads the `status` field `--report` writes: `reviewed` or
+`unreachable` (FR-10.7). A distinct exit for an unreached model would be the
+one place a model's outcome changed what a caller does by status, which is the
+gating this decision rules out.
