@@ -90,21 +90,32 @@
 # it beside this list fails the install with
 # `ERESOLVE unable to resolve dependency tree`, naming typescript-eslint's peer.
 #
-# A bare `npm install -D typescript` depends on order. Run before
-# typescript-eslint is present, it takes npm's `latest`, which can sit above
-# the range, and adding typescript-eslint afterwards is refused. Run after it,
-# npm takes the newest version inside the range and prints
-# `npm warn ERESOLVE overriding peer dependency` on an install that succeeds.
-# That line is a warning, not the refusal, but the version saved is not the one
-# measured here. Pinning 5.9.3 avoids both.
+# A bare `npm install -D typescript` depends on what is already installed.
+# With typescript-eslint or eslint-plugin-jsdoc present, npm takes the newest
+# version inside the range. With neither, it takes npm's `latest`, which can
+# sit above the range, and adding typescript-eslint afterwards is refused.
+# With typescript-eslint present the install also prints
+# `npm warn ERESOLVE overriding peer dependency`, which is a warning on an
+# install that succeeds, not the refusal. Wherever it succeeds, the version
+# saved is not the one measured here. Pinning 5.9.3 avoids all of these.
 #
-# eslint-plugin-sonarjs 4.2.1 carries the same upper bound as a regular
-# dependency, `>=5 <6.1.0`. That refuses nothing: with a `typescript` outside
-# it, npm gives sonarjs a copy of its own and the tree holds two. So both
-# bounds are read again whenever either pin moves:
+# Two more packages in the list carry the same upper bound.
+# eslint-plugin-sonarjs 4.2.1 has it as a regular dependency, `>=5 <6.1.0`.
+# That refuses nothing: with a `typescript` outside it, npm gives sonarjs a
+# copy of its own and the tree holds two. eslint-plugin-jsdoc 64.5.4 has it one
+# step removed, through its dependency `@typescript-eslint/utils ^8.70.0`,
+# whose peer range is typescript-eslint's. That caret range resolves to the
+# newest 8.x, not to the 8.70.1 pinned here, so this bound can move with no pin
+# in the list moving.
 #
+# So the bounds are read again whenever a pin moves or the lock file is
+# regenerated. The first command lists every package in the tree that depends
+# on `typescript`, including the `@typescript-eslint/utils` under jsdoc:
+#
+#     npm ls --package-lock-only --all typescript
 #     npm view typescript-eslint@<version> peerDependencies
 #     npm view eslint-plugin-sonarjs@<version> dependencies.typescript
+#     npm view @typescript-eslint/utils@<version> peerDependencies
 #
 # And four files, none of which this jig supplies, because each states something
 # only the project knows:
