@@ -77,13 +77,34 @@
 #     eslint                       9.39.5    lint, complexity, cognitive,
 #     typescript-eslint            8.70.1      analyse, docs, security
 #     @eslint/js                   9.39.5    the recommended base
-#     typescript                   5.9.3     types
+#     typescript                   5.9.3     types; below 6.1.0, see below
 #     @types/node                  26.6.2    types, for `node:` specifiers
 #     eslint-plugin-sonarjs        4.2.1     cognitive, analyse
 #     eslint-plugin-jsdoc          64.5.4    docs
 #     eslint-plugin-security       4.0.1     security
 #     knip                         6.37.0    dead-code
 #     license-checker-rseidelsohn  5.0.1     licences
+#
+# `typescript` is bounded by typescript-eslint's peer range, which for 8.70.1
+# is `>=4.8.4 <6.1.0`. Measured with npm 11.20.0: a `typescript` pinned above
+# it beside this list fails the install with
+# `ERESOLVE unable to resolve dependency tree`, naming typescript-eslint's peer.
+#
+# A bare `npm install -D typescript` depends on order. Run before
+# typescript-eslint is present, it takes npm's `latest`, which can sit above
+# the range, and adding typescript-eslint afterwards is refused. Run after it,
+# npm takes the newest version inside the range and prints
+# `npm warn ERESOLVE overriding peer dependency` on an install that succeeds.
+# That line is a warning, not the refusal, but the version saved is not the one
+# measured here. Pinning 5.9.3 avoids both.
+#
+# eslint-plugin-sonarjs 4.2.1 carries the same upper bound as a regular
+# dependency, `>=5 <6.1.0`. That refuses nothing: with a `typescript` outside
+# it, npm gives sonarjs a copy of its own and the tree holds two. So both
+# bounds are read again whenever either pin moves:
+#
+#     npm view typescript-eslint@<version> peerDependencies
+#     npm view eslint-plugin-sonarjs@<version> dependencies.typescript
 #
 # And four files, none of which this jig supplies, because each states something
 # only the project knows:
