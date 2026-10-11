@@ -101,7 +101,6 @@ requirement it marks is testable.
 | FR-4.23 | `--scope NAME` holds one tree to the rows that name it and to the rows that name no tree, so a repository with several trees against one document holds each to its own coverage and not to the union of all of them. Without it a row covered in one tree alone passes the whole repository, and a tree holding none of a requirement is invisible. The scope clause is the lowercase half of a row's marker, `[A/D python]`; a row also scoping KINDS, `[A go,python:edge,negative]`, stays in scope everywhere, because the rest of that row is still expected in every tree and this checker never asks by which kind. A scoped-out row is exempt exactly as an open one is: out of the denominator, reported as context, never a failure, and still declared so a test citing it is not told the id does not exist. | [D] |
 | FR-4.26 | A mark written `COVERS:` with a colon fails, naming the line and the form to write instead. Read as merely absent, it would tell its author the test cites nothing while the citation sits in plain view. `COVERS` must be followed by whitespace, so `COVERSFR-1.1` is not a mark. | [D] |
 | FR-4.27 | A bats test is an `@test` line naming it with a double- or single-quoted string, and a failure names the test by that string. | [A] |
-| FR-4.28 | A test that is a call is found by the call: `test(...)`, `it(...)` or `Deno.test(...)`, optionally after `void` or `await`, in the files `node --test` and `deno test` read, and an rspec `it "..."` in a `_spec.rb`. A failure names the test by its string. A minitest `def test_...` is found by its name. | [A] |
 | FR-4.29 | An id is `FR-` or `NFR-`, a number, an optional point and number, and any lowercase letters, so `FR-10.8ca` is read. A row shaped like a requirement whose id the grammar still cannot read fails the run, naming the document, the line and the id, where it would otherwise drop out of the denominator. | [A] |
 
 ## FR-5, The suppression register
@@ -114,7 +113,7 @@ recorded in `bin/suppression-register.py`.
 | FR-5.1 | Every suppression pragma in the source appears in the register, and every row of the register names a pragma that is really there. Both directions fail. | [A] |
 | FR-5.2 | The count is part of the comparison, so a second pragma added to an already-registered file is caught instead of hiding behind the first. | [A] |
 | FR-5.3 | A project with no pragmas and no register passes. A project that has pragmas and no register does not. | [A] |
-| FR-5.4 | The register covers every language this repository ships a jig for: Go, Python, shell, Rust, Ruby, and TypeScript and JavaScript with eslint's line, next-line and block forms, `deno-lint-ignore` and the `@ts-` directives. In TypeScript `#` opens no comment, so a `#private` field does not hide a pragma after it. An unread language leaves its pragmas silenced and unseen instead of silenced and justified. | [A] |
+| FR-5.4 | The register covers every language this repository ships a jig for: Go, Python, shell and Rust. An unread language leaves its pragmas silenced and unseen instead of silenced and justified. | [A] |
 | FR-5.5 | `--register` accepts a directory as well as a file, reading every `.md` beneath it. Counts add across documents, so one file per suppression totals what one document listing them all totals. | [D] |
 | FR-5.6 | detect-secrets' `pragma: allowlist secret`, in either comment syntax, is a pragma like any other. | [A] |
 | FR-5.7 | A directory holding its own `.git` below the scan root is another checkout, such as an agent's worktree, and is not read. | [A] |
@@ -181,7 +180,7 @@ that every rule in it fails on a single instance; `bin/voice-tells.py`.
 | FR-9.19 | Exit 0 when no error was found, 1 when one was, and 2 when the command or the repository is wrong: two modes at once, one of the two refs, or a start that is not a commit. | [A] |
 | FR-9.20 | A `.pre-commit-hooks.yaml` declares the two hooks: the staged files at the pre-commit stage, and the message at the commit-msg stage. | [A] |
 | FR-9.21 | A comment is read wherever it sits on a line, including after code, and a comment marker inside a string is not a comment. | [A] |
-| FR-9.22 | Block comments are read whole: `/* */`, Lua `--[[ ]]` and its `--` lines, and Ruby `=begin`/`=end` and its `#` lines. | [A] |
+| FR-9.22 | Block comments are read whole: `/* */`, and Lua `--[[ ]]` and its `--` lines. | [A] |
 | FR-9.23 | A Python docstring is the first string of a module, class or function, taken from the syntax tree, and comments from the tokenizer. Any other string is not prose. A file that does not parse falls back to a scan and is still read. | [A] |
 | FR-9.24 | `.voice-baseline.json` at the repository root names the findings accepted as exceptions, each carrying the file, the rule, the finding's text and the reason it stands. A finding an entry matches does not fail, and is counted as accepted. A project adopts with no baseline, and no command writes entries. | [A] |
 | FR-9.25 | An entry carrying no reason fails, and so does a baseline that cannot be read. | [A] |
@@ -253,3 +252,4 @@ document finds where it went.
 | FR-7.2 | 2026-09-17 | a set includes another because the including jig overlays the included one | FR-7.15: the same linking, for the child-task reason |
 | FR-3.3 | 2026-09-17 | an adapter is pure: no clock, no filesystem, no network | FR-3.8: it reads only what it is handed and writes only its envelope |
 | FR-4.25 | 2026-09-29 | a `COVERS:` mark reads as the same mark while adopters migrate | FR-4.26: every gated repository migrated, and the colon form now fails |
+| FR-4.28 | 2026-10-11 | a test written as a call is found by the call, for the jigs since removed | nothing: no supported language declares a test that way |

@@ -10,12 +10,11 @@ the tests, because that is the task whose work directory holds the profile, so a
 suite that failed while leaving a profile behind must not report as a pass with
 a number beside it.
 
-Branches are read, and gated by the Node and Deno jigs but not by the Rust one.
-The lcov format carries `BRDA` records and the adapter reads them, but
-cargo-llvm-cov emits none on a stable toolchain: its `--branch` flag is unstable
-and needs nightly. node and deno emit them by default, so the same records these
-cases feed are what a real run of either produces. `branch_measured` has to say
-plainly when nothing was measured, because that is every Rust run.
+Branches are read, and the Rust jig does not gate them. The lcov format carries
+`BRDA` records and the adapter reads them, but cargo-llvm-cov emits none on a
+stable toolchain: its `--branch` flag is unstable and needs nightly.
+`branch_measured` has to say plainly when nothing was measured, because that is
+every Rust run.
 """
 
 from __future__ import annotations

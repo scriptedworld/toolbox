@@ -534,8 +534,6 @@ def test_a_marker_inside_a_string_is_not_a_comment(tmp_path, capsys, name, text)
         ("tool.go", "package main\n\n/*\nOur user asked for it.\n*/\n"),
         ("script.lua", "-- Our user asked for it.\nlocal x = 1\n"),
         ("script.lua", "--[[\nOur user asked for it.\n]]\nlocal x = 1\n"),
-        ("script.rb", "# Our user asked for it.\nx = 1\n"),
-        ("script.rb", "=begin\nOur user asked for it.\n=end\nx = 1\n"),
     ],
 )
 def test_block_and_line_comments_are_read_in_each_language(tmp_path, capsys, name, text):

@@ -51,14 +51,10 @@ SKIPPED_DIRS = frozenset(["node_modules", "vendor", "venv", "__pycache__", "test
 
 HASH_SUFFIXES = frozenset([".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".toml", ".just", ".pl", ".r"])
 HASH_FILES = frozenset(["Justfile", "justfile", "Makefile", "Dockerfile"])
-SLASH_SUFFIXES = frozenset(
-    [".go", ".rs", ".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".swift", ".cs", ".php", ".scala"]
-)
+SLASH_SUFFIXES = frozenset([".go", ".rs", ".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".java", ".kt", ".swift", ".cs", ".php", ".scala"])
 
 # Comment lines a program reads rather than a person.
-DIRECTIVE = re.compile(
-    r"COVERS[:\s]|^#!|-\*-|noqa|nosec|nolint|pylint:|type:\s*ignore|go:build|go:generate|eslint-|clippy::|rustfmt::|fmt:\s*(off|on)"
-)
+DIRECTIVE = re.compile(r"COVERS[:\s]|^#!|-\*-|noqa|nosec|nolint|pylint:|type:\s*ignore|go:build|go:generate|clippy::|rustfmt::|fmt:\s*(off|on)")
 FENCE = re.compile(r"^\s*(```|~~~)")
 # Single quotes count only standing apart from letters, so `don't` and `the file's` are not spans.
 QUOTED = re.compile(r"`[^`\n]*`|\"[^\"\n]*\"|“[^”\n]*”|(?<![A-Za-z])'[^'\n]*'(?![A-Za-z])")
@@ -78,9 +74,6 @@ class Syntax:
     line: tuple[str, ...]
     block: tuple[tuple[str, str], ...] = ()
     strings: tuple[str, ...] = ('"', "'")
-    # Ruby's `=begin` opens a block only as the whole of a line's start, where
-    # `/*` and `--[[` open one anywhere.
-    anchored: bool = False
 
 
 # tmux, zellij, herdr and screen each call a window group a session, so a
@@ -401,8 +394,6 @@ def language(path: Path) -> Syntax | None:
         return Syntax(("//",), (("/*", "*/"),), ('"', "'", "`"))
     if path.suffix == ".lua":
         return Syntax(("--",), (("--[[", "]]"),))
-    if path.suffix == ".rb":
-        return Syntax(("#",), (("=begin", "=end"),), anchored=True)
     if path.suffix in HASH_SUFFIXES or path.name in HASH_FILES:
         return Syntax(("#",))
     return None
@@ -431,8 +422,6 @@ def ends_at(text: str, target: str, start: int) -> int:
 
 def opener_at(text: str, index: int, syntax: Syntax) -> tuple[str, str] | None:
     """The block comment opening here, where one is and this position may open one."""
-    if syntax.anchored and index and text[index - 1] != "\n":
-        return None
     return next((pair for pair in syntax.block if text.startswith(pair[0], index)), None)
 
 

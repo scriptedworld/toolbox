@@ -8,8 +8,14 @@
 # repository whose jig sits at its own root, where the two are the same
 # directory, and breaks for every adopter.
 #
-# The standard is the category list in `bolt.deno-std-quality.yaml`'s header,
-# taken from the Python jig. Where Rust differs from Python, and why each absent task is absent:
+# The standard is four categories:
+#
+#   shape         a formatter that reports without writing, and a linter
+#   correctness   types, and a test suite with coverage
+#   security      known vulnerabilities, and the licences of what is linked
+#   hygiene       dead code, documentation, complexity
+#
+# Where Rust differs from Python, and why each absent task is absent:
 #
 #   types        the compiler does it. There is no mypy-shaped task because
 #                there is no mypy-shaped gap; `cargo build` failing is the

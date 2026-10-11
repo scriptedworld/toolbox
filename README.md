@@ -35,7 +35,7 @@ The jigs are readable from a clone on their own. Running one, or running
 There are no releases and no version tags, so adoption tracks the default
 branch. Two Go adapters, `gofmt` and `govet`, still speak a retired contract and
 are wired to no task, so Go's `format` and `vet` gate on exit status with no
-per-finding detail. The Ruby jig has never run.
+per-finding detail.
 
 ## What is here
 
@@ -46,7 +46,6 @@ per-finding detail. The Ruby jig has never run.
 | `bolt.python-std-quality.yaml` | Python: `ruff` format and lint, `mypy`, `pylint`, `complexipy`, `ruff` complexity, `vulture`, `interrogate`, `bandit`, `pytest`, per-file line **and branch** coverage |
 | `bolt.rust-std-quality.yaml` | Rust: `cargo fmt`, `clippy`, build, tests, per-file coverage, `cargo-audit`, `cargo-deny` |
 | `bolt.shell-std-quality.yaml` | Shell, chosen by extension, startup-file name or shebang: `shfmt` and `shellcheck`; zsh is formatted and not linted |
-| `bolt.typescript-std-quality.yaml`, `bolt.node-std-quality.yaml`, `bolt.deno-std-quality.yaml`, `bolt.ruby-std-quality.yaml` | TypeScript, Node, Deno and Ruby; each jig's header lists its tasks |
 | `bolt.secrets.yaml` | `gitleaks` and `detect-secrets` |
 
 `common-quality` runs the secrets jig as a child task, so adopting the common

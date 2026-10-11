@@ -453,60 +453,12 @@ def test_a_rust_attribute_wrapped_over_lines_does_not_hide_the_mark(checker, tmp
     assert code == 0, out
 
 
-# ---- typescript and ruby ------------------------------------------------------
-
-
-# COVERS FR-4.7, FR-4.28 | positive
-@pytest.mark.parametrize(
-    ("name", "call"),
-    [
-        ("links.test.ts", 'test("links a skill", () => {});'),
-        ("links_test.ts", "Deno.test('links a skill', () => {});"),
-        ("links.test.mjs", "  it(`links a skill`, () => {});"),
-        ("links_test.ts", 'void test("links a skill", async () => {});'),
-    ],
-)
-def test_a_typescript_test_call_is_found(checker, tmp_path, name, call):
-    """node:test's `test` and `it`, and Deno's `Deno.test`, each with its COVERS line above."""
-    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {f"src/{name}": f"// COVERS FR-1.1 | positive\n{call}\n"})
-    code, out = checker(traceability, ARGV, tree)
-    assert code == 0, out
-
-
-# COVERS FR-4.28 | negative
-def test_a_typescript_test_citing_nothing_is_named(checker, tmp_path):
-    """The failure names the test by its string."""
-    tree = project(tmp_path, requirements(("FR-1.1", "[A]")), {"src/a.test.ts": 'test("refuses an empty list", () => {});\n'})
-    code, out = checker(traceability, ARGV, tree)
-    assert code == 1
-    assert "refuses an empty list" in out
-
-
-# COVERS FR-4.7, FR-4.28 | positive
-def test_rspec_and_minitest_tests_are_found(checker, tmp_path):
-    """An rspec `it "..."` and a minitest `def test_...`, each citing a requirement."""
-    tree = project(
-        tmp_path,
-        requirements(("FR-1.1", "[A]"), ("FR-1.2", "[A]")),
-        {
-            "spec/flay_spec.rb": '# COVERS FR-1.1 | positive\nit "reads a duplication" do\nend\n',
-            "test/test_flay.rb": "# COVERS FR-1.2 | positive\ndef test_reads_a_duplication\nend\n",
-        },
-    )
-    code, out = checker(traceability, ARGV, tree)
-    assert code == 0, out
-
-
 # Which `LANGUAGES` entries each shipped language jig's tests are read by.
 JIG_LANGUAGES = {
     "go": {"go"},
     "python": {"python"},
     "rust": {"rust"},
     "shell": {"bats"},
-    "typescript": {"typescript"},
-    "node": {"typescript"},
-    "deno": {"typescript"},
-    "ruby": {"rspec", "minitest"},
 }
 
 

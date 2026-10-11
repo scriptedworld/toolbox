@@ -49,9 +49,6 @@ simply name a jig that lives elsewhere.
                                  cargo-llvm-cov needs nightly for those.
     bolt.shell-std-quality.yaml  shell: shfmt and shellcheck over files chosen by
                                  extension, startup-file name or shebang
-    bolt.typescript-std-quality.yaml, bolt.node-std-quality.yaml,
-    bolt.deno-std-quality.yaml, bolt.ruby-std-quality.yaml
-                                 the other languages; the Ruby jig has never run
     bolt.secrets.yaml            gitleaks, detect-secrets
     bolt.toolbox.definitions.yaml               this repository's own overrides
     bolt.requirements-directory.definitions.yaml for an adopter whose
@@ -66,7 +63,6 @@ simply name a jig that lives elsewhere.
       voice-tells.py           the wording the writing standard names, by pattern
       voice-review.py          a model's findings on the same text, run by hand,
                                never a gate
-      flay-envelope            flay's report as an envelope, for the Ruby jig
       shell-files.py           the shell files among the tracked ones, for the
                                shell jig
       tool-versions.py         every required tool's version; wired into no

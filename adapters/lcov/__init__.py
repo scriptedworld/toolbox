@@ -10,7 +10,6 @@ Naming the leaf directories in `[tool.coverage.run] source` instead would make
 each Cobertura filename relative to its own leaf, so the three `coverage.py`
 adapters would all report as "coverage.py" and merge into one entry.
 
-The directory is named for the format. lcov is what cargo-llvm-cov, node and
-deno all emit, so the Rust, Node and Deno jigs read one adapter and no copy per
-language can drift from it.
+The directory is named for the format. lcov is what cargo-llvm-cov emits, and
+the Rust jig reads it.
 """

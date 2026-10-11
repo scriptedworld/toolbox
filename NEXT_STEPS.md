@@ -16,10 +16,10 @@ thresholds or declares a second task that disagrees with them.
 ### Whether a maintainability index belongs in the standard
 
 The alternative is declaring it Python-only. Only Python has a maintained tool
-for it. Go, Rust and TypeScript have none, and the one multi-language candidate
-has been unmaintained for years. The argument for declaring it instead of
-omitting it: a language that cannot meet part of the standard should say so,
-because silence reads as compliance.
+for it. Go and Rust have none, and the one multi-language candidate has been
+unmaintained for years. The argument for declaring it instead of omitting it: a
+language that cannot meet part of the standard should say so, because silence
+reads as compliance.
 
 ### Whether path-invoked scripts may share a module
 
@@ -267,42 +267,7 @@ Present today:
 Every addition lands with a threshold that can fail and an entry in `requires:`,
 because that list is what anvil builds an image from.
 
-
-## The Ruby jig, part-written
-
-`jigs.yaml` declares a `ruby` set. Nothing has adopted it, so the jig has never
-run, and as written it cannot: `requires:` names `rubocop-minitest`,
-`rubocop-rake` and `rubocop-rspec`, which are gems loaded as rubocop plugins
-and not executables, and `flay-envelope` and `bundle-audit-envelope`, which are
-toolbox scripts and not on PATH. bolt refuses a run when a required name is not
-on PATH, and `bin/tool-versions.py bolt.ruby-std-quality.yaml` reports all five
-as not found.
-
-`bolt.ruby-std-quality.yaml` is drafted and validates against wrench's
-`JIG_SCHEMA`. Seven tasks, two mechanisms, no bespoke adapters:
-
-    format lint complexity smells   generic exit-code adapter
-    duplication advisories          piped filter writing {work_dir}/output.yaml
-    tests                           adapters/python/coverage.py, Cobertura
-
-`bin/flay-envelope` passes and fails correctly against a planted duplication.
-One cosmetic defect: its `kind` regex captures the whole phrase
-`Similar code found in :defn` where it wants `:defn`, so the message reads
-"duplicated Similar code found in :defn of mass 40".
-
-Still to write: `bin/bundle-audit-envelope`, reading bundle-audit's text and
-failing when the project declares dependencies and ships no lockfile, because
-`bundle-audit check` exits 0 having audited nothing when Gemfile.lock is absent.
-And `config/ruby-std-quality.rubocop.yml`, the complexity thresholds with
-`DisabledByDefault: true` so an adopter cannot relax them.
-
-**flay's `-m` is not the failing threshold and must not be used as one.** `-m`
-filters on the mass of one node while the report prints the mass of the whole
-match, the sum across occurrences. `-m 20` shows a match reporting `mass = 40`;
-`-m 25` hides the same duplication entirely. flay runs at its default and the
-filter judges what it printed.
-
-## Adapters across the other three jigs
+## Adapters across the jigs
 
 23 of 27 tasks across common, Go, Python and Rust name no adapter, so their
 verdict is bolt's generic exit-code one. The tasks where the exit code does not

@@ -40,15 +40,11 @@ exists, so recheck it on a newer rustc.
 So the Rust jig sets no branch minimum, and `branch_measured` in the statistics
 below reports false instead of letting a threshold pass on a zero denominator.
 
-lcov is what cargo-llvm-cov, node and deno all emit, so the Rust, Node and Deno
-jigs read the same records with the same per-file judgement.
-
 The languages are not level on branches, and the jigs say so. Python's
 coverage.py measures branches on the stable toolchain, so the Python jig gates
-them. Node and Deno do too: node's lcov reporter and `deno coverage --lcov` both
-write `BRDA` records with no extra flag. Go has no branch mode at all. Rust
-could on nightly and does not, because the estate builds on stable. Each jig
-gates branches where its toolchain measures them.
+them. Go has no branch mode at all. Rust could on nightly and does not, because
+the estate builds on stable. Each jig gates branches where its toolchain
+measures them.
 """
 
 # pylint: disable=duplicate-code

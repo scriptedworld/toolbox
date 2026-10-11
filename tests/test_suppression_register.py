@@ -456,7 +456,7 @@ def test_the_projects_own_pragma_is_still_found(checker, tmp_path):
     assert "1 pragma(s)" in out
 
 
-# ---- TypeScript, detect-secrets, and other checkouts --------------------------
+# ---- detect-secrets, and other checkouts -------------------------------------
 
 
 def tree_with(tmp_path: Path, register: str, files: dict[str, str]) -> Path:
@@ -470,23 +470,13 @@ def tree_with(tmp_path: Path, register: str, files: dict[str, str]) -> Path:
 
 
 SPELLED = [
-    ("src/a.ts", "const x = y; // eslint-disable-line no-unused-vars", "eslint-disable-line no-unused-vars"),
-    (
-        "src/a.ts",
-        "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the shape is open",
-        "eslint-disable-next-line @typescript-eslint/no-explicit-any",
-    ),
-    ("src/a.mjs", "/* eslint-disable no-console */", "eslint-disable no-console"),
-    ("src/a.ts", "// deno-lint-ignore no-explicit-any", "deno-lint-ignore no-explicit-any"),
-    ("src/a.tsx", "// @ts-expect-error the fixture is malformed on purpose", "@ts-expect-error"),
-    ("src/a.ts", "// @ts-ignore", "@ts-ignore"),
     ("config.py", 'TOKEN = "fixture"  # pragma: allowlist secret', "pragma: allowlist secret"),
 ]
 
 
-# COVERS FR-5.4, FR-5.6 | negative
+# COVERS FR-5.6 | negative
 @pytest.mark.parametrize(("name", "line", "spelling"), SPELLED, ids=[case[2] for case in SPELLED])
-def test_each_typescript_and_detect_secrets_spelling_must_be_registered(checker, tmp_path, name, line, spelling):
+def test_each_detect_secrets_spelling_must_be_registered(checker, tmp_path, name, line, spelling):
     """Every spelling is seen, so an unregistered one fails and names its file."""
     tree = tree_with(tmp_path, "Register.\n", {name: f"{line}\n"})
     code, out = checker(register_checker, ARGV, tree)
@@ -494,22 +484,14 @@ def test_each_typescript_and_detect_secrets_spelling_must_be_registered(checker,
     assert name in out and "in no register entry" in out
 
 
-# COVERS FR-5.4, FR-5.6 | positive
+# COVERS FR-5.6 | positive
 @pytest.mark.parametrize(("name", "line", "spelling"), SPELLED, ids=[case[2] for case in SPELLED])
 def test_each_spelling_passes_once_registered(checker, tmp_path, name, line, spelling):
     """The register row is read with the same pattern, so the same spelling registers it."""
-    marker = "#" if name.endswith(".py") else "//"
+    marker = "#"
     tree = tree_with(tmp_path, f"Register.\n\n  {name}   {marker} {spelling}\n", {name: f"{line}\n"})
     code, out = checker(register_checker, ARGV, tree)
     assert code == 0, out
-
-
-# COVERS FR-5.4 | edge
-def test_a_private_field_does_not_hide_a_typescript_pragma(checker, tmp_path):
-    """`#` opens no comment in TypeScript, so the `//` after a `#private` field is still where the comment starts."""
-    tree = tree_with(tmp_path, "Register.\n", {"src/a.ts": "this.#count = 0; // eslint-disable-line no-param-reassign\n"})
-    code, out = checker(register_checker, ARGV, tree)
-    assert code == 1 and "src/a.ts" in out
 
 
 # COVERS FR-5.7 | regression
