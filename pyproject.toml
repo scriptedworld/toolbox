@@ -15,7 +15,7 @@
 # an environment is what has to exist.
 [project]
 name = "toolbox"
-version = "0"
+version = "0.1.0"
 # The environment's floor, which is the suite's and not an adopter's. 3.14 is
 # the floor every uv repository declares, so each can install the others. The
 # scripts adopters run keep the 3.12 floor NFR-7 sets, held by `[tool.ruff]`
