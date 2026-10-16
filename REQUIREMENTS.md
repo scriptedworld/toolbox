@@ -228,7 +228,7 @@ included, to be read by a jig; `bolt.shell-std-quality.yaml` and
 | NFR-4 | Adapter fixtures are captured from real tool output, and each records the tool version and the date of capture. A fixture composed by hand tests whoever composed it, and a tool changing its output format is the break adapters exist to absorb. | [D] |
 | NFR-5 | `[?]` This repository's own gate passes on this repository: `common-quality`, `python-std-quality` and `secrets` each report `success: true` under `--definitions toolbox`. The row stays open because nothing in the suite can assert it. NFR-1 has the suite running without the tools the jigs name, so the only check is running the three jigs. | [?] |
 | NFR-6 | The schema has one home, and it is wrench. A jig schema describes bolt's configuration format, which is not toolbox's to define. wrench ships the schemas and bolt is built from them, so this repository keeps no copy and imports the pack instead. | [A] |
-| NFR-7 | Every script in `bin/` and `adapters/` parses as Python 3.12, the floor `requires-python` declares, because an adopter runs them with whatever `python3` it has. A formatter or an edit writing newer syntax fails the suite. | [A] |
+| NFR-7 | Every script in `bin/` and `adapters/` parses as Python 3.12, because an adopter runs them with whatever `python3` it has. The floor is the scripts', not the environment's: `requires-python` names what the suite runs on, and ruff's `per-file-target-version` holds the two directories at 3.12 so its formatter does not write newer syntax there. A formatter or an edit writing newer syntax fails the suite. | [A] |
 
 ## Retired
 

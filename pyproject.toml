@@ -16,7 +16,11 @@
 [project]
 name = "toolbox"
 version = "0"
-requires-python = ">=3.12"
+# The environment's floor, which is the suite's and not an adopter's. 3.14 is
+# the floor every uv repository declares, so each can install the others. The
+# scripts adopters run keep the 3.12 floor NFR-7 sets, held by `[tool.ruff]`
+# below and by the suite.
+requires-python = ">=3.14"
 license = "Apache-2.0"
 
 [tool.uv]
@@ -35,7 +39,7 @@ dev = ["pytest", "coverage", "pyyaml", "wrench", "mypy"]
 # A path source would tie this repository to a sibling checkout and break a
 # standalone clone.
 [tool.uv.sources]
-wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "python" }
+wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "python", tag = "python/v0.5.0" }
 
 # One line length, declared once, and both tools pinned to it.
 #
@@ -50,6 +54,11 @@ wrench = { git = "https://github.com/scriptedworld/wrench.git", subdirectory = "
 # at 150, because the formatter does not expand code already wrapped shorter.
 [tool.ruff]
 line-length = 150
+# ruff targets the version `requires-python` names, and from 3.14 its formatter
+# drops the parentheses from `except (A, B):`, which no older interpreter
+# parses. An adopter runs `bin/` and `adapters/` with whatever `python3` it has,
+# so those two stay at 3.12 (NFR-7).
+per-file-target-version = { "bin/**" = "py312", "adapters/**" = "py312" }
 
 [tool.ruff.lint]
 # E501 is line length, and it is selected explicitly because ruff's defaults
